@@ -1,0 +1,3 @@
+[submodule "external/LQR"]
+	path = external/LQR
+	url = https://github.com/christophstrasen/LQR
