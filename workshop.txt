@@ -1,0 +1,5 @@
+version=1
+title=WorldObserver [b42]
+description=WorldObserver is a medium-sized Lua subsystem that watches the game world and keeps track of freshly available constructs—tiles, rooms, or any other entities that shipped or custom scanners choose to surface. It gives mod authors an extensible toolkit of async scan loops, per-entity event streams, and chainable reducers so multiple scanners can share the heavy traversal work while downstream listeners react or enrich the feed without re-implementing the grind.
+tags=Library;Utility;Build 42;Development
+visibility=Public

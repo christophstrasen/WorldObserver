@@ -1,0 +1,15 @@
+{
+	"folders": [
+		{
+			"path": ".."
+		}
+	],
+	"settings": {
+		// Workspace-wide shared settings live here; machine-specific overrides belong
+		// in WorldObserver.local.code-workspace (gitignored).
+		"stylua.styluaPath": "/run/current-system/sw/bin/stylua",
+		"stylua.targetReleaseVersion": "latest",
+		"vim.enableNeovim": true,
+		"vim.disableExtension": true
+	}
+}
