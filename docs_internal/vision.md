@@ -45,6 +45,67 @@ will lean on.
 
 ---
 
+## Core concepts
+
+These high‑level terms describe how WorldObserver thinks about the game world:
+
+### Fact
+Anything that currently is or has been true in the world. E.g. a floor square having blood on it over a period of time.
+
+Implemented by:
+#### Event Listener
+
+Event listeners hook into the game’s own event loop (`OnTick`, `OnPlayerMove`,
+`OnContainerUpdate`, etc.) or into custom events and carve facts out of whatever
+these events surface. Their job is to shape and filter the incoming events into the
+smallest useful set of facts, while respecting cost and not missing anything
+that must be seen.
+
+#### Active Probe
+
+Active probes initiate their own scans over world state when no suitable event
+exists or when periodic reconfirmation is needed. Their job is to decide where,
+how often, and how intensely to “shine a light” onto the world state
+so that important facts are discovered in time without overwhelming the game
+loop.
+In practice Probes are wired into time-based triggers and started/stopped on demand.
+
+### Observation
+A concrete “noted” observation of a fact, carried as a record in an observable stream, often with the time of observation attached.
+
+Implemented by:
+#### Base ObservationStreams
+
+Base ObservationStreams are live, world‑centric streams built directly from
+Facts via Event Listeners and Active Probes. They hold observations as data
+points in stable schemas for things like squares, rooms, vehicles, and corpses,
+not the game objects themselves.
+
+#### Derived ObservationStreams
+
+Derived ObservationStreams are built from one or more existing streams that
+narrow or combine them into more specific facts. Internally this is typically
+expressed as LQR queries, but they still only describe what has been observed.
+For example, they can represent “squares within N tiles of any player” or
+“rooms that currently contain zombies”, without yet declaring that these facts
+are important or should trigger actions.
+
+### Situation
+When observations line up to show something interesting about the world, from a single simple check to a complex pattern across many observations over time.
+
+A Situation is when one or more ObservationStreams are treated as “interesting
+enough to care about” and wired up as candidates to trigger Actions. The same underlying streams are
+used; what changes is the intent and how other code reacts to them. WorldObserver may
+later grow dedicated APIs or types for situations, but for now the distinction
+is conceptual rather than a separate implementation layer.
+@TODO mention the LQR/reactivex :subscribe
+
+### Action
+What the mod author decides to do when a situation occurs
+(gameplay logic, UI changes, persistence, and so on).
+
+---
+
 ## Before: how mods observe the world today
 
 When a typical Project Zomboid mod wants to “watch the world”, the lifecycle
@@ -75,7 +136,7 @@ today usually looks something like this (for a single feature or concern):
    - **Complexity:** high – implicit state machines grow over time and are
      hard to reason about once multiple concerns share the same tables.
    - **Risk:** high – stale state, memory leaks, or missed updates when world
-     conditions change (e.g. room layout, save/load).
+     conditions change (e.g. room layout, save/load).as named observers
 
 4. **Correlate conditions by hand**
    - Combine separate facts – “is kitchen”, “has corpse”, “near player”,
@@ -93,7 +154,7 @@ today usually looks something like this (for a single feature or concern):
    - **Complexity:** medium – business logic itself may be simple, but it sits
      on top of fragile observation code.
    - **Risk:** medium–high – double‑fires, missed triggers, or inconsistent
-     save/load behavior if observation state and side‑effects drift apart.
+     save/load behavior if observation state and side‑effects drift apart.as named observers
 
 6. **Debug and tune by trial and error**
    - Add `print` spam, ad‑hoc debug UIs, or temporary overlays; tweak radii,
@@ -121,79 +182,48 @@ The older WorldScanner ideas already captured something important:
 
 WorldObserver keeps that spirit but changes the foundation:
 
-- **From bespoke loops to declarative observers.**  
-  Instead of writing your own `Events.OnTick` loops or one‑off `WorldFinder`‑style
-  routines, you describe *observers* that stay mounted and emit structured
-  world contexts as the game runs.
+---
 
-- **From single‑purpose scanners to shared streams.**  
-  A single world observation (e.g. “nearby squares around the player”) can feed
-  many consumers: story logic, PromiseKeeper, overlays, debugging tools – all
-  without duplicating the scan.
+## Core idea: describe what to observe, not loops
 
-- **From hand‑rolled timing to explicit windows and joins.**  
-  Time and correlation are first‑class concepts instead of hidden timers and
-  state in scattered tables.
+WorldObserver’s core idea is simple:
 
-In other words, WorldObserver is the “second generation” of the WorldScanner
-idea, rebuilt explicitly on top of LQR and lua‑reactivex instead of a
-home‑grown query DSL.
+> **Describe the facts and situations you care about; do not hand‑roll loops.**
+
+Instead of:
+
+- wiring your own `OnTick` handlers and tile scans;
+- inventing per‑mod mini‑frameworks for batching and cancellation; or
+- re‑implementing ad‑hoc join logic between “has corpse”, “is kitchen”, “near player”, and so on,
+
+you:
+
+- rely on shared **Facts** surfaced via Event Listeners and Active Probes;
+- subscribe to **ObservationStreams** that describe what has been observed about squares, rooms, vehicles, and other world elements; and
+- define **Situations** by saying which ObservationStreams matter to you and how they should drive Actions.
+
+The goal is that most mods never need to think in terms of loops and caches at all, only in terms of “what should we observe?” and “when does it matter?”.
 
 ---
 
-## Core idea: describe observers, not loops
+## Mental model: facts, observations, and streams
 
-WorldObserver is built around a single concept:
+At a high level, WorldObserver sits between the game and your mod:
 
-> **An observer is a named, reusable query over world events and contexts.**
+- **Facts** are what is or has been true in the world, surfaced via Event Listeners and Active Probes.
+- **Observations** are concrete, typed representations of those facts.
+- **ObservationStreams** are the live flows of observations that mods subscribe to and build Situations from.
 
-Observers are:
+Internally, each Observation is an LQR record that belongs to a schema such as `SquareObs`, `RoomObs`, or future schemas for vehicles, containers, and so on. These records:
 
-- **Named:** they have stable identifiers (e.g. `"observer.kitchenSquares"`).
-- **Schema‑aware:** they deal in typed contexts like `SquareCtx`, `RoomCtx`,
-  `VehicleCtx`, mapped onto LQR schemas.
-- **Incremental:** once mounted, they keep emitting as the world and players
-  change.
-- **Combinable:** you can join and filter observers to describe more complex
-  conditions without re‑implementing scans.
+- have stable keys (for example `squareId`, `roomId`, `vehicleId`);
+- carry a minimal, well‑defined payload; and
+- include metadata such as when and how the fact was observed.
 
-What you *do not* write:
+LQR then provides the machinery to transform ObservationStreams: combining them, narrowing them, and looking at them over time. WorldObserver uses that machinery to:
 
-- raw `for` loops over the entire map every frame;
-- per‑mod “mini frameworks” to manage `OnTick` batching and cancellation; or
-- ad‑hoc join logic between “has corpse”, “is kitchen”, “is safe spot”, etc.
-
-Instead you build or reuse observers that encode those concerns once.
-
----
-
-## Mental model: world contexts as LQR records
-
-WorldObserver treats world events as **LQR records** tagged by schema:
-
-- `SquareCtx` schema: emitted for grid squares (e.g. from “nearby squares”
-  scanners, `LoadGridsquare` hooks, or async sweeps).
-- `RoomCtx` schema: emitted for rooms (e.g. from building/room enumeration).
-- Future schemas: vehicles, containers, “has corpse” flags, nav regions, etc.
-
-Each record:
-
-- has a stable key (`squareId`, `roomId`, `vehicleId`, …);
-- carries a minimal, well‑defined payload; and
-- has metadata (source time, origin scanner, etc.) suitable for joins/windows.
-
-LQR then provides:
-
-- **joins** (`inner`, `left`, `anti*`, `outer`) across those schemas;
-- **windows** in time or count (“within 5 seconds”, “last N events per id”);
-- **grouping and distinct** for aggregates or deduplication; and
-- **expiration streams** so you can reason about “too late” or “never matched”.
-
-WorldObserver’s job is to:
-
-1. turn game events and scans into these schema‑tagged records; and  
-2. expose ready‑to‑use observers (LQR queries) that mod authors can subscribe to
-   or build upon.
+1. turn Facts (from listeners and probes) into schema‑tagged Observations; and  
+2. expose base and derived ObservationStreams that mod authors can subscribe to or build Situations on top of, without needing to think about LQR directly.
 
 ---
 
@@ -201,7 +231,7 @@ WorldObserver’s job is to:
 
 At a high level, WorldObserver should:
 
-- **Provide reusable world feeds.**  
+- **Provide reusable world observationns.**  
   Core, well‑tested observers for common needs, e.g.:
   - “nearby squares around player(s) with configurable radius and filters”;
   - “rooms by name and distance, with async batching handled for you”;
@@ -243,7 +273,7 @@ Conceptually:
   It:
   - defines world schemas and keys (`SquareCtx`, `RoomCtx`, …);
   - turns PZ/engine events into LQR‑friendly record streams;
-  - publishes ready‑made queries as named observers; and
+  - publishes ready‑made queries ObservationStreams; and
   - offers extension points for mod authors to define their own observers.
 
 For most mod authors, **WorldObserver is the primary entry point**:
