@@ -11,6 +11,7 @@ Repo-wide guidance for AI agents.
 - Bias for simplicity and minimal changes; avoid speculative features.
 - Note when context may be stale or missing and request needed files.
 - If instructions conflict, follow the higher-priority source (system > developer > AGENTS.md > this file > task > file-local comments).
+- When we make changes, from time to time check and challenge if we improve the situation for users as we target in our `docs_internal/vision.md`
 
 ## Output & Style
 Avoid diff-style output; provide copy-paste ready snippets and file paths.
@@ -39,6 +40,8 @@ If repo guidance conflicts, flag it and ask; don’t guess past ambiguities. Upd
 
 ## Internal source of Truth
 
+- Vision for the WorldObserver `docs_internal/vision.md`
+- AI gennerated logbook of changes and lessons learned `docs_internal/logbook.md`
 - All LQR related documentation at `external/LQR/docs`
 
 ## External Sources of Truth (in order)

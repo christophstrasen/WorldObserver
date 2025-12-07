@@ -13,6 +13,22 @@ necessarily what is implemented today.
 
 ---
 
+## Goals
+
+### delivers for beginner to intermediary lua modders
+
+1. MUST provide a simple method to "subscribe" to pre-made "observations"
+2. MUST make observing the world save and performant by default
+3. SHOULD allow to further refine the observations
+4. COULD provide visual or other debug vehicles to help understand and refine working with observations
+
+### delivers for advanced lua mdders
+
+1. MUST allow to create and ship custom and re-usable "observations"
+2. SHOULD expose performance feedback from the system end2end
+3. SHOULD provide knobs for automatic or semi-automatic optimization
+4. COULD provide means to "inherit, modify and publish as new observations" as a way to design
+
 ## Audience and scope
 
 - **Audience:** Lua‑coding Project Zomboid mod authors comfortable with tables,
@@ -23,10 +39,75 @@ necessarily what is implemented today.
 - **Out of scope:** no GUI builder, no on‑disk query language, no visual editor.
   The primary interface is Lua code.
 
-If you have not yet read it, the LQR docs in `docs/` – especially
-`concepts/records_and_schemas.md` and `guides/advantages.md` – provide the
+If you have not yet read it, the LQR docs in `docs/` provides the
 underlying vocabulary (records, schemas, joins, windows) that WorldObserver
 will lean on.
+
+---
+
+## Before: how mods observe the world today
+
+When a typical Project Zomboid mod wants to “watch the world”, the lifecycle
+today usually looks something like this (for a single feature or concern):
+
+1. **Hook into events and ticks**
+   - Register handlers on `Events.OnTick`, `OnPlayerUpdate` etc.
+     or custom timers; maybe add counters to avoid doing work every tick.
+   - **LoC:** ~10–30 per feature (basic event registration and guards).
+   - **Complexity:** low–medium – conceptually simple, but spread over multiple
+     files and game events.
+   - **Risk:** medium – easy to leak handlers, run too often, or attach to the
+     wrong event and miss edge cases.
+
+2. **Scan tiles, rooms, and objects manually**
+   - Walk tiles around players or known coords with nested `for` loops; query
+     rooms, buildings, containers, items, corpses, vehicles, etc.
+   - **LoC:** ~30–100 per major scan (loops, bounds checks, filters).
+   - **Complexity:** medium–high – lots of branching and special cases,
+     especially once multiple filters stack up.
+   - **Risk:** high – off‑by‑one ranges, scanning too much too often, or
+     forgetting to short‑circuit can hurt performance and correctness.
+
+3. **Maintain ad‑hoc caches and state**
+   - Track visited squares/rooms/entities in Lua tables; implement cooldowns
+     (“only once per room per N ticks”), deduplication, and invalidation.
+   - **LoC:** ~20–60 per feature (state tables, update functions, cleanup).
+   - **Complexity:** high – implicit state machines grow over time and are
+     hard to reason about once multiple concerns share the same tables.
+   - **Risk:** high – stale state, memory leaks, or missed updates when world
+     conditions change (e.g. room layout, save/load).
+
+4. **Correlate conditions by hand**
+   - Combine separate facts – “is kitchen”, “has corpse”, “near player”,
+     “not yet handled” – using custom IDs, lookups, and join logic.
+   - **LoC:** ~20–50 per combined condition (glue code and helper functions).
+   - **Complexity:** medium–high – mental join logic is spread across event
+     handlers and helper utilities.
+   - **Risk:** high – easy to miss corner cases when conditions need to be
+     evaluated over time (enter/leave, expiry, race‑y updates).
+
+5. **Trigger side‑effects and persistence**
+   - Fire mod logic, spawn entities, update overlays, and write to mod save
+     data when conditions are met; try to keep everything idempotent.
+   - **LoC:** ~20–80 per feature (callbacks, guards, save/load hooks).
+   - **Complexity:** medium – business logic itself may be simple, but it sits
+     on top of fragile observation code.
+   - **Risk:** medium–high – double‑fires, missed triggers, or inconsistent
+     save/load behavior if observation state and side‑effects drift apart.
+
+6. **Debug and tune by trial and error**
+   - Add `print` spam, ad‑hoc debug UIs, or temporary overlays; tweak radii,
+     tick intervals, and cache sizes to keep FPS acceptable.
+   - **LoC:** ~10–40 per debug pass (logging flags, temporary code paths).
+   - **Complexity:** medium – debugging crosses all the layers above and often
+     has to be repeated for each new feature.
+   - **Risk:** medium – debug code accidentally ships, or performance problems
+     only show up under load or on servers.
+
+These numbers are rough orders of magnitude, but they highlight a pattern:
+each mod re‑implements a small “world observation framework” by hand, with
+non‑trivial code, complexity, and risk concentrated in scanning, state, and
+correlation.
 
 ---
 
@@ -229,4 +310,3 @@ query
 This is only a sketch, but it is the style of code WorldObserver is meant to
 encourage: **describe what you want to observe**, let the engine handle the
 heavy lifting, and focus your mod logic on the resulting contexts.
-
