@@ -32,14 +32,16 @@
 
 - Sketched and refined concrete use cases in API terms:
   - Squares with blood near the player:
-    - `WorldObserver.observations.squares():distinctPerSquareWithin(10):nearIsoObject(playerIsoObject, 20):squareHasBloodSplat():subscribe(...)`
-    - Shows helpers as reducers only, explicit “once per square within N seconds”, and spatial filtering on a live `IsoObject`.
+    - `WorldObserver.observations.squares():distinct("square", 10):nearIsoObject(playerIsoObject, 20):squareHasBloodSplat():subscribe(...)`
+    - Shows helpers as reducers only, explicit “once per square within N seconds” via a dimension‑aware `distinct`, and spatial filtering on a live `IsoObject`.
   - Chef zombie in a kitchen with ambient sound:
     - `WorldObserver.observations.roomZombies():roomIsKitchen():zombieHasChefOutfit():subscribe(...)`
     - Demonstrates multi‑dimension ObservationStreams (rooms + zombies) and entity‑prefixed helpers (`roomIs*`, `zombieHas*`).
   - Vehicles under attack (advanced custom ObservationStream):
-    - Mod‑facing: `WorldObserver.observations.vehiclesUnderAttack():withConfig({ minZombies = 3 }):vehicleWeightBelow(1200):subscribe(...)`
+    - Mod‑facing: `WorldObserver.observations.vehiclesUnderAttack():withConfig({ minZombies = 3 }):filter(function(observed) return (observed.vehicle.weightKg or 0) <= 1200 end):subscribe(...)`
     - Internal: custom `build(opts)` using LQR joins + a 1‑second group window + `having`, reading `minZombies` from `opts`, with `enabled_helpers = { vehicle = "VehicleObs" }`.
+  - Clarified that `subscribe` callbacks see an `observed` row (one field per world type, e.g. `observed.square`, `observed.room`, `observed.zombie`, `observed.vehicle`) and added an advanced `filter(function(observed) ...)` escape hatch that mirrors lua‑reactivex `filter` on this row shape.
+  - Added namespacing and configuration rules for helper sets (`WorldObserver.helpers.<type>` and `enabled_helpers` with `true` vs `"<fieldName>"`), documented `getLQR()` as an advanced escape hatch, and sketched debugging/logging guidance that reuses LQR’s logger plus future `describeFacts` / `describeStream` helpers and potential visual highlighting.
 
 ### Next steps
 - Flesh out additional use cases (e.g. rooms with zombies, safehouse compromise) to pressure‑test ObservationStreams and Situation helpers.
