@@ -22,12 +22,12 @@ necessarily what is implemented today.
 3. SHOULD allow to further refine the observations
 4. COULD provide visual or other debug vehicles to help understand and refine working with observations
 
-### delivers for advanced lua mdders
+### delivers for advanced lua modders
 
-1. MUST allow to create and ship custom and re-usable "observations"
-2. SHOULD expose performance feedback from the system end2end
-3. SHOULD provide knobs for automatic or semi-automatic optimization
-4. COULD provide means to "inherit, modify and publish as new observations" as a way to design
+5. MUST allow to create and ship custom and re-usable "observations"
+6. SHOULD expose performance feedback from the system end2end
+7. SHOULD provide knobs for automatic or semi-automatic optimization
+8. COULD provide means to "inherit, modify and publish as new observations" as a way to design
 
 ## Audience and scope
 
@@ -72,6 +72,7 @@ In practice Probes are wired into time-based triggers and started/stopped on dem
 
 ### Observation
 A concrete “noted” observation of a fact, carried as a record in an observable stream, often with the time of observation attached.
+The same fact may be observed many times with each observation being its own event with typically no hard guarantees about order and completess.
 
 Implemented by:
 #### Base ObservationStreams
@@ -225,14 +226,25 @@ LQR then provides the machinery to transform ObservationStreams: combining them,
 1. turn Facts (from listeners and probes) into schema‑tagged Observations; and  
 2. expose base and derived ObservationStreams that mod authors can subscribe to or build Situations on top of, without needing to think about LQR directly.
 
+### Fact strategies
+
+WorldObserver owns the primary strategies for generating Facts. For each
+world element (squares, rooms, etc.) it decides how to combine Event
+Listeners (e.g. load events) and Active Probes (periodic or focused scans) to
+balance freshness and completeness within a performance budget. Typical
+strategies might mix frequent, small probes near players with less frequent,
+wider sweeps and always‑on engine events. Mod authors see the resulting
+ObservationStreams, not the underlying strategy; changing these strategies is
+an advanced, opt‑in configuration rather than part of everyday usage.
+
 ---
 
 ## Responsibilities of WorldObserver
 
 At a high level, WorldObserver should:
 
-- **Provide reusable world observationns.**  
-  Core, well‑tested observers for common needs, e.g.:
+- **Provide reusable ObservationStreams.**  
+  Core, well‑tested streams for common needs, e.g.:
   - “nearby squares around player(s) with configurable radius and filters”;
   - “rooms by name and distance, with async batching handled for you”;
   - “candidate vehicle spawn sections” similar to `WorldFinder` but as streams;
@@ -246,7 +258,7 @@ At a high level, WorldObserver should:
   Under the hood these map onto LQR queries; the surface stays world‑centric.
 
 - **Handle lifecycle and backpressure at the engine level.**  
-  Observers can be started/stopped, and they should:
+  The engine can start/stop underlying fact sources and probes, and it should:
   - batch heavy scans over multiple frames;
   - limit memory via windows and per‑key caches (LQR retention);
   - cooperate with the game loop rather than blocking it.
@@ -273,8 +285,8 @@ Conceptually:
   It:
   - defines world schemas and keys (`SquareCtx`, `RoomCtx`, …);
   - turns PZ/engine events into LQR‑friendly record streams;
-  - publishes ready‑made queries ObservationStreams; and
-  - offers extension points for mod authors to define their own observers.
+  - publishes ready‑made base ObservationStreams; and
+  - offers extension points for mod authors to define their own ObservationStreams on top.
 
 For most mod authors, **WorldObserver is the primary entry point**:
 
@@ -284,7 +296,8 @@ For most mod authors, **WorldObserver is the primary entry point**:
 
 Advanced users may:
 
-- fetch the underlying LQR observable or builder for an observer;
+- fetch the underlying LQR observable or builder for an ObservationStream;
+- Inject additional base ObservationStreams for existing classes of objects or entirely new ones.
 - compose additional joins or `where` clauses on top; or
 - feed non‑world schemas into the same engine.
 
@@ -305,6 +318,12 @@ The aim is to make the *common hard things* (world scanning, correlation, and
 time‑bound patterns) easy and consistent, while staying honest about trade‑offs.
 
 ---
+
+## Dependencies to use
+
+- LQR https://github.com/christophstrasen/LQR
+- Lua Reactivex https://github.com/christophstrasen/lua-reactivex 
+- LuaEvent https://github.com/demiurgeQuantified/StarlitLibrary/blob/main/Contents/mods/StarlitLibrary/42/media/lua/shared/Starlit/LuaEvent.lua 
 
 ## A taste of intended usage (illustrative only)
 
