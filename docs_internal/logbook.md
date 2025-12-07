@@ -30,11 +30,16 @@
   - Helper sets (square/zombie/spatial/time/etc.) are thin, reusable sugar attached based on `enabled_helpers`, assuming certain fields in the observation records; internal use of LQR join/group/distinct windows is hidden behind semantic helpers.
   - WorldObserver owns “fact plans” (event + probe strategies) per element type, with strategy selection as an advanced config knob, and never implicitly de‑duplicates observations.
 
-- Sketched the first concrete use case in API terms:
-  - “Find squares with blood around the player” expressed as:
-    - `WorldObserver.observations.squares():maxDistanceTo(playerIsoObject, 20):hasBloodSplat():subscribe(...)`
-    - Optional `:distinctPerSquare()` helper for “only once per square”.
-  - This mirrors the traditional scanner pattern (OnTick + batched scans + callback) while keeping scanning and deduplication details in the Facts/LQR layers.
+- Sketched and refined concrete use cases in API terms:
+  - Squares with blood near the player:
+    - `WorldObserver.observations.squares():distinctPerSquareWithin(10):nearIsoObject(playerIsoObject, 20):squareHasBloodSplat():subscribe(...)`
+    - Shows helpers as reducers only, explicit “once per square within N seconds”, and spatial filtering on a live `IsoObject`.
+  - Chef zombie in a kitchen with ambient sound:
+    - `WorldObserver.observations.roomZombies():roomIsKitchen():zombieHasChefOutfit():subscribe(...)`
+    - Demonstrates multi‑dimension ObservationStreams (rooms + zombies) and entity‑prefixed helpers (`roomIs*`, `zombieHas*`).
+  - Vehicles under attack (advanced custom ObservationStream):
+    - Mod‑facing: `WorldObserver.observations.vehiclesUnderAttack():withConfig({ minZombies = 3 }):vehicleWeightBelow(1200):subscribe(...)`
+    - Internal: custom `build(opts)` using LQR joins + a 1‑second group window + `having`, reading `minZombies` from `opts`, with `enabled_helpers = { vehicle = "VehicleObs" }`.
 
 ### Next steps
 - Flesh out additional use cases (e.g. rooms with zombies, safehouse compromise) to pressure‑test ObservationStreams and Situation helpers.
