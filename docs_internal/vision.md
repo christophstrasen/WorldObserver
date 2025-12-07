@@ -237,6 +237,17 @@ wider sweeps and always‑on engine events. Mod authors see the resulting
 ObservationStreams, not the underlying strategy; changing these strategies is
 an advanced, opt‑in configuration rather than part of everyday usage.
 
+### LQR windows in WorldObserver
+
+WorldObserver uses LQR’s join, group, and distinct windows internally when
+building ObservationStreams and helpers. Join windows bound how long records
+stay join‑eligible, group windows define over which slice of time/rows
+aggregates are computed, and distinct windows govern how long keys are
+remembered for de‑duplication. These knobs live inside built‑in streams and
+helpers (for example, “once per square” or “rooms with recent zombies”) and
+are not part of normal everyday API usage. Advanced users can still drop down
+to raw LQR builders when they need full control.
+
 ---
 
 ## Responsibilities of WorldObserver

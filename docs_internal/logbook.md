@@ -27,13 +27,14 @@
 - Created `docs_internal/api_proposal.md` scaffold and first decisions:
   - ObservationStreams are exposed as `WorldObserver.observations.<name>()`.
   - New ObservationStreams are registered via a small config: `build = …` plus `enabled_helpers = { square = "SquareObs", zombie = "ZombieObs", … }`.
-  - Helper sets (square/zombie/spatial/time/etc.) are thin, reusable sugar attached based on `enabled_helpers`, assuming certain fields in the observation records.
-  - WorldObserver owns “fact plans” (event + probe strategies) per element type, with strategy selection as an advanced config knob.
+  - Helper sets (square/zombie/spatial/time/etc.) are thin, reusable sugar attached based on `enabled_helpers`, assuming certain fields in the observation records; internal use of LQR join/group/distinct windows is hidden behind semantic helpers.
+  - WorldObserver owns “fact plans” (event + probe strategies) per element type, with strategy selection as an advanced config knob, and never implicitly de‑duplicates observations.
 
 - Sketched the first concrete use case in API terms:
   - “Find squares with blood around the player” expressed as:
-    - `WorldObserver.observations.squares():maxDistanceTo(playerIsoObject, 20):withBlood():subscribe(...)`
-  - This mirrors the traditional scanner pattern (OnTick + batched scans + callback) while keeping scanning details in the Facts layer.
+    - `WorldObserver.observations.squares():maxDistanceTo(playerIsoObject, 20):hasBloodSplat():subscribe(...)`
+    - Optional `:distinctPerSquare()` helper for “only once per square”.
+  - This mirrors the traditional scanner pattern (OnTick + batched scans + callback) while keeping scanning and deduplication details in the Facts/LQR layers.
 
 ### Next steps
 - Flesh out additional use cases (e.g. rooms with zombies, safehouse compromise) to pressure‑test ObservationStreams and Situation helpers.

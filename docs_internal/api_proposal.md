@@ -51,6 +51,16 @@ This file is a scaffold; details will be filled in as we design.
   `time`), WorldObserver attaches the corresponding helper set to the
   ObservationStream. Helper sets are thin, domain‑specific refinements that can
   be reused across streams and extended by third parties.
+- Internally, ObservationStreams and helpers use LQR windows directly:
+  join windows for schema joins, group windows for aggregate‑style helpers, and
+  `distinct` windows for “once per key” helpers. The public API should expose
+  only semantic options (e.g. `scope`, `windowSeconds`) rather than raw LQR
+  window configs. Typical domain helpers are:
+  - `:distinctPerSquare()` / `:distinctPerSquareWithin(seconds)` as thin
+    wrappers around `distinct` for square‑keyed deduplication; and
+  - analogous helpers for other domains (e.g. zombies) when needed.
+  Full LQR tuning remains available via an advanced escape hatch
+  (e.g. `stream:getLQR()`).
 
 ---
 
@@ -91,22 +101,30 @@ local WorldObserver = require("WorldObserver")
 -- Build an ObservationStream of squares with blood around any player.
 local bloodSquares = WorldObserver.observations
   .squares()
-  :maxDistanceTo(playerIsoObject, 20)
-  :withBlood()
+ --decorated Helpers specific to squares
+  :distinctPerSquareWithin(10) -- if multiple observations hit the same square, we only use the first
+  :maxDistanceTo(playerIsoObject, 20) --compare the live position of the object against the observations
+  :hasBloodSplat() --tiny little helper
 
 -- Act on each matching observation as it is discovered.
 local subscription = bloodSquares:subscribe(function(obs)
   handleBloodSquare(obs)  -- user-defined action
 end)
 
--- Optional: cancel early; underlying probes/listeners are unwired.
--- subscription:unsubscribe()
+-- Later, if this Situation is no longer relevant, cancel the subscription.
+-- WorldObserver can then relax or stop related probes/fact sources as needed.
+subscription:unsubscribe()
 ```
 
 Notes:
 
 - `squares()` exposes a base ObservationStream; `:maxDistanceTo(...)` and
-  `:withBlood()` are helper‑based refinements attached to that stream.
+  `:hasBloodSplat()` are helper‑based refinements attached to that stream.
+- `:distinctPerSquare()` (not shown above by default) would be the opt‑in
+  helper to only see the first matching observation per square.
+- Unsubscribing from the stream (via `subscription:unsubscribe()`) is the
+  standard way to end this Situation; any underlying fact strategies are free
+  to scale back related work once there are no interested subscribers.
 
 ---
 
