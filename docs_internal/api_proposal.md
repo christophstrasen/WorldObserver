@@ -37,7 +37,7 @@ builders, etc.) is considered implementation detail and may change without notic
 
 ---
 
-## 3. Facts layer
+## 2. Facts layer
 
 - WorldObserver owns **fact generation** for core world elements (squares,
   rooms, etc.); mods do not need to wire `OnTick` / `OnLoadGridsquare` directly for
@@ -52,13 +52,23 @@ builders, etc.) is considered implementation detail and may change without notic
   - probe squares in a wider radius less often, possibly with patterns
     (odd/even rows) to reduce load.
 - Strategy selection is an **advanced knob**, exposed via a small config
-  surface (e.g. `WorldObserver.config.facts.squares.strategy = "balanced" |
-  "low_traffic"`). ObservationStream semantics remain “stream of observations
-  over time”; strategies only affect timeliness and coverage.
+  surface, for example:
+
+  ```lua
+  WorldObserver.config.facts.squares.strategy  = "balanced"
+  WorldObserver.config.facts.rooms.strategy    = "gentle"
+  WorldObserver.config.facts.zombies.strategy  = "intense"
+  WorldObserver.config.facts.vehicles.strategy = "balanced"
+  ```
+
+  ObservationStream semantics remain “stream of observations over time”;
+  strategies only affect timeliness and coverage. The base streams for these
+  facts are the ones exposed as `WorldObserver.observations.<name>()`
+  (for example `squares()`, `rooms()`, `zombies()`, `vehicles()`).
 
 ---
 
-## 4. ObservationStreams
+## 3. ObservationStreams
 @TODO consolidate what we say about LRQ/Rx here
 
 - ObservationStreams are exposed under `WorldObserver.observations.<name>()`.
@@ -123,6 +133,8 @@ builders, etc.) is considered implementation detail and may change without notic
   the underlying LQR `JoinResult`, but typical mod code should work only with
   the typed fields on `observed`.
 
+@TODO explore if instead of subscribe we could could also offer to emit a Starlit LuaEvent
+
 ### Predicate-based filtering
 
 - ObservationStreams expose a `filter` method:
@@ -152,7 +164,7 @@ builders, etc.) is considered implementation detail and may change without notic
   existing ObservationStream.
 
 ---
-## 5. Debugging and logging
+## 4. Debugging and logging
 
 - WorldObserver reuses LQR’s logging infrastructure (`LQR.util.log`) for its
   internal logging. Fact plans, ObservationStream registration, and serious
@@ -177,9 +189,9 @@ builders, etc.) is considered implementation detail and may change without notic
 
 ---
 
-## 6. Use cases
+## 5. Use cases
 
-### 6.1 Find squares with blood around the player
+### 5.1 Find squares with blood around the player
 
 Traditional approach (from `vision.md` “Before” section):
 
@@ -223,7 +235,7 @@ Notes:
 
 ---
 
-### 6.2 Chef zombie in kitchen (drive cooking sound)
+### 5.2 Chef zombie in kitchen (drive cooking sound)
 
 Traditional intent:
 
@@ -258,7 +270,7 @@ Notes:
 
 ---
 
-### 6.3 Cars under attack (custom multi-source ObservationStream)
+### 5.3 Cars under attack (custom multi-source ObservationStream)
 
 Traditional intent:
 
@@ -329,7 +341,7 @@ Notes:
 
 ---
 
-### 6.4 Squares that need cleaning (custom helper on a single stream)
+### 5.4 Squares that need cleaning (custom helper on a single stream)
 
 Traditional intent:
 
@@ -382,3 +394,95 @@ Notes:
   ObservationStream helpers while keeping the core WorldObserver API small
   and focused.
 
+---
+
+### 5.5 Room alarm status from LuaEvents (external fact source, joined with zombies)
+
+Traditional intent:
+
+- Another mod already computes an alarm status for rooms (for example `"safe"`,
+  `"warning"`, `"breached"`) and emits it as a Starlit LuaEvent. We want to
+  consume those updates as an ObservationStream and, when a room is marked
+  `"breached"` **but currently has no zombies in it**, automatically disable
+  its alarm.
+
+WorldObserver‑style usage (mod-facing API):
+
+```lua
+local WorldObserver = require("WorldObserver")
+
+local roomAlarmStatusWithZombies = WorldObserver.observations.roomAlarmStatusWithZombies()
+
+roomAlarmStatusWithZombies:subscribe(function(observed)
+  local status = observed.roomAlarmStatus   -- status record from LuaEvent
+  local zombie = observed.zombie       -- {} when no zombie in that room
+
+  if status.status == "breached" and (zombie.id == nil) then
+    disableAlarmForRoom(status.id)
+  end
+end)
+```
+
+Advanced definition (base stream from LuaEvent + derived join with zombies):
+
+```lua
+-- 1) _Base_ ObservationStream: roomAlarmStatus backed by a LuaEvent source
+
+WorldObserver.observations.register("roomAlarmStatus", {
+  enabled_helpers = {}, -- no helpers attached for this simple example
+
+  build = function(opts)
+    local rx     = require("reactivex")
+    local LQR    = require("LQR")
+    local Schema = LQR.Schema
+
+    -- Turn a Starlit LuaEvent into a stream of roomAlarmStatus records.
+    local rawEvents =
+      rx.Observable.fromLuaEvent("RoomAlarms.OnRoomStatus")
+
+    -- Tag with an LQR schema; use `id` as the room identifier.
+    local roomAlarmStatus =
+      Schema.wrap("roomAlarmStatus", rawEvents, { idField = "id" })
+
+    return roomAlarmStatus
+  end,
+})
+
+-- 2) _Derived_ ObservationStream: join roomAlarmStatus with zombies per room
+
+WorldObserver.observations.register("roomAlarmStatusWithZombies", {
+  enabled_helpers = {}, -- could enable room/zombie helpers in a real setup
+
+  build = function(opts)
+    local Query = require("LQR.Query")
+
+    local roomAlarmStatusLqr = WorldObserver.observations.roomAlarmStatus():getLQR()
+    local zombiesLqr         = WorldObserver.observations.zombies():getLQR()
+
+    return
+      Query.from(roomAlarmStatusLqr, "roomAlarmStatus")
+        :leftJoin(zombiesLqr, "zombie")
+        :using({ roomAlarmStatus = "roomId", zombie = "roomId" })
+        -- row view: row.roomAlarmStatus, row.zombie ({} when no zombie in that room)
+  end,
+})
+```
+
+Notes:
+
+- This pattern shows how an ObservationStream can be backed by a LuaEvent
+  source instead of probes or engine events: the `roomAlarmStatus` stream
+  turns the event into a lua‑reactivex observable and then uses LQR’s schema
+  helpers to create a schema‑tagged base stream.
+- A derived stream (`roomAlarmStatusWithZombies`) then uses LQR joins to
+  combine room alarm status with zombie observations per room, so subscribers
+  can reason about both “what status was reported” and “what is currently in
+  the room”.
+- From the modder’s perspective, `roomAlarmStatusWithZombies()` behaves like
+  any other ObservationStream; they only need to know about
+  `WorldObserver.observations.roomAlarmStatusWithZombies()`, not how the
+  facts are produced or joined.
+- LuaEvent‑backed streams are opt‑in and best suited for signals that are
+  already computed by other mods; core world types (squares, rooms, zombies,
+  vehicles, …) should continue to rely primarily on fact plans (events +
+  probes) described in the fact layer.

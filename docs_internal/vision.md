@@ -72,7 +72,7 @@ In practice Probes are wired into time-based triggers and started/stopped on dem
 
 ### Observation
 A concrete “noted” observation of a fact, carried as a record in an observable stream, often with the time of observation attached.
-The same fact may be observed many times with each observation being its own event with typically no hard guarantees about order and completess.
+The same fact may be observed many times with each observation being its own event with typically no hard guarantees about order and completness.
 
 Implemented by:
 #### Base ObservationStreams
