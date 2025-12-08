@@ -46,5 +46,5 @@
 
 ### Next steps
 - Flesh out additional use cases (e.g. rooms with zombies, safehouse compromise) to pressure‑test ObservationStreams and Situation helpers.
-- Design the internal fact source API (Event Listener / Active Probe builders and configurable strategies) to support the agreed surface behavior.
+- Design and iterate on the internal fact source API (Event Listener / Active Probe builders and per‑type strategies/plans) to support the agreed surface behavior and prepare an initial implementation for `squares`.
 - Iterate on Situation and Actions APIs once a couple of ObservationStream patterns feel solid.

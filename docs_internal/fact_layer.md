@@ -65,8 +65,15 @@ This complements `docs_internal/vision.md` and `docs_internal/api_proposal.md`.
 ## 5. Strategies and configuration
 
 - For each type, a small set of named strategies (e.g. `"balanced"`,
-  `"gentle"`, `"intense"`) describe how a fact plan behaves
-  (probe radii, intervals, sweep patterns, etc.).
+  `"gentle"`, `"intense"`) describe how aggressively WorldObserver should work
+  to keep Facts fresh for that type. A **strategy** is a high‑level intent
+  (for example “cheap but fresh near players” vs. “very gentle background
+  scans”), not a list of handlers.
+- Internally, each `(type, strategy)` pair is resolved into a concrete
+  **plan**: the specific combination of Event Listeners and Active Probes,
+  plus their intervals and budgets, that the scheduler will run for that
+  type. Plans are derived from strategies; mods configure strategies, the
+  engine chooses and executes the corresponding plan.
 - Public config lives under `WorldObserver.config.facts.<type>` and is
   intentionally small; detailed knobs remain internal.
 - Strategies may react to usage:
@@ -164,7 +171,165 @@ This complements `docs_internal/vision.md` and `docs_internal/api_proposal.md`.
 
 ---
 
-## 9. Open questions
+## 9. Example: squares strategies, plans, and builders
+
+The following sketch shows how the Strategy → Plan idea and the listener/probe
+builders can come together for the `squares` type.
+
+### 9.1 Strategies and plans for `squares`
+
+For `squares`, config sets the strategy:
+
+```lua
+WorldObserver.config.facts.squares.strategy = "balanced"  -- or "gentle", "intense"
+```
+
+Internally, WorldObserver resolves this to a concrete plan:
+
+```lua
+WorldObserver.facts.registerType("squares", function(Fact)
+  return Fact.type{
+    defaultStrategy = "balanced",
+
+    plans = {
+      balanced = Fact.plan{
+        listeners = {
+          Fact.listener{
+            name  = "OnLoadGridsquare:squares",
+            event = "OnLoadGridsquare",
+
+            handle = function(ctx, isoGridSquare)
+              if not isoGridSquare then return end
+              local record = ctx.makeSquareRecord(isoGridSquare)
+              ctx.emit(record)
+            end,
+          },
+        },
+
+        probes = {
+          Fact.probe{
+            name     = "nearPlayers_closeRing",
+            schedule = {
+              intervalTicks = 1,    -- every tick
+              budgetPerTick = 200,  -- max squares per tick
+            },
+
+            run = function(ctx, budget)
+              local processed = 0
+
+              for _, player in ipairs(ctx.players:nearby()) do
+                for square in ctx.iterSquaresInRing(player, 1, 8) do
+                  if processed >= budget then
+                    return
+                  end
+
+                  local record = ctx.makeSquareRecord(square)
+                  ctx.emit(record)
+                  processed = processed + 1
+                end
+              end
+            end,
+          },
+        },
+      },
+
+      gentle = Fact.plan{
+        listeners = {
+          -- maybe only events, no probes
+        },
+        probes = {},
+      },
+
+      intense = Fact.plan{
+        listeners = {
+          -- same events as balanced
+        },
+        probes = {
+          -- e.g. closeRing + a wider, less frequent probe, higher budgets
+        },
+      },
+    },
+  }
+end)
+```
+
+- Config chooses the **strategy**; the engine resolves it to a **plan** for
+  that type by picking the right listeners and probes and handing them to the
+  scheduler.
+- The plan is what actually runs and feeds the `squares` fact stream, which in
+  turn backs `WorldObserver.observations.squares()`.
+
+### 9.2 Listener builder
+
+`Fact.listener{ ... }` hides engine wiring and provides a consistent context:
+
+```lua
+Fact.listener{
+  name  = "OnLoadGridsquare:squares",
+  event = "OnLoadGridsquare",
+
+  handle = function(ctx, isoGridSquare)
+    -- ctx.emit(record) pushes into the squares fact stream
+    if not isoGridSquare then return end
+
+    local record = ctx.makeSquareRecord(isoGridSquare)
+    ctx.emit(record)
+  end,
+}
+```
+
+The builder is responsible for:
+
+- registering/unregistering handlers against the underlying game event;
+- wrapping the handler with a `ctx` table that provides:
+  - `emit(record)` into the per‑type fact stream;
+  - helpers such as `makeSquareRecord`;
+  - access to shared config/metrics if needed.
+
+### 9.3 Probe builder
+
+`Fact.probe{ ... }` describes a scheduled job that “shines a light” on the
+world and emits Facts via `ctx.emit`:
+
+```lua
+Fact.probe{
+  name     = "nearPlayers_closeRing",
+  schedule = {
+    intervalTicks = 1,
+    budgetPerTick = 200,
+  },
+
+  run = function(ctx, budget)
+    local processed = 0
+
+    for _, player in ipairs(ctx.players:nearby()) do
+      for square in ctx.iterSquaresInRing(player, 1, 8) do
+        if processed >= budget then
+          return
+        end
+
+        local record = ctx.makeSquareRecord(square)
+        ctx.emit(record)
+        processed = processed + 1
+      end
+    end
+  end,
+}
+```
+
+The builder is responsible for:
+
+- registering the probe with the global budgeted scheduler so that `run(ctx, budget)`
+  is called with the per‑tick budget; and
+- providing `ctx` with:
+  - `emit(record)` into the fact stream;
+  - helpers such as `players:nearby()` and `iterSquaresInRing`;
+  - a small `ctx.state` table for incremental scanning where needed;
+  - `ctx.metrics` for counters/timings that can inform strategy tuning.
+
+---
+
+## 10. Open questions
 
 - Exact structure of a fact plan (data‑driven tables vs. builder API).
 - How to expose minimal yet useful strategy introspection (e.g.
