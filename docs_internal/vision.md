@@ -18,7 +18,7 @@ necessarily what is implemented today.
 ### delivers for beginner to intermediary lua modders
 
 1. MUST provide a simple method to "subscribe" to pre-made "observations"
-2. MUST make observing the world save and performant by default
+2. MUST make observing the world safe and performant by default
 3. SHOULD allow to further refine the observations
 4. COULD provide visual or other debug vehicles to help understand and refine working with observations
 
