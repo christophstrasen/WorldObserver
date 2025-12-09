@@ -20,7 +20,9 @@ Avoid diff-style output; provide copy-paste ready snippets and file paths.
 NixOS + `zsh`; ignore noisy `gpg-agent` warnings at shell start. No git history changes (commit/push/force) unless specifically instruced. Avoid destructive commands; ask when unsure.
 
 ## Coding:
-Respect Lua/LQR conventions in `.aicontext/context.md` (EmmyLua tags on public funcs, camelCase fields, snake_case files, no new globals unless Capitalized). Keep functions short; avoid shims/aliases unless required.
+- Respect Lua/LQR conventions in `.aicontext/context.md` (EmmyLua tags on public funcs, camelCase fields, snake_case files, no new globals unless Capitalized). Keep functions short; avoid shims/aliases unless required.
+- When designing modules, use a name `module.lua` on the same level as the module instead of `module/init.lua`
+
 
 ## Tests
 We embrace testing via the lua `busted` test utility

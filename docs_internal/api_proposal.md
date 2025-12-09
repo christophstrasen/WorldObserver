@@ -71,6 +71,26 @@ builders, etc.) is considered implementation detail and may change without notic
   facts are the ones exposed as `WorldObserver.observations.<name>()`
   (for example `squares()`, `rooms()`, `zombies()`, `vehicles()`).
 
+### Event time and observation IDs (implementation notes)
+
+- Core fact sources (squares in the MVP, later rooms/zombies/vehicles) stamp
+  each record with a domain-level timestamp field (for example
+  `observedAtTimeMS` on `SquareObservation`, derived from
+  `getTimeCalendar():getTimeInMillis()`), as close as possible to when the
+  fact is created.
+- When tagging these records with LQR schemas via `LQR.Schema.wrap`, the
+  WorldObserver fact layer uses two options:
+  - an `idSelector` that produces a cheap, monotonically increasing numeric
+    identifier per observation (rather than reusing a square/room/zombie ID);
+  - a `sourceTimeField` that tells LQR to copy the chosen payload field into
+    `record.RxMeta.sourceTime` for use by time-based windows and grouping.
+- In practice this means:
+  - domain schemas such as `SquareObservation` carry fields like
+    `squareId` (semi-stable identity of the square) and `observedAtTimeMS`
+    (domain timestamp visible to mod authors); while
+  - LQR sees `RxMeta.id` (per-observation ID) and `RxMeta.sourceTime`
+    (event time) derived from those payload fields via `Schema.wrap`.
+
 ---
 
 ## 3. ObservationStreams
@@ -90,6 +110,12 @@ builders, etc.) is considered implementation detail and may change without notic
   strategies or raw LQR knobs. Use such configuration sparingly to avoid
   “thick” builders – advanced users are encouraged to drop down to LQR
   directly when they need more control.
+- When defining custom ObservationStreams that do not have a natural stable
+  identifier on their payload, advanced users may reuse
+  `WorldObserver.nextObservationId()` as an `idSelector` when calling
+  `LQR.Schema.wrap`. This helper returns a monotonically increasing integer
+  that is unique within the current Lua VM, giving those records the same
+  per-observation ID guarantees that WorldObserver’s own fact sources use.
 - For each key in `enabled_helpers` (e.g. `square`, `zombie`, `spatial`,
   `time`), WorldObserver attaches the corresponding helper set to the
   ObservationStream. Helper sets are thin, domain‑specific refinements that can
@@ -138,6 +164,31 @@ builders, etc.) is considered implementation detail and may change without notic
 - Advanced users may also access `observation._raw_result` as an escape hatch
   to the underlying LQR `JoinResult`, but typical mod code should work only
   with the typed fields on `observation`.
+
+### Core vs. custom observation schemas
+
+- **Core WorldObserver schemas** (owned by this project) are **structured and
+  curated**:
+  - they use explicit schema names such as `SquareObservation`;
+  - their fields and semantics are documented in internal docs; and
+  - we provide EmmyLua annotations for them where it helps mod authors.
+- **Custom/modded observation types** (for example streams that expose
+  `observation.gun` or `observation.wildlife`) are treated as **opaque but
+  honest**:
+  - each emission is still “one observation over time”, passed as the
+    `observation` table into callbacks;
+  - field names and shapes are self‑consistent within that stream; and
+  - authors may document and type them however they like, but WorldObserver
+    does not impose naming or typing style on those domains.
+- Structure only becomes important for custom streams when they explicitly opt
+  into WorldObserver helper sets or debug tooling:
+  - if a stream sets `enabled_helpers.square = "nearbySquares"`, it must
+    provide an `observation.nearbySquares` field shaped in the way the square
+    helper docs describe;
+  - similarly, any debug or describe helpers that assume certain fields only
+    work when those fields are present as documented.
+- Beyond these explicit contracts, WorldObserver treats custom observation
+  payloads as first‑class but opaque data carried along by the stream.
 
 @TODO explore if instead of subscribe we could could also offer to emit a Starlit LuaEvent
 

@@ -48,3 +48,45 @@
 - Flesh out additional use cases (e.g. rooms with zombies, safehouse compromise) to pressure‑test ObservationStreams and Situation helpers.
 - Design and iterate on the internal fact source API (Event Listener / Active Probe builders and per‑type strategies/plans) to support the agreed surface behavior and prepare an initial implementation for `squares`.
 - Iterate on Situation and Actions APIs once a couple of ObservationStream patterns feel solid.
+
+## day3 – MVP plan and schema details
+
+### Highlights
+- Drafted a focused MVP implementation plan in `docs_internal/mvp.md`:
+  - Scoped MVP to a single, high-quality vertical slice for **squares only** (facts + `observations.squares()` + minimal helpers).
+  - Defined a concrete module layout under `WorldObserver/` (`config.lua`, `facts/registry.lua`, `facts/squares.lua`, `observations/core.lua`, `observations/squares.lua`, `helpers/square.lua`, `debug.lua`) with `WorldObserver.lua` as the single public entry point.
+  - Captured must-nots and guardrails (no Situation/Action API yet, no GUI/overlays, no auto-tuning, no persistence, no multiplayer guarantees, no extra config knobs without prior agreement, no backwards-compat shims).
+
+- Refined observation naming and row shapes:
+  - Standardized on `observation` (singular) as the callback parameter for stream emissions (`observation.square`, `observation.room`, etc.).
+  - Introduced a generic `Observation` row type (per-emission table) instead of `SquareObservationEmission`, keeping “Observation” as the primary concept.
+  - Clarified in `api_proposal.md` that core schemas (e.g. `SquareObservation`) are structured and documented, while custom schemas are “opaque but honest” and only constrained where they opt into helper sets or debug tooling.
+
+- Defined `SquareObservation` and time handling:
+  - Specified the `SquareObservation` schema, including `squareId`, `square` (IsoSquare reference), flags like `hasBloodSplat`/`hasCorpse`/`hasTrashItems`, and `observedAtTimeMS` (from `timeCalendar:getTimeInMillis()`).
+  - Decided that `squareId` represents the semi-stable identity of the square (e.g. from `IsoGridSquare` ID), while `RxMeta.id` is a per-observation identifier.
+  - For MVP, left content heuristics for `hasBloodSplat`/`hasCorpse`/`hasTrashItems` as stubs, with richer detection explicitly deferred.
+
+- Integrated event time and observation IDs with LQR:
+  - Agreed not to patch LQR ad-hoc but to extend `LQR.Schema.wrap` with a clean option to populate `RxMeta.sourceTime` from a payload field (e.g. `sourceTimeField = "observedAtTimeMS"`) and to allow a custom `idSelector`.
+  - Decided that WorldObserver fact sources will:
+    - stamp `observedAtTimeMS` in the fact layer when creating a `SquareObservation`, and
+    - call `Schema.wrap("SquareObservation", observable, { idSelector = nextObservationId, sourceTimeField = "observedAtTimeMS" })` so LQR sees a monotonic per-observation `RxMeta.id` and a numeric `RxMeta.sourceTime`.
+  - Documented these decisions in both `mvp.md` and `api_proposal.md`, including implementation notes about separating domain IDs from LQR metadata.
+
+- Added an advanced helper for custom schemas:
+  - Planned and documented a public `WorldObserver.nextObservationId()` helper that returns a monotonically increasing integer unique within the current Lua VM.
+  - Encouraged advanced/custom streams that lack a natural stable ID to reuse `nextObservationId` as `idSelector` when calling `LQR.Schema.wrap`, so they inherit the same per-observation ID guarantees used by WorldObserver’s own facts.
+
+- Clarified fact-layer probe behavior and single-player focus:
+  - Captured the `nearPlayers_closeRing` probe sketch for squares and noted that `ctx.players:nearby()` is future-proofing; in the Build 42 MVP it effectively yields at most one player due to single-player / server-side focus.
+
+- Tightened naming and documentation consistency:
+  - Switched consistently to `ObservationStream` (singular) as the type name, with “ObservationStreams” used only in prose.
+  - Simplified EmmyLua class names for the `WorldObserver` entry point (`Observations`, `Config`, `Debug`) to keep annotations readable.
+  - Fixed minor typos and aligned `mvp.md` and `api_proposal.md` around shared concepts (observation row shape, time stamping, ID strategy).
+
+### Next steps
+- Implement the MVP module skeletons (`WorldObserver.lua`, `config.lua`, `facts/registry.lua`, `facts/squares.lua`, `observations/core.lua`, `observations/squares.lua`, `helpers/square.lua`, `debug.lua`) to match the agreed layouts and contracts.
+- Extend `LQR.Schema.wrap` with `sourceTimeField` / `sourceTimeSelector` and validate that time-based windows behave correctly against `observedAtTimeMS`.
+- Start adding engine-independent Busted tests for `facts.squares`, `observations.squares()`, and the first square helpers, following the patterns sketched in `mvp.md`.
