@@ -21,6 +21,11 @@ builders, etc.) is considered implementation detail and may change without notic
   reshape, or de‑duplicate observations, but they never introduce new schemas
   or perform joins/enrichment. Joins live inside ObservationStream `build`
   functions or advanced LQR usage.
+- **Per‑observation naming:** whenever we talk about a single emission from an
+  ObservationStream or LQR query, we treat it as **one observation** and name
+  the per‑emission table `observation` (singular). Nested fields use singular
+  schema names as well (for example `observation.square`, `observation.room`,
+  `observation.zombie`, `observation.vehicle`).
 - **Helper naming conventions:** keep helper names semantic and consistent:
   - spatial constraints use `near*` (`nearIsoObject(...)`, `nearTilesOf(...)`, …);
   - entity‑specific predicates are prefixed with the entity, e.g.
@@ -107,45 +112,46 @@ builders, etc.) is considered implementation detail and may change without notic
   `WorldObserver.helpers.square`, `WorldObserver.helpers.room`,
   `WorldObserver.helpers.zombie`, and so on.
 - `enabled_helpers` is keyed by these types (`square`, `room`, `zombie`,
-  `vehicle`, `spatial`, `time`, …). The value controls which row field the
-  helper set should look at:
+  `vehicle`, `spatial`, `time`, …). The value controls which per‑observation
+  field the helper set should look at:
   - `true` means “use the default field name for this type”, e.g.
-    `observed.square` for `square`, `observed.room` for `room`.
+    `observation.square` for `square`, `observation.room` for `room`.
   - a `string` value (for example `"nearbySquares"`) means “attach this helper
-    set, but have it read from `observed[<that string>]` instead”.
-- This allows custom or derived streams to reuse existing helper sets even
-  when they expose a type under a different row key.
-- Stream methods are thin delegators that always dispatch through the helper
-  tables, so helpers remain patch‑able:
+    set, but have it read from `observation[<that string>]` instead”.
+  - This allows custom or derived streams to reuse existing helper sets even
+    when they expose a type under a different per‑observation field name.
+  - Stream methods are thin delegators that always dispatch through the helper
+    tables, so helpers remain patch‑able:
   updating `WorldObserver.helpers.square.squareNeedsCleaning` is enough for
   all streams with `enabled_helpers.square` to see the new behavior.
 
 ### Shape of `subscribe` callbacks
 
-- `subscribe` callbacks always receive a **row** called `observed`.
-- `observed` is a plain Lua table with one field per world type (schema) that
-  the stream exposes, for example `observed.square`, `observed.room`,
-  `observed.zombie`, or `observed.vehicle`.
+- `subscribe` callbacks always receive a **single observation table** called
+  `observation`.
+- `observation` is a plain Lua table with one field per world type (schema)
+  that the stream exposes, for example `observation.square`,
+  `observation.room`, `observation.zombie`, or `observation.vehicle`.
 - Each of these fields is the schema‑tagged instance table (with its own
   `RxMeta`), following LQR’s row‑view conventions; missing sides of joins
   appear as empty tables rather than `nil`.
-- Advanced users may also access `observed._raw_result` as an escape hatch to
-  the underlying LQR `JoinResult`, but typical mod code should work only with
-  the typed fields on `observed`.
+- Advanced users may also access `observation._raw_result` as an escape hatch
+  to the underlying LQR `JoinResult`, but typical mod code should work only
+  with the typed fields on `observation`.
 
 @TODO explore if instead of subscribe we could could also offer to emit a Starlit LuaEvent
 
 ### Predicate-based filtering
 
 - ObservationStreams expose a `filter` method:
-  `stream:filter(function(observed) return ... end)`.
+  `stream:filter(function(observation) return ... end)`.
 - This is a thin, advanced escape hatch that behaves like lua‑reactivex
-  `filter` applied to the underlying observable of `observed` rows:
-  the predicate runs once per emission and decides whether that observation
-  should be kept or dropped.
-- The predicate receives the same `observed` row shape as `subscribe`
-  (`observed.square`, `observed.room`, `observed.zombie`, etc.), making it
-  easy to express custom conditions without introducing new helpers.
+  `filter` applied to the underlying observable of per‑emission `observation`
+  tables: the predicate runs once per emission and decides whether that
+  observation should be kept or dropped.
+- The predicate receives the same `observation` shape as `subscribe`
+  (`observation.square`, `observation.room`, `observation.zombie`, etc.),
+  making it easy to express custom conditions without introducing new helpers.
 - Use `filter` for bespoke or complex logic; prefer named helpers for common,
   reusable predicates so that beginners can stay on helper chains.
 
@@ -172,8 +178,8 @@ builders, etc.) is considered implementation detail and may change without notic
   `WO.STREAM`, `WO.ERROR`) so engine behavior can be inspected without adding
   ad‑hoc prints.
 - Everyday debugging for mod authors should start with simple `print` calls
-  inside `subscribe` callbacks, using the `observed` row shape:
-  `stream:subscribe(function(observed) print(observed.square.x, observed.square.y) end)`.
+  inside `subscribe` callbacks, using the `observation` table shape:
+  `stream:subscribe(function(observation) print(observation.square.x, observation.square.y) end)`.
 - Over time, WorldObserver may grow a small set of explicit debugging helpers
   that are thin wrappers around LQR’s logging, for example:
   - a mid‑pipeline tap operator on LQR streams (upstream in LQR);
@@ -214,8 +220,8 @@ local bloodSquares = WorldObserver.observations
   :squareHasBloodSplat()              -- tiny helper to keep only squares with blood
 
 -- Act on each matching observation as it is discovered.
-local subscription = bloodSquares:subscribe(function(observed)
-  handleBloodSquare(observed.square)  -- user-defined action using the square instance
+local subscription = bloodSquares:subscribe(function(observation)
+  handleBloodSquare(observation.square)  -- user-defined action using the square instance
 end)
 
 -- Later, if this Situation is no longer relevant, cancel the subscription.
@@ -254,9 +260,9 @@ local roomZombies = WorldObserver.observations.roomZombies()
 roomZombies
   :roomTypeIs("Kitchen")
   :zombieHasChefOutfit()
-  :subscribe(function(observed)
-    -- observed.room and observed.zombie carry the joined instances
-    updateKitchenCookingSound(observed.room.id, observed.zombie)
+  :subscribe(function(observation)
+    -- observation.room and observation.zombie carry the joined instances
+    updateKitchenCookingSound(observation.room.id, observation.zombie)
   end)
 ```
 
@@ -284,11 +290,11 @@ local WorldObserver = require("WorldObserver")
 
 local vehiclesUnderAttackSubscription = WorldObserver.observations.vehiclesUnderAttack()
   :withConfig({ minZombies = 3 })
-  :filter(function(observed)  -- don’t shake very heavy vehicles
-    return (observed.vehicle.weightKg or 0) <= 1200
+  :filter(function(observation)  -- don’t shake very heavy vehicles
+    return (observation.vehicle.weightKg or 0) <= 1200
   end)
-  :subscribe(function(observed)
-    shakeVehicle(observed.vehicle.id, observed)
+  :subscribe(function(observation)
+    shakeVehicle(observation.vehicle.id, observation)
   end)
 ```
 
@@ -307,21 +313,21 @@ WorldObserver.observations.register("vehiclesUnderAttack", {
     local zombies  = WorldObserver.observations.zombies():getLQR()
 
     return
-      Query.from(vehicles, "vehicles")
-        :innerJoin(players, "players")
-        :using({ vehicles = "id", players = "vehicleId" })
-        :innerJoin(zombies, "zombies")
-        :using({ players = "id", zombies = "targetPlayerId" })
-        :where(function(row) -- only zombies currently attacking players in vehicles
-          return row.zombies.isAttacking == true
+      Query.from(vehicles, "vehicle")
+        :innerJoin(players, "player")
+        :using({ vehicle = "id", player = "vehicleId" })
+        :innerJoin(zombies, "zombie")
+        :using({ player = "id", zombie = "targetPlayerId" })
+        :where(function(observation) -- only zombies currently attacking players in vehicles
+          return observation.zombie.isAttacking == true
         end)
-        :groupBy("vehicle_attacks", function(row)
-          return row.vehicles.id
+        :groupBy("vehicle_attacks", function(observation)
+          return observation.vehicle.id
         end)
         :groupWindow({ time = 1 })   -- “at the same time” ≈ within 1 second
         :aggregates({})
-        :having(function(g)
-          return (g._count.zombies or 0) >= minZombies
+        :having(function(group)
+          return (group._count.zombie or 0) >= minZombies
         end)
   end,
 })
@@ -358,9 +364,9 @@ local dirtySquares = WorldObserver.observations
   .squares()
   :squareNeedsCleaning()
 
-dirtySquares:subscribe(function(observed)
-  -- observed.square carries the square instance
-  promptPlayerToClean(observed.square)
+dirtySquares:subscribe(function(observation)
+  -- observation.square carries the square instance
+  promptPlayerToClean(observation.square)
 end)
 ```
 
@@ -370,8 +376,8 @@ Custom helper definition (square helper set extension):
 -- Somewhere in the square helper set definition:
 
 function SquareHelpers.squareNeedsCleaning(stream)
-  return stream:filter(function(observed)
-    local square = observed.square or {}
+  return stream:filter(function(observation)
+    local square = observation.square or {}
 
     local hasBlood   = square.hasBloodSplat == true
     local hasCorpse  = square.hasCorpse == true
@@ -385,7 +391,7 @@ end
 Notes:
 
 - `squareNeedsCleaning()` is a thin, named wrapper around a `filter`
-  predicate that operates on the `observed.square` instance; it does not add
+  predicate that operates on the `observation.square` instance; it does not add
   new schemas or perform joins.
 - The helper can live in the same square helper set that attaches helpers
   like `squareHasBloodSplat()`; ObservationStreams that enable the square
@@ -413,9 +419,9 @@ local WorldObserver = require("WorldObserver")
 
 local roomAlarmStatusWithZombies = WorldObserver.observations.roomAlarmStatusWithZombies()
 
-roomAlarmStatusWithZombies:subscribe(function(observed)
-  local status = observed.roomAlarmStatus   -- status record from LuaEvent
-  local zombie = observed.zombie       -- {} when no zombie in that room
+roomAlarmStatusWithZombies:subscribe(function(observation)
+  local status = observation.roomAlarmStatus   -- status record from LuaEvent
+  local zombie = observation.zombie            -- {} when no zombie in that room
 
   if status.status == "breached" and (zombie.id == nil) then
     disableAlarmForRoom(status.id)
@@ -463,7 +469,7 @@ WorldObserver.observations.register("roomAlarmStatusWithZombies", {
       Query.from(roomAlarmStatusLqr, "roomAlarmStatus")
         :leftJoin(zombiesLqr, "zombie")
         :using({ roomAlarmStatus = "roomId", zombie = "roomId" })
-        -- row view: row.roomAlarmStatus, row.zombie ({} when no zombie in that room)
+        -- row view: observation.roomAlarmStatus, observation.zombie ({} when no zombie in that room)
   end,
 })
 ```

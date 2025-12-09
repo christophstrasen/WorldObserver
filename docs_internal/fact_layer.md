@@ -87,8 +87,10 @@ This complements `docs_internal/vision.md` and `docs_internal/api_proposal.md`.
 - Each fact plan feeds one or more **base ObservationStreams** by:
   - tagging records with schemas (`SquareObs`, `RoomObs`, `ZombieObs`, …);
   - emitting observations whenever new facts are produced or re‑confirmed.
-- Base streams expose observations as `observed.<type>` rows; derived streams
-  (built via LQR queries) layer on top without knowing how facts were gathered.
+- Base streams expose observations as per‑emission tables (what the API calls
+  a single `observation`) with fields such as `observation.square`,
+  `observation.room`, or `observation.zombie`; derived streams (built via LQR
+  queries) layer on top without knowing how facts were gathered.
 - The fact layer must preserve “observations over time” semantics:
   - no implicit per‑instance dedup; multiple observations for the same
     instance are expected and may matter for time‑based logic.
@@ -154,7 +156,7 @@ This complements `docs_internal/vision.md` and `docs_internal/api_proposal.md`.
   ```lua
   WorldObserver.facts.registerLuaEventSource({
     eventName = "RoomAlarms.OnRoomStatus",
-    type      = "roomStatus",  -- becomes observed.roomStatus
+    type      = "roomStatus",  -- becomes observation.roomStatus
     idField   = "id",          -- or an idSelector
   })
   ```
