@@ -39,10 +39,6 @@ necessarily what is implemented today.
 - **Out of scope:** no GUI builder, no on‑disk query language, no visual editor.
   The primary interface is Lua code.
 
-If you have not yet read it, the LQR docs in `docs/` provides the
-underlying vocabulary (records, schemas, joins, windows) that WorldObserver
-will lean on.
-
 ---
 
 ## Core concepts
@@ -50,9 +46,11 @@ will lean on.
 These high‑level terms describe how WorldObserver thinks about the game world:
 
 ### Fact
+
 Anything that currently is or has been true in the world. E.g. a floor square having blood on it over a period of time.
 
 Implemented by:
+
 #### Event Listener
 
 Event listeners hook into the game’s own event loop (`OnTick`, `OnPlayerMove`,
@@ -65,33 +63,38 @@ that must be seen.
 
 Active probes initiate their own scans over world state when no suitable event
 exists or when periodic reconfirmation is needed. Their job is to decide where,
-how often, and how intensely to “shine a light” onto the world state
-so that important facts are discovered in time without overwhelming the game
-loop.
-In practice Probes are wired into time-based triggers and started/stopped on demand.
+how intensely, and in which order to “shine a light” onto the world state so
+that important facts are discovered in time without overwhelming the game
+loop. In practice, probes are registered with a central tick‑based scheduler,
+which calls them with a per‑tick budget and can start or stop them on demand.
 
 ### Observation
+
 A concrete “noted” observation of a fact, carried as a record in an observable stream, often with the time of observation attached.
 The same fact may be observed many times with each observation being its own event with typically no hard guarantees about order and completness.
 
 Implemented by:
+
 #### Base ObservationStreams
 
-Base ObservationStreams are live, world‑centric streams built directly from
-Facts via Event Listeners and Active Probes. They hold observations as data
+Base ObservationStreams are live, world‑centric streams fed by per‑type fact
+plans: combinations of Event Listeners and Active Probes that turn Facts into
+observations. They hold observations as data
 points in stable schemas for things like squares, rooms, vehicles, and corpses,
 not the game objects themselves.
 
 #### Derived ObservationStreams
 
-Derived ObservationStreams are built from one or more existing streams that
-narrow or combine them into more specific facts. Internally this is typically
-expressed as LQR queries, but they still only describe what has been observed.
-For example, they can represent “squares within N tiles of any player” or
+Derived ObservationStreams are structurally identical to base streams, but are
+built from one or more existing streams into higher‑level streams that combine
+or refine observations. Internally this is typically expressed as LQR queries,
+but they still only describe what has been observed. For example, they can
+represent “squares within N tiles of any player” or
 “rooms that currently contain zombies”, without yet declaring that these facts
 are important or should trigger actions.
 
 ### Situation
+
 When observations line up to show something interesting about the world, from a single simple check to a complex pattern across many observations over time.
 
 A Situation is when one or more ObservationStreams are treated as “interesting
@@ -102,6 +105,7 @@ is conceptual rather than a separate implementation layer.
 @TODO mention the LQR/reactivex :subscribe
 
 ### Action
+
 What the mod author decides to do when a situation occurs
 (gameplay logic, UI changes, persistence, and so on).
 
@@ -113,6 +117,7 @@ When a typical Project Zomboid mod wants to “watch the world”, the lifecycle
 today usually looks something like this (for a single feature or concern):
 
 1. **Hook into events and ticks**
+   
    - Register handlers on `Events.OnTick`, `OnPlayerUpdate` etc.
      or custom timers; maybe add counters to avoid doing work every tick.
    - **LoC:** ~10–30 per feature (basic event registration and guards).
@@ -122,6 +127,7 @@ today usually looks something like this (for a single feature or concern):
      wrong event and miss edge cases.
 
 2. **Scan tiles, rooms, and objects manually**
+   
    - Walk tiles around players or known coords with nested `for` loops; query
      rooms, buildings, containers, items, corpses, vehicles, etc.
    - **LoC:** ~30–100 per major scan (loops, bounds checks, filters).
@@ -131,15 +137,17 @@ today usually looks something like this (for a single feature or concern):
      forgetting to short‑circuit can hurt performance and correctness.
 
 3. **Maintain ad‑hoc caches and state**
+   
    - Track visited squares/rooms/entities in Lua tables; implement cooldowns
      (“only once per room per N ticks”), deduplication, and invalidation.
    - **LoC:** ~20–60 per feature (state tables, update functions, cleanup).
    - **Complexity:** high – implicit state machines grow over time and are
      hard to reason about once multiple concerns share the same tables.
-   - **Risk:** high – stale state, memory leaks, or missed updates when world
-     conditions change (e.g. room layout, save/load).as named observers
+  - **Risk:** high – stale state, memory leaks, or missed updates when world
+    conditions change (e.g. room layout, save/load).
 
 4. **Correlate conditions by hand**
+   
    - Combine separate facts – “is kitchen”, “has corpse”, “near player”,
      “not yet handled” – using custom IDs, lookups, and join logic.
    - **LoC:** ~20–50 per combined condition (glue code and helper functions).
@@ -149,15 +157,17 @@ today usually looks something like this (for a single feature or concern):
      evaluated over time (enter/leave, expiry, race‑y updates).
 
 5. **Trigger side‑effects and persistence**
+   
    - Fire mod logic, spawn entities, update overlays, and write to mod save
      data when conditions are met; try to keep everything idempotent.
    - **LoC:** ~20–80 per feature (callbacks, guards, save/load hooks).
    - **Complexity:** medium – business logic itself may be simple, but it sits
      on top of fragile observation code.
-   - **Risk:** medium–high – double‑fires, missed triggers, or inconsistent
-     save/load behavior if observation state and side‑effects drift apart.as named observers
+  - **Risk:** medium–high – double‑fires, missed triggers, or inconsistent
+    save/load behavior if observation state and side‑effects drift apart.
 
 6. **Debug and tune by trial and error**
+   
    - Add `print` spam, ad‑hoc debug UIs, or temporary overlays; tweak radii,
      tick intervals, and cache sizes to keep FPS acceptable.
    - **LoC:** ~10–40 per debug pass (logging flags, temporary code paths).
@@ -245,8 +255,7 @@ stay join‑eligible, group windows define over which slice of time/rows
 aggregates are computed, and distinct windows govern how long keys are
 remembered for de‑duplication. These knobs live inside built‑in streams and
 helpers (for example, “once per square” or “rooms with recent zombies”) and
-are not part of normal everyday API usage. Advanced users can still drop down
-to raw LQR builders when they need full control.
+are not part of normal everyday API usage. Advanced users can still drop down to raw LQR builders when they need full control.
 
 ---
 
@@ -254,32 +263,48 @@ to raw LQR builders when they need full control.
 
 At a high level, WorldObserver should:
 
-- **Provide reusable ObservationStreams.**  
-  Core, well‑tested streams for common needs, e.g.:
-  - “nearby squares around player(s) with configurable radius and filters”;
-  - “rooms by name and distance, with async batching handled for you”;
-  - “candidate vehicle spawn sections” similar to `WorldFinder` but as streams;
-  - “interesting events” like corpses, fires, lootable containers, etc.
+- **Own fact generation and strategies.**  
+  Define and run per‑type fact plans (Event Listeners + Active Probes +
+  external sources such as LuaEvents) that keep core world Facts fresh within
+  a performance budget. Expose only a small, semantic config surface for
+  strategies (for example `WorldObserver.config.facts.squares.strategy`),
+  while keeping detailed scheduling and throttling internal.
 
-- **Expose a clean Lua API for mod authors.**  
-  Example shapes (names subject to change):
-  - `WorldObserver.onSquare("nearby", opts, callback)`  
-  - `WorldObserver.observeRooms(opts) --> subscription`  
-  - `WorldObserver.buildObserver(opts) --> observerHandle`  
-  Under the hood these map onto LQR queries; the surface stays world‑centric.
+- **Publish reusable ObservationStreams.**  
+  Provide a stable set of base ObservationStreams under
+  `WorldObserver.observations.<name>()` (for example `squares()`, `rooms()`,
+  `zombies()`, `vehicles()`, and selected cross‑mod streams like
+  `roomStatus()`), each carrying schema‑tagged observations over time.
 
-- **Handle lifecycle and backpressure at the engine level.**  
-  The engine can start/stop underlying fact sources and probes, and it should:
-  - batch heavy scans over multiple frames;
-  - limit memory via windows and per‑key caches (LQR retention);
-  - cooperate with the game loop rather than blocking it.
+- **Provide helper‑driven refinement, not ad‑hoc loops.**  
+  Offer small, semantic helper sets (spatial, square, room, zombie, vehicle,
+  time, …) that filter, de‑duplicate, or reshape observations without
+  introducing new sources. Mod‑facing code chains helpers on top of
+  ObservationStreams instead of wiring `OnTick` loops or manual joins.
 
-- **Reuse LQR infrastructure.**  
-  Instead of reinventing pieces, WorldObserver should:
-  - use LQR’s logging conventions and log levels;
-  - be covered by busted tests in the same style as LQR;
-  - ship internal design notes under `raw_internal_docs/` for maintainers; and
-  - have user‑facing docs under `docs/` alongside the rest of LQR.
+- **Manage lifecycle and backpressure at the engine level.**  
+  Start and stop fact plans and probes based on demand (subscriptions and
+  strategies), batch heavy work over multiple frames, and cooperate with the
+  game loop to keep CPU and memory usage predictable. ObservationStreams stay
+  “just streams”; pacing and budgets live in the fact layer and scheduler.
+
+- **Integrate cleanly with LQR and lua‑reactivex.**  
+  Build ObservationStreams on top of LQR queries and lua‑reactivex
+  observables, reuse LQR’s windowing primitives internally, and expose
+  `stream:getLQR()` as the escape hatch for advanced users who need full
+  control.
+
+- **Support extension and customization.**  
+  Let advanced users register additional ObservationStreams via
+  `WorldObserver.observations.register(...)` and, where appropriate, add new
+  fact types through the fact layer APIs. Custom streams plug into the same
+  helper sets, subscribe semantics, and fact infrastructure as built‑ins.
+
+- **Provide diagnostics and documentation.**  
+  Reuse LQR’s logging conventions, surface WorldObserver‑specific categories
+  (e.g. facts, streams, errors), and grow light‑weight debugging helpers
+  (such as `describeFacts` / `describeStream`). Keep internal design notes
+  under `docs_internal/` and user‑facing guides under `docs/`.
 
 ---
 
@@ -294,10 +319,11 @@ Conceptually:
 
 - **WorldObserver is the domain skin.**  
   It:
-  - defines world schemas and keys (`SquareCtx`, `RoomCtx`, …);
-  - turns PZ/engine events into LQR‑friendly record streams;
-  - publishes ready‑made base ObservationStreams; and
-  - offers extension points for mod authors to define their own ObservationStreams on top.
+  
+  - defines world schemas and keys (for example `SquareObs`, `RoomObs`, …);
+  - turns PZ/engine events and other fact sources into LQR‑friendly record streams;
+  - publishes ready‑made base ObservationStreams such as `WorldObserver.observations.squares()` or `WorldObserver.observations.rooms()`; and
+  - offers extension points, via the fact layer APIs, for mod authors to define their own facts and ObservationStreams on top.
 
 For most mod authors, **WorldObserver is the primary entry point**:
 
@@ -308,7 +334,6 @@ For most mod authors, **WorldObserver is the primary entry point**:
 Advanced users may:
 
 - fetch the underlying LQR observable or builder for an ObservationStream;
-- Inject additional base ObservationStreams for existing classes of objects or entirely new ones.
 - compose additional joins or `where` clauses on top; or
 - feed non‑world schemas into the same engine.
 
@@ -322,8 +347,8 @@ WorldObserver is intentionally **not**:
 - a general ECS or persistence layer;
 - a replacement for every use of plain Rx – simple one‑stream tasks can still
   use bare lua‑reactivex directly;
-- a guarantee of perfect completeness in every scenario (some observers will be
-  best‑effort, time/window‑bounded by design).
+- a guarantee of perfect completeness in every scenario (some ObservationStreams
+  will be best‑effort, time/window‑bounded by design).
 
 The aim is to make the *common hard things* (world scanning, correlation, and
 time‑bound patterns) easy and consistent, while staying honest about trade‑offs.
@@ -335,38 +360,3 @@ time‑bound patterns) easy and consistent, while staying honest about trade‑o
 - LQR https://github.com/christophstrasen/LQR
 - Lua Reactivex https://github.com/christophstrasen/lua-reactivex 
 - LuaEvent https://github.com/demiurgeQuantified/StarlitLibrary/blob/main/Contents/mods/StarlitLibrary/42/media/lua/shared/Starlit/LuaEvent.lua 
-
-## A taste of intended usage (illustrative only)
-
-The exact API will evolve, but the intended feel is:
-
-```lua
-local WorldObserver = require("WorldObserver")
-
--- 1) Use a built‑in observer: nearby kitchens with corpses, within 50 tiles.
-local subscription = WorldObserver.observe({
-  squareRadius = 50,
-  roomName = "kitchen",
-  requireCorpse = true,
-}):subscribe(function(ctx)
-  -- ctx might carry square, room, and extra tags
-  WorldObserver.visuals.highlightSquare(ctx.square, "danger")
-end)
-
--- 2) Advanced: get the underlying LQR query and extend it.
-local query = WorldObserver.getQuery("observer.kitchenWithCorpse")
-
-query
-  :where(function(row)
-    -- only keep events where the room is residential
-    local room = row.room
-    return room and room.isResidential
-  end)
-  :subscribe(function(row)
-    -- do something game‑specific here
-  end)
-```
-
-This is only a sketch, but it is the style of code WorldObserver is meant to
-encourage: **describe what you want to observe**, let the engine handle the
-heavy lifting, and focus your mod logic on the resulting contexts.
