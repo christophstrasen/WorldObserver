@@ -90,3 +90,24 @@
 - Implement the MVP module skeletons (`WorldObserver.lua`, `config.lua`, `facts/registry.lua`, `facts/squares.lua`, `observations/core.lua`, `observations/squares.lua`, `helpers/square.lua`, `debug.lua`) to match the agreed layouts and contracts.
 - Extend `LQR.Schema.wrap` with `sourceTimeField` / `sourceTimeSelector` and validate that time-based windows behave correctly against `observedAtTimeMS`.
 - Start adding engine-independent Busted tests for `facts.squares`, `observations.squares()`, and the first square helpers, following the patterns sketched in `mvp.md`.
+
+## day4 – MVP skeleton implemented (untested in-game)
+
+### Highlights
+- Implemented the initial WorldObserver module tree and wiring:
+  - `WorldObserver.lua` now loads config, registers square facts/observations, wires helper sets, and integrates LuaEvent error reporting.
+  - `config.lua` provides defaults/validation (squares strategy).
+  - `facts/registry.lua` manages fact streams with lazy start/stop and subscriber ref-counting; validates start/stop hooks.
+  - `facts/squares.lua` emits `SquareObservation` records from `OnLoadGridsquare` + near-player probe with basic detection stubs and guardrails.
+  - `observations/core.lua` defines ObservationStream, helper wiring, fact dependency tracking, and subscription-driven fact lifecycle hooks.
+  - `observations/squares.lua` wraps square facts into `observation.square` with schema/id/time stamping.
+  - `helpers/square.lua` provides `squareHasBloodSplat` / `squareNeedsCleaning` with warnings on misuse.
+  - `debug.lua` stubs describeFacts/describeStream logging hooks.
+- Extended LQR’s `Schema.wrap` to honor `sourceTimeField`/`sourceTimeSelector` and `idSelector`, and preserved RxMeta ids through schema renames.
+- Added unit tests:
+  - WorldObserver squares stream shape/distinct/helpers and fact subscriber ref-count.
+  - LQR schema/RxMeta shape tests for sourceTime/idSelector and RxMeta preservation on schema rename.
+
+### Status
+- Code is in place for the squares MVP slice with subscription-aware fact lifecycle and basic guards/warnings.
+- Untested in-game; only headless busted tests have run (expect warnings about missing game Events in that environment).

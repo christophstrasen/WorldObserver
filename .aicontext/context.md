@@ -22,6 +22,7 @@ NixOS + `zsh`; ignore noisy `gpg-agent` warnings at shell start. No git history 
 ## Coding:
 - Respect Lua/LQR conventions in `.aicontext/context.md` (EmmyLua tags on public funcs, camelCase fields, snake_case files, no new globals unless Capitalized). Keep functions short; avoid shims/aliases unless required.
 - When designing modules, use a name `module.lua` on the same level as the module instead of `module/init.lua`
+- Don't use setmatatable or use other meta table magic.
 
 
 ## Tests
