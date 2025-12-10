@@ -2,13 +2,27 @@
 
 local Config = {}
 
-local DEFAULTS = {
-	facts = {
-		squares = {
-			strategy = "balanced",
+local function detectHeadlessFlag()
+	if _G.WORLDOBSERVER_HEADLESS == true then
+		return true
+	end
+	local env = os.getenv and os.getenv("WORLDOBSERVER_HEADLESS")
+	if env and env ~= "" and env ~= "0" then
+		return true
+	end
+	return false
+end
+
+local function defaults()
+	return {
+		facts = {
+			squares = {
+				strategy = "balanced",
+				headless = detectHeadlessFlag(),
+			},
 		},
-	},
-}
+	}
+end
 
 local function clone(tbl)
 	if type(tbl) ~= "table" then
@@ -33,6 +47,9 @@ local function applyFactsConfig(target, source)
 	if type(squares) == "table" and type(squares.strategy) == "string" and squares.strategy ~= "" then
 		target.facts.squares.strategy = squares.strategy
 	end
+	if type(squares) == "table" and type(squares.headless) == "boolean" then
+		target.facts.squares.headless = squares.headless
+	end
 end
 
 local function validate(cfg)
@@ -45,7 +62,7 @@ end
 ---Creates a copy of the default config.
 ---@return table
 function Config.defaults()
-	return clone(DEFAULTS)
+	return clone(defaults())
 end
 
 ---Merges user overrides into defaults and validates the result.

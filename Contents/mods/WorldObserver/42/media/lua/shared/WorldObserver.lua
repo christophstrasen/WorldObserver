@@ -1,5 +1,8 @@
 -- WorldObserver.lua -- public facade: wires LuaEvent, loads config, and registers facts/streams/helpers.
 
+-- Bootstrap LQR early to expand package.path for util.log/reactivex and friends.
+local _LQRBootstrap = require("LQR")
+
 local okLuaEvent, LuaEventOrError = pcall(require, "Starlit/LuaEvent")
 if okLuaEvent and _G.Events and _G.Events.setLuaEvent then
 	-- Wire Starlit LuaEvent when available so downstream mods can emit/observe it.

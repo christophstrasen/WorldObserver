@@ -1,6 +1,6 @@
 package.path = table.concat({
-	"Contents/mods/WorldScanner/42/media/lua/shared/?.lua",
-	"Contents/mods/WorldScanner/42/media/lua/shared/?/init.lua",
+	"Contents/mods/WorldObserver/42/media/lua/shared/?.lua",
+	"Contents/mods/WorldObserver/42/media/lua/shared/?/init.lua",
 	"external/LQR/LQR/?.lua",
 	"external/LQR/LQR/?/init.lua",
 	"external/LQR/LQR/external/lua-reactivex/?.lua",
@@ -9,6 +9,8 @@ package.path = table.concat({
 	"external/LQR/?/init.lua",
 	package.path,
 }, ";")
+
+_G.WORLDOBSERVER_HEADLESS = true
 
 local function reload(moduleName)
 	package.loaded[moduleName] = nil

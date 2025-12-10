@@ -24,6 +24,9 @@ NixOS + `zsh`; ignore noisy `gpg-agent` warnings at shell start. No git history 
 - When designing modules, use a name `module.lua` on the same level as the module instead of `module/init.lua`
 - Don't use setmatatable or use other meta table magic.
 
+## Naming
+- Prefer full names. "observation" instead of "obs" etc.
+
 
 ## Tests
 We embrace testing via the lua `busted` test utility
@@ -34,7 +37,7 @@ If repo guidance conflicts, flag it and ask; don’t guess past ambiguities. Upd
 
 ## Dependencies/Submodules
 - `external/LQR` (git submodule) — upstream https://github.com/christophstrasen/LQR, full checkout. Lua sources live under `external/LQR/LQR/`.
-- For Zomboid runtime (no `package.path` tweaks), the shipped mod must include the LQR Lua folder under `Contents/mods/WorldScanner/42/media/lua/shared/LQR/`; ensure git metadata is stripped when packaging/syncing.
+- For Zomboid runtime (no `package.path` tweaks), the shipped mod must include the LQR Lua folder under `Contents/mods/WorldObserver/42/media/lua/shared/LQR/`; ensure git metadata is stripped when packaging/syncing.
 
 ## Tech Stack & Environment
 - **Language(s):** Lua 5.1 (Build 42) on kahlua vm, optional shell tooling inncluding `busted` for testing. 

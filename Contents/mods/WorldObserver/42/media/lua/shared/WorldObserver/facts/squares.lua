@@ -209,6 +209,7 @@ local function registerProbe(ctx, budgetPerTick)
 end
 
 function Squares.register(registry, config)
+	local headless = config and config.facts and config.facts.squares and config.facts.squares.headless == true
 	registry:register("squares", {
 		start = function(ctx)
 			local budget = 200
@@ -219,12 +220,16 @@ function Squares.register(registry, config)
 			local listenerRegistered = registerOnLoadGridSquare(ctx)
 			local probeRegistered = registerProbe(ctx, budget)
 
-			if not listenerRegistered then
+			if not listenerRegistered and not headless then
 				Log:warn("OnLoadGridsquare listener not registered (Events unavailable)")
 			end
-			if not probeRegistered then
+			if not probeRegistered and not headless then
 				Log:warn("nearPlayers_closeRing probe not registered (Events.OnTick unavailable)")
 			end
+		end,
+		stop = function(entry)
+			-- No explicit teardown hooks yet; placeholder if we later attach events with remove semantics.
+			return true
 		end,
 	})
 

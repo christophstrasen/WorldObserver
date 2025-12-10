@@ -7,7 +7,7 @@ DEST_WRAPPER="$HOME/Zomboid/Workshop/WorldObserver"
 # LQR submodule lives outside the shipped mod tree; we mirror only its Lua payload.
 # This should become a separate mod if ever other mods will use it as dependency
 LQR_SRC="external/LQR/LQR"
-LQR_DEST="$DEST_WRAPPER/Contents/mods/WorldScanner/42/media/lua/shared/LQR"
+LQR_DEST="$DEST_WRAPPER/Contents/mods/WorldObserver/42/media/lua/shared/LQR"
 
 echo "Watching '$SRC_MOD_DIR' → '$DEST_WRAPPER'"
 
@@ -16,6 +16,7 @@ RSYNC_EXCLUDES=(
   "--exclude=.direnv/" "--exclude=dist/" "--exclude=build/" "--exclude=out/"
   "--exclude=tmp/" "--exclude=__pycache__/" "--exclude=node_modules/" "--exclude=external/"
   "--exclude=docs/" "--exclude=tests/" "--exclude=.DS_Store"
+  "--exclude=Contents/mods/WorldObserver/42/media/lua/shared/LQR/"
 )
 
 sync_once() {
