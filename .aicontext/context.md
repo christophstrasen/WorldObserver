@@ -23,7 +23,10 @@ NixOS + `zsh`; ignore noisy `gpg-agent` warnings at shell start. No git history 
 - Respect Lua/LQR conventions in `.aicontext/context.md` (EmmyLua tags on public funcs, camelCase fields, snake_case files, no new globals unless Capitalized). Keep functions short; avoid shims/aliases unless required.
 - When designing modules, use a name `module.lua` on the same level as the module instead of `module/init.lua`
 - Don't use setmatatable or use other meta table magic.
-- Remember that project zomboid does not use init.lua a magic way that loads a folder.
+- Remember that project zomboid does not use init.lua as a magic way to load a folder
+- Do not use DOT as director separator but SLASH for all lua requires
+- Do not use package.path unless in a conscious compatible way that does not inhibit proper function of requires in the project zomboid runtime
+- Ensure that things work in both project zomboid runtime and in vanilla lua 5.1 on the console
 
 ## Naming
 - Prefer full names. "observation" instead of "obs" etc.
