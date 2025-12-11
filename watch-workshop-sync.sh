@@ -30,9 +30,11 @@ sync_once() {
   # Primary sync: copy mod tree but skip heavy/unneeded/dev folders (including submodules).
   rsync -a --delete "${RSYNC_EXCLUDES[@]}" "$SRC_MOD_DIR/" "$DEST_WRAPPER/"
   # Secondary sync: ship only LQR Lua sources into the mod runtime path (strip everything else).
+  # We explicitly exclude any vendored reactivex inside LQR; the canonical reactivex comes from external/lua-reactivex.
   if [ -d "$LQR_SRC" ]; then
     rsync -a --delete \
-      --include='*/' --include='*.lua' --exclude='*' \
+      --include='*/' --include='*.lua' \
+      --exclude='reactivex.lua' --exclude='reactivex/**' --exclude='*' \
       "$LQR_SRC/" "$LQR_DEST/"
   else
     echo "[warn] LQR submodule missing at $LQR_SRC; skipped LQR sync"
@@ -58,8 +60,14 @@ sync_once() {
   else
     echo "[warn] lua-reactivex submodule missing at $REACTIVEX_SRC; skipped reactivex sync"
   fi
+  # Copy the operators aggregator (root-level operators.lua) so require(\"reactivex/operators\") resolves without init.lua.
+  if [ -f "$REACTIVEX_SRC/operators.lua" ]; then
+    rsync -a "$REACTIVEX_SRC/operators.lua" "$REACTIVEX_DEST/operators.lua"
+  else
+    echo "[warn] reactivex operators.lua missing at $REACTIVEX_SRC/operators.lua; operators preload may fail"
+  fi
   echo "[synced] $(date '+%H:%M:%S')"
-} 
+}
 
 sync_once
 echo "Watching for changes…"
