@@ -2,7 +2,7 @@
 local LQR = require("LQR")
 local Query = LQR.Query
 local Schema = LQR.Schema
-local Log = require("util.log").withTag("WO.STREAM")
+local Log = require("LQR.util.log").withTag("WO.STREAM")
 
 local ObservationStream = {}
 

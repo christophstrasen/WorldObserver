@@ -8,6 +8,9 @@ DEST_WRAPPER="$HOME/Zomboid/Workshop/WorldObserver"
 # This should become a separate mod if ever other mods will use it as dependency
 LQR_SRC="external/LQR/LQR"
 LQR_DEST="$DEST_WRAPPER/Contents/mods/WorldObserver/42/media/lua/shared/LQR"
+# Standalone lua-reactivex submodule (kept out of LQR); ship its Lua payload alongside LQR.
+REACTIVEX_SRC="external/lua-reactivex"
+REACTIVEX_DEST="$DEST_WRAPPER/Contents/mods/WorldObserver/42/media/lua/shared"
 
 echo "Watching '$SRC_MOD_DIR' → '$DEST_WRAPPER'"
 
@@ -29,6 +32,16 @@ sync_once() {
       "$LQR_SRC/" "$LQR_DEST/"
   else
     echo "[warn] LQR submodule missing at $LQR_SRC; skipped LQR sync"
+  fi
+  # Tertiary sync: ship lua-reactivex (reactivex.lua + reactivex/*) alongside the mod.
+  if [ -d "$REACTIVEX_SRC/reactivex" ]; then
+    rsync -a --delete --include='*/' --include='*.lua' --exclude='*' \
+      "$REACTIVEX_SRC/reactivex/" "$REACTIVEX_DEST/reactivex/"
+    if [ -f "$REACTIVEX_SRC/reactivex.lua" ]; then
+      rsync -a "$REACTIVEX_SRC/reactivex.lua" "$REACTIVEX_DEST/reactivex.lua"
+    fi
+  else
+    echo "[warn] lua-reactivex submodule missing at $REACTIVEX_SRC; skipped reactivex sync"
   fi
   echo "[synced] $(date '+%H:%M:%S')"
 }

@@ -1,3 +1,6 @@
 [submodule "external/LQR"]
 	path = external/LQR
 	url = git@github.com:christophstrasen/LQR
+[submodule "external/lua-reactivex"]
+	path = external/lua-reactivex
+	url = https://github.com/christophstrasen/lua-reactivex

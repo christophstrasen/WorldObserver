@@ -1,12 +1,10 @@
 package.path = table.concat({
 	"Contents/mods/WorldObserver/42/media/lua/shared/?.lua",
 	"Contents/mods/WorldObserver/42/media/lua/shared/?/init.lua",
-	"external/LQR/LQR/?.lua",
-	"external/LQR/LQR/?/init.lua",
-	"external/LQR/LQR/external/lua-reactivex/?.lua",
-	"external/LQR/LQR/external/lua-reactivex/?/init.lua",
 	"external/LQR/?.lua",
 	"external/LQR/?/init.lua",
+	"external/lua-reactivex/?.lua",
+	"external/lua-reactivex/?/init.lua",
 	package.path,
 }, ";")
 
