@@ -23,6 +23,7 @@ NixOS + `zsh`; ignore noisy `gpg-agent` warnings at shell start. No git history 
 - Respect Lua/LQR conventions in `.aicontext/context.md` (EmmyLua tags on public funcs, camelCase fields, snake_case files, no new globals unless Capitalized). Keep functions short; avoid shims/aliases unless required.
 - When designing modules, use a name `module.lua` on the same level as the module instead of `module/init.lua`
 - Don't use setmatatable or use other meta table magic.
+- Remember that project zomboid does not use init.lua a magic way that loads a folder.
 
 ## Naming
 - Prefer full names. "observation" instead of "obs" etc.
@@ -41,8 +42,9 @@ If repo guidance conflicts, flag it and ask; don’t guess past ambiguities. Upd
 
 ## Tech Stack & Environment
 - **Language(s):** Lua 5.1 (Build 42) on kahlua vm, optional shell tooling inncluding `busted` for testing. 
-- **Target runtime:** Project Zomboid Build 42 only.
+- **Target runtime:** Project Zomboid Build 42 only but busted tests must be runnnable also outside engine
 - **Editor/OS:** VS Code with VIM support on NixOS.
+- 
 
 ## Internal source of Truth
 

@@ -11,6 +11,10 @@ LQR_DEST="$DEST_WRAPPER/Contents/mods/WorldObserver/42/media/lua/shared/LQR"
 # Standalone lua-reactivex submodule (kept out of LQR); ship its Lua payload alongside LQR.
 REACTIVEX_SRC="external/lua-reactivex"
 REACTIVEX_DEST="$DEST_WRAPPER/Contents/mods/WorldObserver/42/media/lua/shared"
+# Root-level shims so PZ can require folder modules without init.lua auto-loading.
+SHIM_DEST="$DEST_WRAPPER/Contents/mods/WorldObserver/42/media/lua/shared"
+LQR_SHIM_SRC="external/LQR/LQR.lua"
+RX_SHIM_SRC="external/LQR/reactivex.lua"
 
 echo "Watching '$SRC_MOD_DIR' → '$DEST_WRAPPER'"
 
@@ -22,7 +26,7 @@ RSYNC_EXCLUDES=(
   "--exclude=Contents/mods/WorldObserver/42/media/lua/shared/LQR/"
 )
 
-sync_once() {
+sync_once() { 
   # Primary sync: copy mod tree but skip heavy/unneeded/dev folders (including submodules).
   rsync -a --delete "${RSYNC_EXCLUDES[@]}" "$SRC_MOD_DIR/" "$DEST_WRAPPER/"
   # Secondary sync: ship only LQR Lua sources into the mod runtime path (strip everything else).
@@ -32,6 +36,17 @@ sync_once() {
       "$LQR_SRC/" "$LQR_DEST/"
   else
     echo "[warn] LQR submodule missing at $LQR_SRC; skipped LQR sync"
+  fi
+  # Copy shims for require("LQR") and require("reactivex") at the shared root.
+  if [ -f "$LQR_SHIM_SRC" ]; then
+    rsync -a "$LQR_SHIM_SRC" "$SHIM_DEST/LQR.lua"
+  else
+    echo "[warn] LQR shim missing at $LQR_SHIM_SRC; skipped"
+  fi
+  if [ -f "$RX_SHIM_SRC" ]; then
+    rsync -a "$RX_SHIM_SRC" "$SHIM_DEST/reactivex.lua"
+  else
+    echo "[warn] reactivex shim missing at $RX_SHIM_SRC; skipped"
   fi
   # Tertiary sync: ship lua-reactivex (reactivex.lua + reactivex/*) alongside the mod.
   if [ -d "$REACTIVEX_SRC/reactivex" ]; then
@@ -44,7 +59,7 @@ sync_once() {
     echo "[warn] lua-reactivex submodule missing at $REACTIVEX_SRC; skipped reactivex sync"
   fi
   echo "[synced] $(date '+%H:%M:%S')"
-}
+} 
 
 sync_once
 echo "Watching for changes…"

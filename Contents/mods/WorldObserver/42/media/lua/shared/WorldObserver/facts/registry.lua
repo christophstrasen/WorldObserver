@@ -1,6 +1,6 @@
 -- facts/registry.lua -- manages fact sources: creates a stream per fact type and only starts its producer on first access.
 local rx = require("reactivex")
-local Log = require("LQR.util.log").withTag("WO.FACTS")
+local Log = require("LQR/util/log").withTag("WO.FACTS")
 
 local FactRegistry = {}
 FactRegistry.__index = FactRegistry -- registry instances resolve methods from this table via metatable lookup
