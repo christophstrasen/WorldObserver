@@ -85,6 +85,13 @@ all_ok = probe("package-nil", function()
 	package = nil
 end) and all_ok
 
+-- Probe 4: os missing (simulate runtimes without os.*).
+all_ok = probe("os-nil", function()
+	_G.debug = nil
+	package = nil
+	os = nil
+end) and all_ok
+
 if not all_ok then
 	os.exit(1)
 end
