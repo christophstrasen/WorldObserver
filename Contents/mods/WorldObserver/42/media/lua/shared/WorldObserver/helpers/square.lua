@@ -1,5 +1,5 @@
 -- helpers/square.lua -- square helper set (MVP) providing named filters for square observations.
-local Log = require("LQR.util.log").withTag("WO.HELPER.square")
+local Log = require("LQR/util/log").withTag("WO.HELPER.square")
 local SquareHelpers = {}
 
 local function squareField(observation, fieldName)

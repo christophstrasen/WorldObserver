@@ -1,5 +1,5 @@
 -- debug.lua -- minimal debug helpers to introspect whether facts/streams are registered.
-local Log = require("LQR.util.log").withTag("WO.DEBUG")
+local Log = require("LQR/util/log").withTag("WO.DEBUG")
 
 local Debug = {}
 

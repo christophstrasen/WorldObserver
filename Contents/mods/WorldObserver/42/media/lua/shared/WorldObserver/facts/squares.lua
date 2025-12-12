@@ -1,5 +1,5 @@
 -- facts/squares.lua -- square fact plan (balanced strategy): listeners + near-player probe to emit SquareObservation facts.
-local Log = require("LQR.util.log").withTag("WO.FACTS.squares")
+local Log = require("LQR/util/log").withTag("WO.FACTS.squares")
 
 local Squares = {}
 
