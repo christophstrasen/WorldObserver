@@ -79,6 +79,12 @@ all_ok = probe("package-minimal", function()
 	}
 end) and all_ok
 
+-- Probe 3: package missing entirely (simulates stricter hosts).
+all_ok = probe("package-nil", function()
+	_G.debug = nil
+	package = nil
+end) and all_ok
+
 if not all_ok then
 	os.exit(1)
 end
