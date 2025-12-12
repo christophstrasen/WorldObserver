@@ -16,6 +16,10 @@ SHIM_DEST="$DEST_WRAPPER/Contents/mods/WorldObserver/42/media/lua/shared"
 LQR_SHIM_SRC="external/LQR/LQR.lua"
 RX_SHIM_SRC="external/LQR/reactivex.lua"
 
+GREEN="\033[32m"
+RED_BG="\033[41;97m"
+RESET="\033[0m"
+
 echo "Watching '$SRC_MOD_DIR' → '$DEST_WRAPPER'"
 
 RSYNC_EXCLUDES=(
@@ -65,6 +69,19 @@ sync_once() {
     rsync -a "$REACTIVEX_SRC/operators.lua" "$REACTIVEX_DEST/operators.lua"
   else
     echo "[warn] reactivex operators.lua missing at $REACTIVEX_SRC/operators.lua; operators preload may fail"
+  fi
+
+  # Post-sync smoke test against the destination tree. This simulates the PZ
+  # runtime (missing debug, minimal package) and ensures requires resolve.
+  if command -v lua >/dev/null; then
+    if PZ_LUA_PATH="$DEST_WRAPPER/Contents/mods/WorldObserver/42/media/lua/shared/?.lua;$DEST_WRAPPER/Contents/mods/WorldObserver/42/media/lua/shared/?/init.lua;;" \
+      lua "$SRC_MOD_DIR/pz_smoke.lua" WorldObserver LQR reactivex; then
+      echo -e "${GREEN}[smoke ok]${RESET}"
+    else
+      echo -e "${RED_BG}[smoke FAIL]${RESET}"
+    fi
+  else
+    echo "[warn] lua not found; skipped smoke test"
   fi
   echo "[synced] $(date '+%H:%M:%S')"
 }
