@@ -40,6 +40,15 @@ local function run_modules()
 	return loaded
 end
 
+local function module_list(loaded)
+	local keys = {}
+	for k in pairs(loaded or {}) do
+		keys[#keys + 1] = k
+	end
+	table.sort(keys)
+	return table.concat(keys, ",")
+end
+
 local function exercise_modules(loaded)
 	local rx = loaded.reactivex
 	if rx then
@@ -61,13 +70,21 @@ local function exercise_modules(loaded)
 	local LQR = loaded.LQR
 	if LQR and rx then
 		local rows = {}
-		LQR.Query.from(rx.Observable.fromTable({ { n = 1 }, { n = 2 } }), "SmokeRow")
-			:where(function(row)
-				return row.n ~= nil
-			end)
-			:into(rows)
-			:subscribe()
-		assert(#rows == 2, "LQR pipeline failed")
+		local ok, err = pcall(function()
+			local source = LQR.observableFromTable("SmokeRow", { { id = 1, n = 1 }, { id = 2, n = 2 } })
+			LQR.Query.from(source, "SmokeRow")
+				:where(function(row)
+					return row.SmokeRow and row.SmokeRow.n ~= nil
+				end)
+				:into(rows)
+				:subscribe()
+		end)
+		if not ok then
+			error(string.format("LQR pipeline failed - query error (%s) modules[%s]", tostring(err), module_list(loaded)), 0)
+		end
+		if #rows ~= 2 then
+			error(string.format("LQR pipeline failed - got %d rows (expected 2) modules[%s]", #rows, module_list(loaded)), 0)
+		end
 	end
 
 	local WorldObserver = loaded.WorldObserver

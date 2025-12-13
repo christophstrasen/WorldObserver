@@ -112,25 +112,26 @@
 - Code is in place for the squares MVP slice with subscription-aware fact lifecycle and basic guards/warnings.
 - Untested in-game; only headless busted tests have run (expect warnings about missing game Events in that environment).
 
-## day5 – Runtime shims and Zomboid compatibility
+## day5 – Runtime shims, smoke tests, and PZ quirks
 
 ### Highlights
-- Reworked how LQR and lua-reactivex are discovered and required so they behave well both in vanilla Lua and in the Project Zomboid Kahlua runtime.
-- Introduced a flattened `reactivex` entrypoint (`external/LQR/reactivex.lua`) that:
-  - prefers a sibling `external/lua-reactivex` checkout as the canonical source;
-  - falls back to a bundled `reactivex` submodule only when needed; and
-  - installs lightweight searchers so `require("reactivex/...")` works even when `package.path` and `package.searchers` are locked down.
-- Extended the LQR-side `reactivex` shim under `external/LQR/LQR/reactivex.lua` so LQR always:
-  - force-loads the operators set up front (ensuring `Observable` has the full operator surface); and
-  - exposes a predictable `scheduler` helper table, without patching the vendored lua-reactivex sources directly.
-- Tightened the packaging pipeline via `watch-workshop-sync.sh`:
-  - ship only the runtime Lua payloads from LQR and lua-reactivex (no docs, tests, rockspecs); and
-  - add a loader shim layer so `require("WorldObserver")`, `require("LQR")`, and `require("reactivex")` resolve consistently inside the Zomboid mod path without touching `package.path` at runtime.
-- Clarified the development story in `.aicontext/context.md` and `docs_internal/development.md`:
-  - WorldObserver’s primary tests are `busted tests` plus a “lazy man’s Zomboid engine-simulation” via `pz_smoke.lua` on the synced workshop directory.
-  - LQR’s `busted tests/unit` suite remains available but is treated as optional and only required when LQR itself is modified.
+- **Require + packaging model**
+  - Reworked how LQR and lua-reactivex are discovered so they behave well in both vanilla Lua and the Project Zomboid Kahlua runtime.
+  - Introduced a flattened `reactivex` entrypoint (`external/LQR/reactivex.lua`) that prefers the sibling `external/lua-reactivex` checkout, only falling back to the bundled submodule when needed, and installs lightweight searchers so `require("reactivex/...")` works even when `package.path` / `searchers` are locked down.
+  - Extended the LQR-side shim (`external/LQR/LQR/reactivex.lua`) to force-load operators, expose a predictable `scheduler` helper, and keep the vendored lua-reactivex sources untouched.
+  - Tightened `watch-workshop-sync.sh` so the workshop build ships only runtime Lua from LQR and lua-reactivex (no docs, tests, rockspecs) and still resolves `WorldObserver`, `LQR`, and `reactivex` reliably in the mod path.
+
+- **IO and logging hardening for Kahlua**
+  - Guarded all runtime `io` usage in LQR: the logger (`LQR/util/log.lua`) and join debug path now fall back to `print` when `io.stderr` is missing, and sanitize colons in messages to avoid PZ’s log rendering quirks.
+  - Updated `lua-reactivex`’s `Observable.fromFileByLine` to short-circuit with a clear error when `io.open` / `io.lines` are unavailable instead of exploding at runtime.
+
+- **Stronger smoke tests**
+  - Upgraded the root `pz_smoke.lua` to probe additional host shapes: minimal/locked `package`, `io`-nil, and `os`-nil, while exercising a small reactivex pipeline and a minimal LQR query instead of just `require` checks.
+  - Switched the LQR pipeline check to use `LQR.observableFromTable("SmokeRow", rows)` plus a `Query.where` predicate over the row-view (`row.SmokeRow.n`), matching how real queries see data.
+  - Improved error reporting so smoke failures show the loaded modules and actual pipeline behavior (row counts or the precise query error), which made diagnosing the “0 rows” issue straightforward.
+  - Kept LQR’s own `pz_smoke_spec.lua` wired to the CLI script so the same constraints are covered under busted without needing a running game.
 
 ### Lessons
-- Treating lua-reactivex as a standalone, top-level submodule (`external/lua-reactivex`) and letting shims *prefer* it while *tolerating* an embedded copy gives us a clean separation between engine code (LQR) and reactive infrastructure.
-- Relying on `loadfile` + explicit searchers for `reactivex/...` proved more robust in the Kahlua environment than trying to tweak `package.path`, which may be missing or heavily sandboxed.
-- Having a dedicated workshop smoke test (`pz_smoke.lua`) catches an entire class of “works in busted, fails in-game” bugs early: missing shims, miswired requires, and assumptions about standard Lua libraries that don’t hold in Project Zomboid.
+- Treating lua-reactivex as a standalone, top-level submodule (`external/lua-reactivex`) and letting shims *prefer* it while *tolerating* an embedded copy keeps LQR focused on query logic while centralizing reactive infrastructure.
+- Relying on `loadfile` + explicit searchers for `reactivex/...` is more robust in Kahlua than trying to tweak `package.path`, which may be missing or heavily sandboxed.
+- A dedicated workshop smoke test (`pz_smoke.lua`) plus a tiny end-to-end LQR pipeline catches “works in busted, fails in-game” bugs early: missing shims, miswired requires, `io` assumptions, and subtle schema/row-view mismatches.
