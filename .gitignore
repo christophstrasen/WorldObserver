@@ -1,3 +1,4 @@
 # VS Code local overrides
 .vscode/WorldObserver.local.code-workspace
 *.drawio.bkp
+*.drawio.dtmp
