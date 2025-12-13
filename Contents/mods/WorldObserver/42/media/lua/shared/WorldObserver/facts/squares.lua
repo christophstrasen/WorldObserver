@@ -88,16 +88,18 @@ end
 
 local function registerOnLoadGridSquare(ctx)
 	local events = _G.Events
-	if not events or type(events.OnLoadGridsquare) ~= "table" or type(events.OnLoadGridsquare.Add) ~= "function" then
+	local handler = events and events.LoadGridsquare
+	if not handler or type(handler.Add) ~= "function" then
 		return false
 	end
 
-	events.OnLoadGridsquare.Add(function(square)
+	handler.Add(function(square)
 		local record = makeSquareRecord(square, "event")
 		if record then
 			ctx.emit(record)
 		end
 	end)
+	Log:info("LoadGridsquare listener registered")
 	return true
 end
 
@@ -210,21 +212,32 @@ end
 
 function Squares.register(registry, config)
 	local headless = config and config.facts and config.facts.squares and config.facts.squares.headless == true
+	local emitCount = 0
+
 	registry:register("squares", {
 		start = function(ctx)
-			local budget = 200
-			if config and config.facts and config.facts.squares and config.facts.squares.strategy == "balanced" then
-				budget = 200
-			end
-
 			local listenerRegistered = registerOnLoadGridSquare(ctx)
-			local probeRegistered = registerProbe(ctx, budget)
+			local probeRegistered = false -- probe disabled; rely on load listener only.
 
 			if not listenerRegistered and not headless then
 				Log:warn("OnLoadGridsquare listener not registered (Events unavailable)")
 			end
-			if not probeRegistered and not headless then
-				Log:warn("nearPlayers_closeRing probe not registered (Events.OnTick unavailable)")
+			-- Probe intentionally disabled; rely on load listener only.
+
+			-- Lightweight emission counter to help spot runaway loads in-game.
+			local originalEmit = ctx.emit
+			ctx.emit = function(record)
+				if not record then
+					return
+				end
+				emitCount = emitCount + 1
+				if emitCount % 50 == 0 then
+					Log:info("Squares emitted %s records so far", tostring(emitCount))
+				end
+				return originalEmit(record)
+			end
+			if not headless then
+				Log:info("Squares fact plan started (listener=%s, probe=%s)", tostring(listenerRegistered), tostring(probeRegistered))
 			end
 		end,
 		stop = function(entry)

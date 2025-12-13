@@ -1,7 +1,14 @@
 -- smoke_squares.lua -- console-friendly smoke test for WorldObserver squares.
 -- Usage in PZ console:
---   local smoke = require("examples/smoke_squares").start({ distinctSeconds = 2, withHelpers = true })
---   -- later: smoke:stop()
+--[[ 
+	smoke = require("examples/smoke_squares")
+ 	smokestart({ distinctSeconds = 2, withHelpers = true })
+	later: smoke:stop()
+]]
+--
+
+local Log = require("LQR/util/log")
+Log.setLevel("info")
 
 local SmokeSquares = {}
 
@@ -33,6 +40,11 @@ function SmokeSquares.start(opts)
 		stream = stream:squareNeedsCleaning()
 	end
 
+	Log.info(
+		"[smoke] subscribing to squares (distinctSeconds=%s, withHelpers=%s)",
+		tostring(opts.distinctSeconds),
+		tostring(opts.withHelpers)
+	)
 	local subscription = stream:subscribe(function(observation)
 		print(fmt(observation))
 	end)
@@ -41,6 +53,7 @@ function SmokeSquares.start(opts)
 		stop = function()
 			if subscription and subscription.unsubscribe then
 				subscription:unsubscribe()
+				Log.info("[smoke] squares subscription stopped")
 			end
 		end,
 	}

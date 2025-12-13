@@ -165,7 +165,15 @@ all_ok = probe("io-nil", function()
 	io = nil
 end) and all_ok
 
--- Probe 5: package locked down (no searchers/path; only our injected loaders allowed).
+-- Probe 5: next missing (simulate runtimes where next is nil).
+all_ok = probe("next-nil", function()
+	_G.debug = nil
+	package = nil
+	io = nil
+	_G.next = nil
+end) and all_ok
+
+-- Probe 6: package locked down (no searchers/path; only our injected loaders allowed).
 all_ok = probe("package-locked", function()
 	_G.debug = nil
 	package = {
@@ -179,7 +187,7 @@ all_ok = probe("package-locked", function()
 	}
 end) and all_ok
 
--- Probe 6: os missing (simulate runtimes without os.*).
+-- Probe 7: os missing (simulate runtimes without os.*).
 all_ok = probe("os-nil", function()
 	_G.debug = nil
 	package = nil

@@ -1,6 +1,7 @@
 -- observations/squares.lua -- wraps square facts into a SquareObservation stream and exposes it as observation.square.
 -- This is the base stream used in the MVP examples (blood near player, squareNeedsCleaning in api_proposal.md §5.5).
 local LQR = require("LQR")
+local Log = require("LQR/util/log").withTag("WO.OBS.squares")
 local Query = LQR.Query
 local Schema = LQR.Schema
 
@@ -27,6 +28,7 @@ function SquaresObservation.register(observationRegistry, factRegistry, nextObse
 
 			local builder = Query.selectFrom(wrapped, "SquareObservation")
 				:selectSchemas({ SquareObservation = "square" })
+			Log:info("squares observation stream built")
 			return builder
 		end,
 	})
