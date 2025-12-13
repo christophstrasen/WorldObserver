@@ -1,0 +1,40 @@
+<mxfile host="Electron" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/26.1.1 Chrome/138.0.7204.251 Electron/37.10.2 Safari/537.36" version="26.1.1">
+  <diagram name="Page-1" id="wBgGjPjeenXuCCwRR5bW">
+    <mxGraphModel dx="1250" dy="1105" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="MNrkTdDVdKjq62EErNXR-1" value="WorldObserver High Level Architecture" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="40" y="10" width="290" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="MNrkTdDVdKjq62EErNXR-3" value="Vanilla World State&lt;div&gt;&lt;div&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;(as it is and as it changes)&lt;/font&gt;&lt;/div&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="40" y="80" width="140" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="MNrkTdDVdKjq62EErNXR-4" value="Fact" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="40" y="450" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="MNrkTdDVdKjq62EErNXR-5" value="Observation" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="310" y="450" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="MNrkTdDVdKjq62EErNXR-6" value="Situation" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="520" y="450" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="MNrkTdDVdKjq62EErNXR-7" value="Action" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="720" y="450" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="MNrkTdDVdKjq62EErNXR-9" value="Modded state&lt;div&gt;&lt;span style=&quot;font-size: 10px;&quot;&gt;(as it is and as it changes)&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="40" y="270" width="140" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="MNrkTdDVdKjq62EErNXR-11" value="&lt;font style=&quot;font-size: 10px;&quot;&gt;IsoSquare&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="70" y="140" width="80" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="MNrkTdDVdKjq62EErNXR-12" value="Vanilla World State&lt;div&gt;&lt;div&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;(as it is and as it changes)&lt;/font&gt;&lt;/div&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="500" y="650" width="140" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="MNrkTdDVdKjq62EErNXR-13" value="emit" style="shape=process;whiteSpace=wrap;html=1;backgroundOutline=1;" vertex="1" parent="1">
+          <mxGeometry x="320" y="120" width="120" height="40" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
