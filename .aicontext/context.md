@@ -33,8 +33,10 @@ NixOS + `zsh`; ignore noisy `gpg-agent` warnings at shell start. No git history 
 
 
 ## Tests
-We embrace testing via the lua `busted` test utility
-After code changes, run `busted tests/unit`; report results.
+We embrace testing via the lua `busted` test utility:
+- For WorldObserver changes, run `busted tests` from the repo root.
+- For LQR changes (files under `external/LQR`), you may run `busted tests/unit` from `external/LQR` as needed.
+- The workshop sync smoke test (`pz_smoke.lua` via `watch-workshop-sync.sh`) should stay green; it simulates the PZ Kahlua runtime and catches missing `require`s / vanilla Lua package mismatches.
 
 ## Gaps/conflicts
 If repo guidance conflicts, flag it and ask; don’t guess past ambiguities. Update `.aicontext` when policies change.
@@ -47,7 +49,6 @@ If repo guidance conflicts, flag it and ask; don’t guess past ambiguities. Upd
 - **Language(s):** Lua 5.1 (Build 42) on kahlua vm, optional shell tooling inncluding `busted` for testing. 
 - **Target runtime:** Project Zomboid Build 42 only but busted tests must be runnnable also outside engine
 - **Editor/OS:** VS Code with VIM support on NixOS.
-- 
 
 ## Internal source of Truth
 
