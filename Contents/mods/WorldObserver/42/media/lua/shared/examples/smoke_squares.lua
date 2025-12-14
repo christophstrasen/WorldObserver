@@ -58,10 +58,7 @@ function SmokeSquares.start(opts)
 
 	-- One-off ingest diagnostics right after subscribing.
 	if WorldObserver.debug and WorldObserver.debug.describeFactsMetrics then
-		WorldObserver.debug.describeFactsMetrics("squares")
-	end
-	if WorldObserver.debug and WorldObserver.debug.describeIngestScheduler then
-		WorldObserver.debug.describeIngestScheduler()
+		WorldObserver.debug.describeFactsMetrics("squares", { full = true })
 	end
 
 	-- Optional heartbeat once per minute.
@@ -71,10 +68,7 @@ function SmokeSquares.start(opts)
 		heartbeatFn = function()
 			Log.info("[smoke] heartbeat received=%s", tostring(receivedCount))
 			if WorldObserver.debug and WorldObserver.debug.describeFactsMetrics then
-				WorldObserver.debug.describeFactsMetrics("squares")
-			end
-			if WorldObserver.debug and WorldObserver.debug.describeIngestScheduler then
-				WorldObserver.debug.describeIngestScheduler()
+				WorldObserver.debug.describeFactsMetrics("squares", { full = true })
 			end
 		end
 		events.EveryOneMinute.Add(heartbeatFn)

@@ -420,6 +420,18 @@ function FactRegistry:getIngestMetrics(name, opts)
 	return entry.buffer:metrics_get()
 end
 
+---Return ingest advice for a fact type when enabled.
+---@param name string
+---@param opts table|nil
+function FactRegistry:getIngestAdvice(name, opts)
+	opts = opts or {}
+	local entry = self._types[name]
+	if not entry or not entry.buffer or not entry.buffer.advice_get then
+		return nil
+	end
+	return entry.buffer:advice_get(opts)
+end
+
 ---Return scheduler metrics when present.
 function FactRegistry:getSchedulerMetrics()
 	if not self._scheduler then

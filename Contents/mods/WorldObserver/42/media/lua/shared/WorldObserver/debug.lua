@@ -21,12 +21,14 @@ function Debug.new(factRegistry, observationRegistry)
 			end
 		end,
 
-		describeFactsMetrics = function(typeName)
-			local snap = factRegistry.getIngestMetrics and factRegistry:getIngestMetrics(typeName)
+		-- Accepts optional opts, e.g. { full = true } to fetch the full metrics snapshot.
+		describeFactsMetrics = function(typeName, opts)
+			local snap = factRegistry.getIngestMetrics and factRegistry:getIngestMetrics(typeName, opts)
 			if not snap then
 				Log:warn("No ingest metrics for fact type '%s' (ingest disabled or not started)", tostring(typeName))
 				return
 			end
+			local advice = factRegistry.getIngestAdvice and factRegistry:getIngestAdvice(typeName, opts)
 			Log:info(
 				"[%s] pending=%s peak=%s ingested=%s drained=%s dropped=%s load=%.2f/%.2f/%.2f throughput=%.2f/%.2f/%.2f ingestRate=%.2f/%.2f/%.2f",
 				tostring(typeName),
@@ -45,6 +47,16 @@ function Debug.new(factRegistry, observationRegistry)
 				tonumber(snap.ingestRate5) or 0,
 				tonumber(snap.ingestRate15) or 0
 			)
+			if advice then
+				Log:info(
+					"[%s] advice trend=%s recMaxItems=%s recThroughput=%.2f msPerItem=%s",
+					tostring(typeName),
+					advice.trend or "n/a",
+					tostring(advice.recommendedMaxItems),
+					tonumber(advice.recommendedThroughput) or 0,
+					advice.msPerItem and string.format("%.3f", advice.msPerItem) or "n/a"
+				)
+			end
 		end,
 
 		describeIngestScheduler = function()
