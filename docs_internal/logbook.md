@@ -135,3 +135,27 @@
 - Treating lua-reactivex as a standalone, top-level submodule (`external/lua-reactivex`) and letting shims *prefer* it while *tolerating* an embedded copy keeps LQR focused on query logic while centralizing reactive infrastructure.
 - Relying on `loadfile` + explicit searchers for `reactivex/...` is more robust in Kahlua than trying to tweak `package.path`, which may be missing or heavily sandboxed.
 - A dedicated workshop smoke test (`pz_smoke.lua`) plus a tiny end-to-end LQR pipeline catches “works in busted, fails in-game” bugs early: missing shims, miswired requires, `io` assumptions, and subtle schema/row-view mismatches.
+
+## day6 – LQR/ingest integrated into WorldObserver (squares slice ready for in-engine testing)
+
+### Highlights
+- Integrated `LQR/ingest` as the new “admission control” boundary for WorldObserver facts:
+  - Facts now flow **ingest → buffer → drain** so bursty engine callbacks don’t immediately execute downstream LQR queries.
+  - Implemented a global ingest scheduler drained on `Events.OnTick`, with a small default budget (`maxItemsPerTick=10`) and round-robin fairness across buffers of equal priority.
+- Migrated the `squares` fact type to ingest:
+  - `Events.LoadGridsquare` and an ad-hoc `Events.EveryOneMinute` probe now call `ctx.ingest(record)` instead of pushing directly into the Rx subject.
+  - Square records are now lightweight (ids/coords/flags/timestamp/source) and do not buffer `IsoGridSquare` references.
+  - Introduced lane bias: `"probe"` work drains ahead of `"event"` work, based on the observation that chunk-load events can be large and include far-edge squares.
+- Improved in-engine diagnostics:
+  - Added debug helpers to print ingest buffer and scheduler metrics (`describeFactsMetrics`, `describeIngestScheduler`).
+  - Updated `examples/smoke_squares.lua` to print a metrics snapshot after subscribing and emit a heartbeat once per minute (received count + ingest stats) to validate draining behavior.
+
+### Lessons
+- Integrating ingest at the fact boundary makes backpressure explicit and observable; we can now reason about “pending backlog” vs “drain throughput” instead of guessing from frame drops.
+- It’s easy to accidentally “disable draining” by mis-wiring config flow; ensuring the registry sees the full config (facts + ingest scheduler settings) is essential.
+- Keeping buffered records lightweight (no live game objects) reduces risk and makes it easier to reason about correctness under backlog.
+
+### Next steps
+- Run in-engine `examples/smoke_squares.lua` and tune default budgets/caps based on real load patterns.
+- Add the next fact type (likely `zombies`) and attach it to the same global scheduler to validate cross-type fairness in practice.
+- Decide how much of the ad-hoc probe wiring should be generalized into a shared “probe scheduling” abstraction.
