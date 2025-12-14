@@ -66,13 +66,14 @@ function Debug.new(factRegistry, observationRegistry)
 				return
 			end
 			Log:info(
-				"[scheduler %s] pending=%s drained=%s dropped=%s replaced=%s drainCalls=%s",
+				"[scheduler %s] pending=%s drained=%s dropped=%s replaced=%s drainCalls=%s spentMs=%s",
 				tostring(snap.name),
 				tostring(snap.pending),
 				tostring(snap.drainedTotal),
 				tostring(snap.droppedTotal),
 				tostring(snap.replacedTotal),
-				tostring(snap.drainCallsTotal)
+				tostring(snap.drainCallsTotal),
+				snap.lastDrain and tostring(snap.lastDrain.spentMillis) or "n/a"
 			)
 		end,
 	}

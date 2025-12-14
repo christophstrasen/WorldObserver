@@ -258,9 +258,13 @@ WorldObserver should expose a small, cheap, introspection API:
   - `schedulerMaxItemsPerTick`
   - `probeEnabled` + per-probe caps (where applicable)
 - `tick`:
-  - `woAvgTickMs`, `woMaxTickMs` (window)
+  - `lastMs` (last measured WO tick cost sample)
+  - `woAvgTickMs`, `woMaxTickMs` (last completed window)
+  - `woWindowTicks`, `woWindowSpikes` (last completed window)
+  - `woTotalAvgTickMs`, `woTotalMaxTickMs` (running totals; mostly for long-lived diagnostics)
 - `ingest` (optional summary):
   - per-type: pending, dropsDelta, trend (`rising/falling/steady`)
+ - `window` (last completed controller window snapshot; duplicated in `tick.*` for convenience)
 
 ### 8.2 Runtime status events (LuaEvents)
 
@@ -293,6 +297,23 @@ Emit a single table argument:
 Notes:
 - `status` is included so listeners don’t have to call back into WorldObserver during the transition.
 - `reason` should be a stable enum-like string (see open questions), not a free-form sentence.
+
+#### Periodic report event (optional, implemented)
+
+For dashboards and “non-transition” monitoring, WorldObserver may emit periodic reports:
+
+`Events.WorldObserverRuntimeStatusReport`
+
+Payload shape:
+
+```lua
+{
+  event = "WorldObserverRuntimeStatusReport",
+  seq = 456,                -- monotonic report counter (per Lua VM)
+  nowMs = 4567890,
+  status = WorldObserver.runtime.status_get(), -- snapshot at report time
+}
+```
 
 ### 8.3 Why this matters
 
@@ -343,8 +364,7 @@ It gives mod authors a hook for self-defense:
 4. **Emergency reset scope (v1):**
    - clear ingest buffers only
    - future: consider explicit query-cache eviction if/when we have a safe API
-
-### 10.2 Still open: transition reason enums
+5. **transition reason enums (v1)**
 
 We want a small, stable set of reason strings that explain *why* the controller changed mode.
 Suggested v1 set:

@@ -169,8 +169,16 @@
 - **Chased down real-world performance cliffs:** When chunk-load bursts pushed thousands of unique squares through a short distinct window, we saw throughput collapse. The fix landed in LQR (order-based interval GC + optional batching) and directly improved the in-engine smoke test behavior.
 - **Made ingest observability cheaper and clearer:** Renamed the user-facing diagnostics tag to `WO.DIAG`, expanded the metrics line to include `load/throughput/ingestRate` for `1/5/15`, and switched fact metrics snapshots to use LQR’s light metrics in hot paths to avoid accidental O(n) work while profiling.
 - **Kept dependency direction clean:** Ensured LQR remains independent of WorldObserver (no WorldObserver flags referenced inside LQR). WorldObserver tests now set `_G.LQR_HEADLESS = true` explicitly so headless runs stay quiet without leaking domain concerns into the library.
+- **(Untested in-engine) Started the WorldObserver “runtime controller” foundation:** Implemented the first pass of a host-side policy layer that can observe WO’s own CPU cost and ingest pressure, then clamp budgets and broadcast state to consumers:
+  - A runtime controller scaffold (`WorldObserver/runtime.lua`) selects clocks, tracks per-window signals, and transitions between modes (currently `normal` ↔ `degraded`, plus `emergency` via manual reset).
+  - WorldObserver now emits LuaEvents on transitions (`WorldObserverRuntimeStatusChanged`) and periodic snapshots (`WorldObserverRuntimeStatusReport`) so downstream mods can react without polling.
+  - Tick cost measurement now counts both **drain work** (OnTick) and **probe work** (EveryOneMinute) towards the same budgets, to avoid “free” background work that can cause stutter.
+  - The controller reacts (v1) to sustained over-budget tick cost, spikes, rising ingest drops, and rising backlog, and clamps the global drain budget when degraded.
+  - Added an emergency reset hook that clears all ingest buffers and resets metrics so WO can recover from runaway load without stopping the game.
+  - Added targeted unit tests to validate transitions, periodic reports, ingest-clear behavior, and ingest-pressure-triggered degrade/recover. This is still not validated inside the real engine event loop yet.
 
 ### Lessons
 - Real-time performance debugging needs “coarse, periodic” telemetry, not per-item prints: we want to answer “where is the time going” first, then drill down.
 - Time windows only make sense when the “clock” and the record timestamps use the same units and are monotonic enough; mixing seconds and milliseconds silently creates pathological caching behavior.
 - The in-engine smoke test (`examples/smoke_squares.lua`) is already doing its job: it exposed performance characteristics (burst load + windowed operators) that are invisible in small, deterministic unit tests.
+- It’s useful to separate **mechanics** (LQR/ingest buffering/draining, metrics/advice) from **policy** (WorldObserver budgets, modes, emergency reset): the split makes it easier to keep dependencies clean and to reason about user-facing guarantees.

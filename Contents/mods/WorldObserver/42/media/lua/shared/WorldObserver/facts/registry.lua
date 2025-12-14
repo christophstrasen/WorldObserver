@@ -49,11 +49,12 @@ local function nowMillis()
 	return resolvedNowMillis()
 end
 
-local function defaultContext(entry)
+local function defaultContext(self, entry)
 	-- Lazy start hooks get a tiny context; ingest defaults to direct emit when ingest is disabled.
 	return {
 		config = entry.config or {},
 		state = entry.state,
+		runtime = self._runtime,
 		emit = function(record)
 			if record ~= nil then
 				entry.rxSubject:onNext(record)
@@ -67,7 +68,7 @@ local function defaultContext(entry)
 	}
 end
 
-function FactRegistry.new(config)
+function FactRegistry.new(config, runtime)
 	-- Registry uses a metatable for method lookup; e.g. self:register(...) resolves to FactRegistry.register.
 	-- The payload is a plain table with config/state.
 	local factsConfig = (type(config) == "table" and type(config.facts) == "table") and config.facts or config or {}
@@ -75,6 +76,8 @@ function FactRegistry.new(config)
 	local self = setmetatable({
 		_factsConfig = factsConfig or {},
 		_ingestConfig = ingestConfig or {},
+		_runtime = runtime,
+		_controllerCfg = (type(config) == "table" and type(config.runtime) == "table" and config.runtime.controller) or {},
 		_types = {},
 		_scheduler = nil,
 		_drainHookRegistered = false,
@@ -147,6 +150,10 @@ local function defaultLane(item)
 	return "default"
 end
 
+local function isHeadless()
+	return _G.WORLDOBSERVER_HEADLESS == true
+end
+
 local function buildBuffer(self, name, entry)
 	local cfg = entry.config and entry.config.ingest
 	local ingestOpts = entry.ingestOpts
@@ -192,19 +199,22 @@ local function ensureScheduler(self)
 		Log:warn("Ingest scheduler maxItemsPerTick is not a number; defaulting to 0")
 		maxItemsPerTick = 0
 	end
+	local maxMillisPerTick = schedCfg.maxMillisPerTick
+	if maxMillisPerTick ~= nil and (type(maxMillisPerTick) ~= "number" or maxMillisPerTick <= 0) then
+		maxMillisPerTick = nil
+	end
 	if maxItemsPerTick <= 0 and not isHeadless() then
 		Log:warn("Ingest scheduler maxItemsPerTick=%s; draining is disabled", tostring(maxItemsPerTick))
 	end
+	self._schedulerConfiguredMaxItems = maxItemsPerTick
+	self._schedulerConfiguredMaxMillis = maxMillisPerTick
 	self._scheduler = Ingest.scheduler({
 		name = "WorldObserver.factScheduler",
 		maxItemsPerTick = maxItemsPerTick,
 		quantum = schedCfg.quantum or 1,
+		maxMillisPerTick = maxMillisPerTick,
 	})
 	return self._scheduler
-end
-
-local function isHeadless()
-	return _G.WORLDOBSERVER_HEADLESS == true
 end
 
 local function ensureDrainHook(self)
@@ -219,8 +229,30 @@ local function ensureDrainHook(self)
 		return
 	end
 	events.OnTick.Add(function()
+		local runtime = self._runtime
+		local tickStart = nil
+		local useCpuClock = false
+		if runtime and runtime.nowCpu then
+			tickStart = runtime:nowCpu()
+			useCpuClock = type(tickStart) == "number"
+			if not useCpuClock then
+				tickStart = runtime:nowWall()
+			end
+		end
+
 		if self._scheduler then
 			self:_drainSchedulerOnce()
+		end
+
+		if runtime and type(tickStart) == "number" then
+			local tickEnd = useCpuClock and runtime:nowCpu() or runtime:nowWall()
+			if type(tickEnd) == "number" and tickEnd >= tickStart then
+				-- Count all work the registry performs on OnTick (drain + emit) as part of WO tick cost.
+				local tickMs = tickEnd - tickStart
+				runtime:recordTick(tickMs)
+				-- Feed the controller every tick; it will aggregate into windows.
+				runtime:controller_tick({ tickMs = tickMs })
+			end
 		end
 	end)
 	self._drainHookRegistered = true
@@ -229,7 +261,7 @@ end
 function FactRegistry:onSubscribe(name)
 	local entry = ensureEntry(self, name, true)
 	if not entry.started and type(entry.start) == "function" then
-		local ctx = defaultContext(entry)
+		local ctx = defaultContext(self, entry)
 		-- Enable ingest when configured for this type.
 		if entry.config and entry.config.ingest and entry.config.ingest.enabled and entry.ingestOpts then
 			entry.buffer = entry.buffer or buildBuffer(self, name, entry)
@@ -299,6 +331,17 @@ function FactRegistry:_drainSchedulerOnce()
 	if not self._scheduler then
 		return
 	end
+
+	-- Apply runtime-derived budgets if present.
+	local status = self._runtime and self._runtime.status_get and self._runtime:status_get() or nil
+	local budgetOverride = status and status.budgets and status.budgets.schedulerMaxItemsPerTick
+	if type(budgetOverride) == "number" and budgetOverride > 0 then
+		self._scheduler.maxItemsPerTick = budgetOverride
+	else
+		self._scheduler.maxItemsPerTick = self._schedulerConfiguredMaxItems or self._scheduler.maxItemsPerTick
+	end
+	self._scheduler.maxMillisPerTick = self._schedulerConfiguredMaxMillis
+
 	local diag = self._ingestDiag
 	if diag then
 		diag.ticks = (diag.ticks or 0) + 1
@@ -309,23 +352,49 @@ function FactRegistry:_drainSchedulerOnce()
 	if type(budget) ~= "number" then
 		budget = 0
 	end
-	if budget <= 0 then
+	local budgetMs = self._scheduler.maxMillisPerTick or 0
+	if type(budgetMs) ~= "number" then
+		budgetMs = 0
+	end
+	if budget <= 0 and budgetMs <= 0 then
 		-- Avoid spamming: warn at most once per report window.
 		if diag and diag.windowWarnedBudgetTick ~= diag.ticks and not isHeadless() then
 			diag.windowWarnedBudgetTick = diag.ticks
-			IngestLog:warn("Scheduler budget is <= 0; skipping drain (maxItemsPerTick=%s)", tostring(self._scheduler.maxItemsPerTick))
+			IngestLog:warn(
+				"Scheduler budgets are <= 0; skipping drain (maxItemsPerTick=%s, maxMillisPerTick=%s)",
+				tostring(self._scheduler.maxItemsPerTick),
+				tostring(self._scheduler.maxMillisPerTick)
+			)
 		end
 		return
 	end
 
-	local startMs = nowMillis()
+	-- Choose a single timing source for this drain call (avoid mixing clocks via per-call fallbacks).
+	local nowFn = nil
+	local startMs = nil
+	if self._runtime and self._runtime.nowWall then
+		local t0 = self._runtime:nowWall()
+		if type(t0) == "number" then
+			startMs = t0
+			nowFn = function()
+				return self._runtime:nowWall()
+			end
+		end
+	end
+	if not nowFn then
+		local t0 = nowMillis()
+		if type(t0) == "number" then
+			startMs = t0
+			nowFn = nowMillis
+		end
+	end
 	local emitMs = 0
-	local emitTimed = type(startMs) == "number"
+	local emitTimed = nowFn ~= nil and type(startMs) == "number"
 	local processed = 0
 
 	local function handle(item)
 		if item then
-			local t0 = emitTimed and nowMillis() or nil
+			local t0 = emitTimed and nowFn() or nil
 			local emitFn = item.__emit
 			local record = item.payload or item
 			if emitFn then
@@ -333,22 +402,36 @@ function FactRegistry:_drainSchedulerOnce()
 			end
 			processed = processed + 1
 			if emitTimed then
-				local t1 = nowMillis()
+				local t1 = nowFn()
 				if type(t0) == "number" and type(t1) == "number" and t1 >= t0 then
 					emitMs = emitMs + (t1 - t0)
+				else
+					emitTimed = false
 				end
 			end
 		end
 	end
 
 	-- Pass nowMillis through so ingest buffers can compute load/throughput metrics in PZ (os.clock may be missing).
-	local stats = self._scheduler:drainTick(handle, { nowMillis = nowMillis }) or {}
+	local function wallNow()
+		if self._runtime and self._runtime.nowWall then
+			return self._runtime:nowWall()
+		end
+		return nowMillis()
+	end
+
+	local stats = self._scheduler:drainTick(handle, {
+		nowMillis = wallNow,
+		maxMillisPerTick = (budgetMs > 0) and budgetMs or nil,
+	}) or {}
 
 	local drainMs = nil
 	if emitTimed then
-		local endMs = nowMillis()
+		local endMs = nowFn()
 		if type(endMs) == "number" and endMs >= startMs then
 			drainMs = endMs - startMs
+		else
+			emitTimed = false
 		end
 	end
 
@@ -401,6 +484,33 @@ end
 ---Helper to drain the scheduler once (intended for headless/tests).
 function FactRegistry:drainOnceForTests()
 	self:_drainSchedulerOnce()
+end
+
+--- Clear all ingest buffers (pending items) without tearing down subscriptions.
+--- Intended for emergency reset and tests.
+--- @return table
+function FactRegistry:ingest_clearAll()
+	local clearedBuffers = 0
+	for _, entry in pairs(self._types) do
+		if entry.buffer and entry.buffer.clear then
+			entry.buffer:clear()
+			clearedBuffers = clearedBuffers + 1
+		end
+	end
+	if self._scheduler and self._scheduler.metrics_reset then
+		self._scheduler:metrics_reset()
+	end
+	-- Reset local diagnostics window so next report isn't misleading.
+	if self._ingestDiag then
+		self._ingestDiag.windowTicks = 0
+		self._ingestDiag.windowDrainCalls = 0
+		self._ingestDiag.windowProcessed = 0
+		self._ingestDiag.windowDrainMs = 0
+		self._ingestDiag.windowEmitMs = 0
+		self._ingestDiag.windowMaxDrainMs = 0
+		self._ingestDiag.windowWarnedBudgetTick = 0
+	end
+	return { clearedBuffers = clearedBuffers }
 end
 
 ---Return ingest metrics for a fact type when enabled.

@@ -12,11 +12,13 @@ _G.WORLDOBSERVER_HEADLESS = true
 _G.LQR_HEADLESS = true
 
 local FactRegistry = require("WorldObserver/facts/registry")
+local Runtime = require("WorldObserver/runtime")
 
 describe("FactRegistry with ingest", function()
 	it("buffers and drains through the scheduler when enabled", function()
 		local received = {}
 
+		local runtime = Runtime.new({ windowTicks = 5, reportEveryWindows = 0 })
 		local registry = FactRegistry.new({
 			ingest = {
 				scheduler = {
@@ -33,7 +35,7 @@ describe("FactRegistry with ingest", function()
 					priority = 1,
 				},
 			},
-		})
+		}, runtime)
 
 		registry:register("testfacts", {
 			ingest = {
@@ -70,5 +72,59 @@ describe("FactRegistry with ingest", function()
 
 		assert.is.equal(1, #received)
 		assert.is.equal(1, received[1].id)
+	end)
+
+	it("emergency reset clears ingest buffers and resets metrics", function()
+		local runtime = Runtime.new({ windowTicks = 2, reportEveryWindows = 0 })
+		local registry = FactRegistry.new({
+			ingest = {
+				scheduler = {
+					maxItemsPerTick = 0, -- keep pending; we will clear via emergency reset
+					quantum = 1,
+				},
+			},
+			testfacts = {
+				ingest = {
+					enabled = true,
+					mode = "latestByKey",
+					capacity = 10,
+					ordering = "fifo",
+					priority = 1,
+				},
+			},
+		}, runtime)
+
+		registry:register("testfacts", {
+			ingest = {
+				mode = "latestByKey",
+				key = function(item)
+					return item.id
+				end,
+			},
+			start = function(ctx)
+				-- Enqueue a few items; they should remain pending because scheduler budget is 0.
+				for id = 1, 3 do
+					ctx.ingest({ id = id })
+				end
+			end,
+		})
+
+		registry:getObservable("testfacts"):subscribe(function() end)
+		registry:onSubscribe("testfacts")
+
+		local before = registry:getIngestMetrics("testfacts")
+		assert.is.truthy(before)
+		assert.is_true((before.pending or 0) > 0)
+
+		runtime:emergency_reset({
+			onReset = function()
+				registry:ingest_clearAll()
+			end,
+		})
+
+		local after = registry:getIngestMetrics("testfacts")
+		assert.is.truthy(after)
+		assert.is.equal(0, after.pending or 0)
+		assert.is.equal(0, after.totals and after.totals.ingestedTotal or -1)
 	end)
 end)

@@ -26,9 +26,21 @@ local ObservationsCore = require("WorldObserver/observations/core")
 local SquaresObservations = require("WorldObserver/observations/squares")
 local SquareHelpers = require("WorldObserver/helpers/square")
 local Debug = require("WorldObserver/debug")
+local Runtime = require("WorldObserver/runtime")
 
 local config = Config.load()
-local factRegistry = FactRegistry.new(config)
+local runtime = Runtime.new(config.runtime and config.runtime.controller or {})
+local factRegistry = FactRegistry.new(config, runtime)
+
+-- Convenience: emergency reset that clears ingest buffers (pending items) and emits a runtime status change.
+function runtime:emergency_resetIngest()
+	return self:emergency_reset({
+		onReset = function()
+			factRegistry:ingest_clearAll()
+		end,
+	})
+end
+
 SquaresFacts.register(factRegistry, config)
 
 local observationRegistry = ObservationsCore.new({
@@ -49,8 +61,10 @@ local WorldObserver = {
 	},
 	debug = Debug.new(factRegistry, observationRegistry),
 	nextObservationId = ObservationsCore.nextObservationId,
+	runtime = runtime,
 	_internal = {
 		-- Expose internals for tests and advanced users until a fuller API exists.
+		runtime = runtime,
 		facts = factRegistry,
 		observationRegistry = observationRegistry,
 	},

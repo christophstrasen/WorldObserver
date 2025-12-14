@@ -36,6 +36,17 @@ local function defaults()
 			scheduler = {
 				maxItemsPerTick = 10,
 				quantum = 1,
+				maxMillisPerTick = nil, -- optional ms budget (requires wall-clock); when nil, only item budget is used
+			},
+		},
+		runtime = {
+			controller = {
+				-- Target tick budgets (ms, CPU-time-ish) for WorldObserver work.
+				tickBudgetMs = 4, -- soft budget for WO drain+probes per tick
+				tickSpikeBudgetMs = 8, -- spike detector threshold
+				windowTicks = 60, -- how many ticks per controller window (~1s at 60fps)
+				reportEveryWindows = 10, -- how often to emit status events (in windows)
+				degradedMaxItemsPerTick = 5, -- clamp for scheduler when degraded (item budget fallback)
 			},
 		},
 	}
@@ -81,6 +92,11 @@ local function applyOverrides(target, overrides)
 	if type(overrides.ingest) == "table" and type(overrides.ingest.scheduler) == "table" then
 		for k, v in pairs(overrides.ingest.scheduler) do
 			target.ingest.scheduler[k] = v
+		end
+	end
+	if type(overrides.runtime) == "table" and type(overrides.runtime.controller) == "table" then
+		for k, v in pairs(overrides.runtime.controller) do
+			target.runtime.controller[k] = v
 		end
 	end
 end

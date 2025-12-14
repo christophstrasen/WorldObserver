@@ -203,7 +203,7 @@ local function runNearPlayersProbe(emitFn, budget)
 	end
 end
 
-local function registerProbe(state, emitFn, budgetPerRun, headless)
+local function registerProbe(state, emitFn, budgetPerRun, headless, runtime)
 	local events = _G.Events
 	if not events or type(events.EveryOneMinute) ~= "table" or type(events.EveryOneMinute.Add) ~= "function" then
 		if not headless then
@@ -217,7 +217,26 @@ local function registerProbe(state, emitFn, budgetPerRun, headless)
 	end
 
 	local fn = function()
+		local t0, useCpu = nil, false
+		if runtime then
+			t0 = runtime:nowCpu()
+			useCpu = type(t0) == "number"
+			if not useCpu then
+				t0 = runtime:nowWall()
+			end
+		end
+
 		runNearPlayersProbe(emitFn, budgetPerRun)
+
+		if runtime and type(t0) == "number" then
+			local t1 = useCpu and runtime:nowCpu() or runtime:nowWall()
+			if type(t1) == "number" and t1 >= t0 then
+				-- Count probe time toward WO budgets; this prevents probe work from being "free" compared to drain work.
+				local dt = t1 - t0
+				runtime:recordTick(dt)
+				runtime:controller_tick({ tickMs = dt })
+			end
+		end
 	end
 	events.EveryOneMinute.Add(fn)
 	state.everyOneMinuteHandler = fn
@@ -268,7 +287,7 @@ function Squares.register(registry, config)
 			local listenerRegistered = registerOnLoadGridSquare(state, countedEmit)
 			local probeRegistered = false
 			if probeEnabled then
-				probeRegistered = registerProbe(state, countedEmit, probeMaxPerRun, headless)
+				probeRegistered = registerProbe(state, countedEmit, probeMaxPerRun, headless, ctx.runtime)
 			end
 
 			if not listenerRegistered and not headless then
