@@ -39,6 +39,11 @@ necessarily what is implemented today.
 - **Out of scope:** no GUI builder, no on‑disk query language, no visual editor.
   The primary interface is Lua code.
 
+## Architectural boundaries
+
+- WorldObserver is the domain layer. LQR is a reusable library dependency.
+- Dependency direction is one-way: WorldObserver may depend on LQR, but LQR must never depend on WorldObserver (no WorldObserver-specific flags, globals, or configuration inside LQR code).
+
 ---
 
 ## Core concepts

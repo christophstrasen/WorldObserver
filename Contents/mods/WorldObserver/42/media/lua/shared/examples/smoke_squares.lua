@@ -1,9 +1,9 @@
--- smoke_squares.lua -- console-friendly smoke test for WorldObserver squares.
+-- smoke_squares.lua — console-friendly smoke test for WorldObserver squares.
 -- Usage in PZ console:
---[[ 
-	smoke = require("examples/smoke_squares")
- 	handle = smoke.start({ distinctSeconds = 2, withHelpers = true })
-	later: handle:stop()
+--[[ @AI agent dont change this
+   smoke = require("examples/smoke_squares")
+   handle = smoke.start({ distinctSeconds = 2, withHelpers = true })
+   handle:stop()
 ]]
 --
 
@@ -12,7 +12,8 @@ Log.setLevel("info")
 
 local SmokeSquares = {}
 
-local function fmt(observation)
+-- Pretty-printer for a square observation row.
+local function formatSquare(observation)
 	local sq = observation.square or {}
 	return ("[square] id=%s x=%s y=%s z=%s source=%s blood=%s corpse=%s trash=%s time=%s"):format(
 		tostring(sq.squareId),
@@ -27,10 +28,12 @@ local function fmt(observation)
 	)
 end
 
+-- Subscribe to the squares stream with optional filters and a heartbeat.
 function SmokeSquares.start(opts)
 	local WorldObserver = require("WorldObserver")
 	opts = opts or {}
 
+	-- Build stream.
 	local stream = WorldObserver.observations.squares()
 	if opts.distinctSeconds then
 		stream = stream:distinct("square", opts.distinctSeconds)
@@ -46,13 +49,14 @@ function SmokeSquares.start(opts)
 		tostring(opts.withHelpers)
 	)
 
+	-- Subscribe and print rows.
 	local receivedCount = 0
 	local subscription = stream:subscribe(function(observation)
 		receivedCount = receivedCount + 1
-		print(fmt(observation))
+		print(formatSquare(observation))
 	end)
 
-	-- Emit a small diagnostic snapshot after subscribing so we can confirm ingest buffering/draining is active in-engine.
+	-- One-off ingest diagnostics right after subscribing.
 	if WorldObserver.debug and WorldObserver.debug.describeFactsMetrics then
 		WorldObserver.debug.describeFactsMetrics("squares")
 	end
@@ -60,7 +64,7 @@ function SmokeSquares.start(opts)
 		WorldObserver.debug.describeIngestScheduler()
 	end
 
-	-- Optional heartbeat: once per minute, print ingest metrics + how many rows reached this smoke subscriber.
+	-- Optional heartbeat once per minute.
 	local heartbeatFn = nil
 	local events = _G.Events
 	if events and events.EveryOneMinute and type(events.EveryOneMinute.Add) == "function" then
@@ -82,7 +86,12 @@ function SmokeSquares.start(opts)
 				subscription:unsubscribe()
 				Log.info("[smoke] squares subscription stopped")
 			end
-			if heartbeatFn and events and events.EveryOneMinute and type(events.EveryOneMinute.Remove) == "function" then
+			if
+				heartbeatFn
+				and events
+				and events.EveryOneMinute
+				and type(events.EveryOneMinute.Remove) == "function"
+			then
 				pcall(events.EveryOneMinute.Remove, events.EveryOneMinute, heartbeatFn)
 			end
 		end,

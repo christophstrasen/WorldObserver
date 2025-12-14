@@ -48,7 +48,7 @@ function Debug.new(factRegistry, observationRegistry)
 				return
 			end
 			Log:info(
-				"[scheduler:%s] pending=%s drained=%s dropped=%s replaced=%s drainCalls=%s",
+				"[scheduler %s] pending=%s drained=%s dropped=%s replaced=%s drainCalls=%s",
 				tostring(snap.name),
 				tostring(snap.pending),
 				tostring(snap.drainedTotal),

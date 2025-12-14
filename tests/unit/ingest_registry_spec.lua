@@ -9,6 +9,7 @@ package.path = table.concat({
 }, ";")
 
 _G.WORLDOBSERVER_HEADLESS = true
+_G.LQR_HEADLESS = true
 
 local FactRegistry = require("WorldObserver/facts/registry")
 

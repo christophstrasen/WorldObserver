@@ -9,6 +9,47 @@ local ObservationStream = {}
 local BaseMethods = {}
 BaseMethods.__index = BaseMethods -- let streams inherit BaseMethods via metatable lookup
 
+local resolvedNowMillis = nil
+local function resolveNowMillis()
+	local gameTime = _G.getGameTime
+	if type(gameTime) == "function" then
+		local ok, timeObj = pcall(gameTime)
+		if ok and timeObj and type(timeObj.getTimeCalendar) == "function" then
+			local okCal, cal = pcall(timeObj.getTimeCalendar, timeObj)
+			if okCal and cal and type(cal.getTimeInMillis) == "function" then
+				resolvedNowMillis = function()
+					local t = gameTime()
+					local c = t:getTimeCalendar()
+					return c:getTimeInMillis()
+				end
+				return
+			end
+		end
+	end
+	if type(os.clock) == "function" then
+		resolvedNowMillis = function()
+			return os.clock() * 1000
+		end
+		return
+	end
+	if type(os.time) == "function" then
+		resolvedNowMillis = function()
+			return os.time() * 1000
+		end
+		return
+	end
+	resolvedNowMillis = function()
+		return nil
+	end
+end
+
+local function nowMillis()
+	if not resolvedNowMillis then
+		resolveNowMillis()
+	end
+	return resolvedNowMillis()
+end
+
 local function cloneTable(tbl)
 	local out = {}
 	for key, value in pairs(tbl or {}) do
@@ -80,10 +121,13 @@ function BaseMethods:distinct(dimension, seconds)
 	local window
 	if seconds ~= nil then
 		assert(type(seconds) == "number" and seconds >= 0, "distinct seconds must be a non-negative number")
+		-- LQR time windows are expressed in the same units as RxMeta.sourceTime; WorldObserver uses ms timestamps.
+		local offsetMillis = seconds * 1000
 		window = {
 			mode = "interval",
-			time = seconds,
+			time = offsetMillis,
 			field = "sourceTime",
+			currentFn = nowMillis,
 		}
 	end
 

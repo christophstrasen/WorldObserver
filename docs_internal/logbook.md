@@ -159,3 +159,17 @@
 - Run in-engine `examples/smoke_squares.lua` and tune default budgets/caps based on real load patterns.
 - Add the next fact type (likely `zombies`) and attach it to the same global scheduler to validate cross-type fairness in practice.
 - Decide how much of the ad-hoc probe wiring should be generalized into a shared “probe scheduling” abstraction.
+
+## day7 – In-engine profiling loop: throughput, distinct windows, and less noisy logs
+
+### Highlights
+- **Added practical runtime diagnostics for ingest draining:** Introduced periodic “tick window” summaries (drain time vs. emit/subscriber time + GC footprint) so we can distinguish “ingest overhead” from “downstream query cost” without spamming per-item logs.
+- **Fixed time-window correctness in WorldObserver distinct:** Aligned `observations.core:distinct(dimension, seconds)` with the ms-based `RxMeta.sourceTime` convention by using millisecond offsets and a millisecond `currentFn`, preventing distinct time windows from behaving unpredictably in-engine.
+- **Reduced log volume and improved readability:** Moved per-record query filter logging (`where`) to debug-only and reduced squares ingest progress logs to every 100 records to keep info-level output usable during real gameplay testing.
+- **Chased down real-world performance cliffs:** When chunk-load bursts pushed thousands of unique squares through a short distinct window, we saw throughput collapse. The fix landed in LQR (order-based interval GC + optional batching) and directly improved the in-engine smoke test behavior.
+- **Kept dependency direction clean:** Ensured LQR remains independent of WorldObserver (no WorldObserver flags referenced inside LQR). WorldObserver tests now set `_G.LQR_HEADLESS = true` explicitly so headless runs stay quiet without leaking domain concerns into the library.
+
+### Lessons
+- Real-time performance debugging needs “coarse, periodic” telemetry, not per-item prints: we want to answer “where is the time going” first, then drill down.
+- Time windows only make sense when the “clock” and the record timestamps use the same units and are monotonic enough; mixing seconds and milliseconds silently creates pathological caching behavior.
+- The in-engine smoke test (`examples/smoke_squares.lua`) is already doing its job: it exposed performance characteristics (burst load + windowed operators) that are invisible in small, deterministic unit tests.

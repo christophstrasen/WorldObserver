@@ -2,9 +2,52 @@
 local rx = require("reactivex")
 local Ingest = require("LQR/ingest")
 local Log = require("LQR/util/log").withTag("WO.FACTS")
+local IngestLog = require("LQR/util/log").withTag("WO.INGEST")
 
 local FactRegistry = {}
 FactRegistry.__index = FactRegistry -- registry instances resolve methods from this table via metatable lookup
+
+local resolvedNowMillis = nil
+local function resolveNowMillis()
+	local gameTime = _G.getGameTime
+	if type(gameTime) == "function" then
+		local ok, timeObj = pcall(gameTime)
+		if ok and timeObj and type(timeObj.getTimeCalendar) == "function" then
+			local okCal, cal = pcall(timeObj.getTimeCalendar, timeObj)
+			if okCal and cal and type(cal.getTimeInMillis) == "function" then
+				resolvedNowMillis = function()
+					-- Intentionally no pcall here: we validate the call shape once and keep the hot path cheap.
+					local t = gameTime()
+					local c = t:getTimeCalendar()
+					return c:getTimeInMillis()
+				end
+				return
+			end
+		end
+	end
+	if type(os.clock) == "function" then
+		resolvedNowMillis = function()
+			return os.clock() * 1000
+		end
+		return
+	end
+	if type(os.time) == "function" then
+		resolvedNowMillis = function()
+			return os.time() * 1000
+		end
+		return
+	end
+	resolvedNowMillis = function()
+		return nil
+	end
+end
+
+local function nowMillis()
+	if not resolvedNowMillis then
+		resolveNowMillis()
+	end
+	return resolvedNowMillis()
+end
 
 local function defaultContext(entry)
 	-- Lazy start hooks get a tiny context; ingest defaults to direct emit when ingest is disabled.
@@ -35,6 +78,17 @@ function FactRegistry.new(config)
 		_types = {},
 		_scheduler = nil,
 		_drainHookRegistered = false,
+		_ingestDiag = {
+			ticks = 0,
+			reportEveryTicks = 300, -- ~5s at 60fps; intentionally coarse to avoid spam.
+			windowTicks = 0,
+			windowDrainCalls = 0,
+			windowProcessed = 0,
+			windowDrainMs = 0,
+			windowEmitMs = 0,
+			windowMaxDrainMs = 0,
+			windowWarnedBudgetTick = 0,
+		},
 	}, FactRegistry)
 	return self
 end
@@ -245,15 +299,103 @@ function FactRegistry:_drainSchedulerOnce()
 	if not self._scheduler then
 		return
 	end
-	self._scheduler:drainTick(function(item)
+	local diag = self._ingestDiag
+	if diag then
+		diag.ticks = (diag.ticks or 0) + 1
+		diag.windowTicks = (diag.windowTicks or 0) + 1
+	end
+
+	local budget = self._scheduler.maxItemsPerTick or 0
+	if type(budget) ~= "number" then
+		budget = 0
+	end
+	if budget <= 0 then
+		-- Avoid spamming: warn at most once per report window.
+		if diag and diag.windowWarnedBudgetTick ~= diag.ticks and not isHeadless() then
+			diag.windowWarnedBudgetTick = diag.ticks
+			IngestLog:warn("Scheduler budget is <= 0; skipping drain (maxItemsPerTick=%s)", tostring(self._scheduler.maxItemsPerTick))
+		end
+		return
+	end
+
+	local startMs = nowMillis()
+	local emitMs = 0
+	local emitTimed = type(startMs) == "number"
+	local processed = 0
+
+	local function handle(item)
 		if item then
+			local t0 = emitTimed and nowMillis() or nil
 			local emitFn = item.__emit
 			local record = item.payload or item
 			if emitFn then
 				emitFn(record)
 			end
+			processed = processed + 1
+			if emitTimed then
+				local t1 = nowMillis()
+				if type(t0) == "number" and type(t1) == "number" and t1 >= t0 then
+					emitMs = emitMs + (t1 - t0)
+				end
+			end
 		end
-	end)
+	end
+
+	-- Pass nowMillis through so ingest buffers can compute load/throughput metrics in PZ (os.clock may be missing).
+	local stats = self._scheduler:drainTick(handle, { nowMillis = nowMillis }) or {}
+
+	local drainMs = nil
+	if emitTimed then
+		local endMs = nowMillis()
+		if type(endMs) == "number" and endMs >= startMs then
+			drainMs = endMs - startMs
+		end
+	end
+
+	if diag then
+		diag.windowDrainCalls = (diag.windowDrainCalls or 0) + 1
+		diag.windowProcessed = (diag.windowProcessed or 0) + (stats.processed or processed or 0)
+		diag.windowEmitMs = (diag.windowEmitMs or 0) + emitMs
+		if type(drainMs) == "number" then
+			diag.windowDrainMs = (diag.windowDrainMs or 0) + drainMs
+			if drainMs > (diag.windowMaxDrainMs or 0) then
+				diag.windowMaxDrainMs = drainMs
+			end
+		end
+
+		local reportEveryTicks = diag.reportEveryTicks or 300
+		if reportEveryTicks > 0 and (diag.windowTicks or 0) >= reportEveryTicks then
+			local gcKb = (type(collectgarbage) == "function") and collectgarbage("count") or nil
+			local processedTotal = diag.windowProcessed or 0
+			local drainTotalMs = diag.windowDrainMs or 0
+			local emitTotalMs = diag.windowEmitMs or 0
+			local overheadMs = drainTotalMs - emitTotalMs
+			if overheadMs < 0 then
+				overheadMs = 0
+			end
+			local avgMsPerItem = processedTotal > 0 and (drainTotalMs / processedTotal) or nil
+
+			IngestLog:info(
+				"tick window ticks=%s drainCalls=%s processed=%s drainMs=%.1f emitMs=%.1f overheadMs=%.1f avgMsPerItem=%s gcKb=%s",
+				tostring(diag.windowTicks),
+				tostring(diag.windowDrainCalls),
+				tostring(processedTotal),
+				tonumber(drainTotalMs) or 0,
+				tonumber(emitTotalMs) or 0,
+				tonumber(overheadMs) or 0,
+				avgMsPerItem and string.format("%.3f", avgMsPerItem) or "n/a",
+				gcKb and string.format("%.0f", gcKb) or "n/a"
+			)
+
+			diag.windowTicks = 0
+			diag.windowDrainCalls = 0
+			diag.windowProcessed = 0
+			diag.windowDrainMs = 0
+			diag.windowEmitMs = 0
+			diag.windowMaxDrainMs = 0
+			diag.windowWarnedBudgetTick = 0
+		end
+	end
 end
 
 ---Helper to drain the scheduler once (intended for headless/tests).

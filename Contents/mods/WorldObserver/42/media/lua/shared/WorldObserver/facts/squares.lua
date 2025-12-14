@@ -260,7 +260,7 @@ function Squares.register(registry, config)
 					return
 				end
 				emitCount = emitCount + 1
-				if emitCount % 50 == 0 then
+				if emitCount % 100 == 0 then
 					Log:info("Squares ingested %s records so far", tostring(emitCount))
 				end
 				return originalEmit(record)

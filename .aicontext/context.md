@@ -45,6 +45,10 @@ If repo guidance conflicts, flag it and ask; don’t guess past ambiguities. Upd
 - `external/LQR` (git submodule) — upstream https://github.com/christophstrasen/LQR, full checkout. Lua sources live under `external/LQR/LQR/`.
 - For Zomboid runtime (no `package.path` tweaks), the shipped mod must include the LQR Lua folder under `Contents/mods/WorldObserver/42/media/lua/shared/LQR/`; ensure git metadata is stripped when packaging/syncing.
 
+## Dependency Direction
+- WorldObserver depends on LQR; LQR must not depend on WorldObserver (no references to WorldObserver globals/config inside LQR).
+- When WorldObserver runs LQR in headless/busted contexts, tests should set `_G.LQR_HEADLESS = true` to suppress expected warnings.
+
 ## Tech Stack & Environment
 - **Language(s):** Lua 5.1 (Build 42) on kahlua vm, optional shell tooling inncluding `busted` for testing. 
 - **Target runtime:** Project Zomboid Build 42 only but busted tests must be runnnable also outside engine
