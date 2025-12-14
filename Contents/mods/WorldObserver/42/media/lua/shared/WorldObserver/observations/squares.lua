@@ -1,5 +1,5 @@
 -- observations/squares.lua -- wraps square facts into a SquareObservation stream and exposes it as observation.square.
--- This is the base stream used in the MVP examples (blood near player, squareNeedsCleaning in api_proposal.md §5.5).
+-- This is the base stream used in the MVP examples (blood near player, whereSquareNeedsCleaning in api_proposal.md §5.5).
 local LQR = require("LQR")
 local Log = require("LQR/util/log").withTag("WO.OBS.squares")
 local Query = LQR.Query
@@ -20,7 +20,7 @@ function SquaresObservation.register(observationRegistry, factRegistry, nextObse
 		build = function()
 			local facts = factRegistry:getObservable("squares")
 			-- Stamp facts with a per-observation id and sourceTime before feeding LQR, then expose as observation.square.
-			-- Heloers we enabled (squareHasBloodSplat/squareNeedsCleaning) assume this schema and id.
+			-- Heloers we enabled (squareHasBloodSplat/whereSquareNeedsCleaning) assume this schema and id.
 			local wrapped = Schema.wrap("SquareObservation", facts, {
 				idSelector = nextObservationId,
 				sourceTimeField = "observedAtTimeMS",

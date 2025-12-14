@@ -13,16 +13,17 @@ local function squareField(observation, fieldName)
 end
 
 local function squareHasCorpse(square)
+	local IsoSquare = square.IsoSquare
 	-- Support both shapes:
 	-- - WorldObserver square records (preferred): precomputed boolean fields
 	-- - Vanilla IsoGridSquare (fallback): compute via API calls
 	if type(square) == "table" and square.hasCorpse ~= nil then
 		return square.hasCorpse == true
 	end
-	if type(square) == "userdata" and type(square.getDeadBody) == "function" then
+	if type(IsoSquare) == "userdata" and type(IsoSquare.getDeadBody) == "function" then
 		-- IsoGridSquare:getDeadBody() returns one body (or nil), getDeadBodys() returns a List.
 		-- Prefer getDeadBody() as the cheapest "any corpse?" check.
-		local ok, body = pcall(square.getDeadBody, square)
+		local ok, body = pcall(IsoSquare.getDeadBody, IsoSquare)
 		return ok and body ~= nil
 	end
 	return false
@@ -47,7 +48,8 @@ function SquareHelpers.squareHasBloodSplat(stream, fieldName)
 	end)
 end
 
-function SquareHelpers.squareNeedsCleaning(stream, fieldName)
+-- Filter-style helper: returns a filtered stream (not a boolean).
+function SquareHelpers.whereSquareNeedsCleaning(stream, fieldName)
 	local target = fieldName or "square"
 	return stream:filter(function(observation)
 		local square = squareField(observation, target)
@@ -65,12 +67,27 @@ function SquareHelpers.squareNeedsCleaning(stream, fieldName)
 	end)
 end
 
+-- Backwards-compat alias kept for older docs/examples.
+function SquareHelpers.squareNeedsCleaning(stream, fieldName)
+	return SquareHelpers.whereSquareNeedsCleaning(stream, fieldName)
+end
+
 local GRASS_PREFIX = "blends_natural"
 
 local KNOWN_HEDGE_SPRITES = {
 	-- Tall Hedge sprites. (Keep this list small and curated.)
 	vegetation_ornamental_01_0 = true,
 	vegetation_ornamental_01_1 = true,
+	vegetation_ornamental_01_2 = true,
+	vegetation_ornamental_01_3 = true,
+	vegetation_ornamental_01_4 = true,
+	vegetation_ornamental_01_5 = true,
+	vegetation_ornamental_01_6 = true,
+	vegetation_ornamental_01_7 = true,
+	vegetation_ornamental_01_10 = true,
+	vegetation_ornamental_01_11 = true,
+	vegetation_ornamental_01_12 = true,
+	vegetation_ornamental_01_13 = true,
 }
 
 function SquareHelpers.squareHasHedge(square)

@@ -68,20 +68,23 @@ local function defaultContext(self, entry)
 	}
 end
 
-function FactRegistry.new(config, runtime)
-	-- Registry uses a metatable for method lookup; e.g. self:register(...) resolves to FactRegistry.register.
-	-- The payload is a plain table with config/state.
-	local factsConfig = (type(config) == "table" and type(config.facts) == "table") and config.facts or config or {}
-	local ingestConfig = (type(config) == "table" and type(config.ingest) == "table") and config.ingest or (config and config.ingest) or {}
-	local self = setmetatable({
-		_factsConfig = factsConfig or {},
-		_ingestConfig = ingestConfig or {},
-		_runtime = runtime,
-		_controllerCfg = (type(config) == "table" and type(config.runtime) == "table" and config.runtime.controller) or {},
-		_types = {},
-		_scheduler = nil,
-		_drainHookRegistered = false,
-		_ingestDiag = {
+	function FactRegistry.new(config, runtime, hooks)
+		-- Registry uses a metatable for method lookup; e.g. self:register(...) resolves to FactRegistry.register.
+		-- The payload is a plain table with config/state.
+		local factsConfig = (type(config) == "table" and type(config.facts) == "table") and config.facts or config or {}
+		local ingestConfig = (type(config) == "table" and type(config.ingest) == "table") and config.ingest or (config and config.ingest) or {}
+		hooks = hooks or {}
+		local self = setmetatable({
+			_factsConfig = factsConfig or {},
+			_ingestConfig = ingestConfig or {},
+			_runtime = runtime,
+			_controllerCfg = (type(config) == "table" and type(config.runtime) == "table" and config.runtime.controller) or {},
+			_hooks = hooks,
+			_globalSubscribers = 0,
+			_types = {},
+			_scheduler = nil,
+			_drainHookRegistered = false,
+			_ingestDiag = {
 			ticks = 0,
 			reportEveryTicks = 300, -- ~5s at 60fps; intentionally coarse to avoid spam.
 			windowTicks = 0,
@@ -129,6 +132,15 @@ end
 
 function FactRegistry:hasType(name)
 	return self._types[name] ~= nil
+end
+
+function FactRegistry:listFactTypes()
+	local out = {}
+	for name in pairs(self._types) do
+		out[#out + 1] = name
+	end
+	table.sort(out)
+	return out
 end
 
 local function ensureEntry(self, name, ensureSubject)
@@ -251,15 +263,23 @@ local function ensureDrainHook(self)
 				local tickMs = tickEnd - tickStart
 				runtime:recordTick(tickMs)
 				-- Feed the controller every tick; it will aggregate into windows.
-				runtime:controller_tick({ tickMs = tickMs })
+				runtime:controller_tick({
+					tickMs = tickMs,
+					ingestPending = self._controllerIngestPending or 0,
+					ingestDropped = self._controllerIngestDroppedDelta or 0,
+					ingestTrend = self._controllerTrend,
+					ingestFill = self._controllerFillRatio,
+					ingestThroughput15 = self._controllerThroughput15,
+					ingestIngestRate15 = self._controllerIngestRate15,
+				})
 			end
 		end
 	end)
 	self._drainHookRegistered = true
 end
 
-function FactRegistry:onSubscribe(name)
-	local entry = ensureEntry(self, name, true)
+	function FactRegistry:onSubscribe(name)
+		local entry = ensureEntry(self, name, true)
 	if not entry.started and type(entry.start) == "function" then
 		local ctx = defaultContext(self, entry)
 		-- Enable ingest when configured for this type.
@@ -293,25 +313,47 @@ function FactRegistry:onSubscribe(name)
 			entry.started = true
 		end
 	end
-	entry.subscribers = (entry.subscribers or 0) + 1
+		entry.subscribers = (entry.subscribers or 0) + 1
+		local prevGlobal = self._globalSubscribers or 0
+		self._globalSubscribers = prevGlobal + 1
+		if prevGlobal == 0 and self._globalSubscribers == 1 then
+			local onFirst = self._hooks and self._hooks.onFirstSubscriber
+			if type(onFirst) == "function" then
+				pcall(onFirst)
+			end
+		end
 
-	return function()
-		local tracked = ensureEntry(self, name, false)
-		tracked.subscribers = math.max(0, (tracked.subscribers or 1) - 1)
-		if tracked.subscribers == 0 and tracked.started and type(tracked.stop) == "function" then
-			local okStop, stopResultOrError = pcall(tracked.stop, tracked)
+		local unsubscribed = false
+
+		return function()
+			if unsubscribed then
+				return
+			end
+			unsubscribed = true
+			local tracked = ensureEntry(self, name, false)
+			tracked.subscribers = math.max(0, (tracked.subscribers or 1) - 1)
+			if tracked.subscribers == 0 and tracked.started and type(tracked.stop) == "function" then
+				local okStop, stopResultOrError = pcall(tracked.stop, tracked)
 			if not okStop then
 				Log:warn("Failed to stop fact type '%s': %s", tostring(name), tostring(stopResultOrError))
 			else
 				-- stop() may return false to indicate it could not fully stop (e.g. no remove semantics),
 				-- in which case we keep the type "started" to avoid double-registering handlers.
-				if stopResultOrError ~= false then
-					tracked.started = false
+					if stopResultOrError ~= false then
+						tracked.started = false
+					end
+				end
+			end
+
+			self._globalSubscribers = math.max(0, (self._globalSubscribers or 1) - 1)
+			if self._globalSubscribers == 0 then
+				local onLast = self._hooks and self._hooks.onLastSubscriber
+				if type(onLast) == "function" then
+					pcall(onLast)
 				end
 			end
 		end
 	end
-end
 
 ---Returns the observable for a fact type, starting it if needed.
 function FactRegistry:getObservable(name)
@@ -424,6 +466,41 @@ function FactRegistry:_drainSchedulerOnce()
 		nowMillis = wallNow,
 		maxMillisPerTick = (budgetMs > 0) and budgetMs or nil,
 	}) or {}
+
+	-- Capture ingest pressure snapshots for the runtime controller:
+	-- - pending: instantaneous backlog after this drain
+	-- - droppedDelta: new drops since the last tick (buffer overflow / explicit drops)
+	-- This is intentionally O(#buffers) (small) and uses buffer:metrics_getLight() internally (O(1)).
+	if self._scheduler and self._scheduler.metrics_get then
+		local schedSnap = self._scheduler:metrics_get()
+		local droppedTotal = schedSnap and schedSnap.droppedTotal or 0
+		local prevDroppedTotal = self._controllerLastDroppedTotal or 0
+		local droppedDelta = droppedTotal - prevDroppedTotal
+		if droppedDelta < 0 then
+			droppedDelta = 0
+		end
+		self._controllerLastDroppedTotal = droppedTotal
+		self._controllerIngestPending = schedSnap and schedSnap.pending or 0
+		self._controllerIngestDroppedDelta = droppedDelta
+		self._controllerThroughput15 = schedSnap and schedSnap.throughput15 or 0
+		self._controllerIngestRate15 = schedSnap and schedSnap.ingestRate15 or 0
+		self._controllerFillRatio = nil
+		if schedSnap and schedSnap.capacity and schedSnap.capacity > 0 then
+			self._controllerFillRatio = (schedSnap.pending or 0) / schedSnap.capacity
+		end
+		-- Advice trend proxy: use load15 vs throughput/ingest rate to classify.
+		self._controllerTrend = "steady"
+		if schedSnap then
+			local load15 = schedSnap.load15 or 0
+			local thr15 = schedSnap.throughput15 or 0
+			local ir15 = schedSnap.ingestRate15 or 0
+			if ir15 > thr15 * 1.05 and load15 > thr15 then
+				self._controllerTrend = "rising"
+			elseif thr15 >= ir15 * 1.05 then
+				self._controllerTrend = "falling"
+			end
+		end
+	end
 
 	local drainMs = nil
 	if emitTimed then

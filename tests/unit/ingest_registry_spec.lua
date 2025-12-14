@@ -127,4 +127,66 @@ describe("FactRegistry with ingest", function()
 		assert.is.equal(0, after.pending or 0)
 		assert.is.equal(0, after.totals and after.totals.ingestedTotal or -1)
 	end)
+
+	it("feeds ingest pending+drops into the runtime controller on OnTick", function()
+		local storedTickFn = nil
+		_G.Events = {
+			OnTick = {
+				Add = function(fn)
+					storedTickFn = fn
+				end,
+			},
+		}
+
+		local runtime = Runtime.new({
+			windowTicks = 1, -- complete a window per tick so transitions happen immediately
+			reportEveryWindows = 0,
+			tickBudgetMs = 100, -- keep tick budgets out of the way
+		})
+
+		local registry = FactRegistry.new({
+			ingest = {
+				scheduler = {
+					maxItemsPerTick = 1,
+					quantum = 1,
+				},
+			},
+			testfacts = {
+				ingest = {
+					enabled = true,
+					mode = "latestByKey",
+					capacity = 1, -- force drops on ingest
+					ordering = "fifo",
+					priority = 1,
+				},
+			},
+		}, runtime)
+
+		registry:register("testfacts", {
+			ingest = {
+				mode = "latestByKey",
+				key = function(item)
+					return item.id
+				end,
+			},
+			start = function(ctx)
+				-- Overflow: capacity=1, unique keys => droppedTotal grows.
+				for id = 1, 5 do
+					ctx.ingest({ id = id })
+				end
+			end,
+		})
+
+		registry:getObservable("testfacts"):subscribe(function() end)
+		registry:onSubscribe("testfacts")
+		assert.is_truthy(storedTickFn)
+
+		-- First tick should observe drops and degrade via ingestDropsRising.
+		storedTickFn()
+
+		local snap = runtime:status_get()
+		assert.equals("degraded", snap.mode)
+		assert.equals(Runtime.Reasons.ingestDropsRising, snap.lastTransitionReason)
+		assert.is_true((snap.tick.woWindowDropDelta or 0) > 0)
+	end)
 end)

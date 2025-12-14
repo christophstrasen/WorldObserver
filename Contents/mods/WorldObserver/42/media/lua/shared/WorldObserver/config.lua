@@ -39,16 +39,35 @@ local function defaults()
 				maxMillisPerTick = nil, -- optional ms budget (requires wall-clock); when nil, only item budget is used
 			},
 		},
-		runtime = {
-			controller = {
-				-- Target tick budgets (ms, CPU-time-ish) for WorldObserver work.
-				tickBudgetMs = 4, -- soft budget for WO drain+probes per tick
-				tickSpikeBudgetMs = 8, -- spike detector threshold
-				windowTicks = 60, -- how many ticks per controller window (~1s at 60fps)
-				reportEveryWindows = 10, -- how often to emit status events (in windows)
-				degradedMaxItemsPerTick = 5, -- clamp for scheduler when degraded (item budget fallback)
+			runtime = {
+					controller = {
+						-- Target tick budgets (ms, CPU-time-ish) for WorldObserver work.
+						tickBudgetMs = 4, -- soft budget for WO drain+probes per tick
+						tickSpikeBudgetMs = 8, -- spike detector threshold
+						spikeMinCount = 2, -- require at least N consecutive spikes in a window to enter degraded on spikes
+						windowTicks = 60, -- how many ticks per controller window (~1s at 60fps)
+						reportEveryWindows = 10, -- how often to emit status events (in windows)
+					-- Legacy clamp (kept for compatibility; newer drainAuto can override above/below this).
+					degradedMaxItemsPerTick = 5,
+					-- Drain auto-tuning: choose an effective maxItemsPerTick dynamically to burn backlog when
+					-- we have headroom, and back off when WO work approaches/exceeds its ms budget.
+					drainAuto = {
+						enabled = true,
+						stepFactor = 1.5, -- multiply/divide by this per window step
+						minItems = 1, -- floor for effective drain budget
+						maxItems = 200, -- ceiling for effective drain budget
+						headroomUtil = 0.6, -- if avgTickMs/budgetMs <= this, we can step up when under pressure
+					},
+					-- Backlog heuristics: avoid degrading on tiny fluctuations; require a "material" backlog.
+					backlogMinPending = 100, -- avg pending items per window
+					backlogFillThreshold = 0.25, -- avg pending/capacity per window
+					backlogMinIngestRate15 = 5, -- items/sec guard for rate-based trigger
+					backlogRateRatio = 1.1, -- ingestRate15 must exceed throughput15 by this factor
+					diagnostics = {
+						enabled = true, -- when Log level is info, print periodic runtime+ingest diagnostics via WO.DIAG
+					},
+				},
 			},
-		},
 	}
 end
 

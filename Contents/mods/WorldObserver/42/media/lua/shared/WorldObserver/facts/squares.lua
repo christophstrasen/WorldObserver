@@ -79,6 +79,7 @@ local function makeSquareRecord(square, source)
 		hasCorpse = detectFlag(square, square.hasCorpse),
 		hasTrashItems = false, -- placeholder until we wire real trash detection
 		observedAtTimeMS = nowMillis(),
+		IsoSquare = square,
 		source = source,
 	}
 
@@ -248,7 +249,6 @@ function Squares.register(registry, config)
 	local probeCfg = config and config.facts and config.facts.squares and config.facts.squares.probe or {}
 	local probeEnabled = probeCfg.enabled ~= false
 	local probeMaxPerRun = probeCfg.maxPerRun or 50
-	local emitCount = 0
 
 	registry:register("squares", {
 		ingest = {
@@ -272,33 +272,25 @@ function Squares.register(registry, config)
 		},
 		start = function(ctx)
 			local state = ctx.state or {}
-			-- Lightweight emission counter to help spot runaway loads in-game.
 			local originalEmit = ctx.ingest or ctx.emit
-			local countedEmit = function(record)
-				if not record then
-					return
-				end
-				emitCount = emitCount + 1
-				if emitCount % 100 == 0 then
-					Log:info("Squares ingested %s records so far", tostring(emitCount))
-				end
-				return originalEmit(record)
-			end
-			local listenerRegistered = registerOnLoadGridSquare(state, countedEmit)
+			local listenerRegistered = registerOnLoadGridSquare(state, originalEmit)
 			local probeRegistered = false
 			if probeEnabled then
-				probeRegistered = registerProbe(state, countedEmit, probeMaxPerRun, headless, ctx.runtime)
+				probeRegistered = registerProbe(state, originalEmit, probeMaxPerRun, headless, ctx.runtime)
 			end
 
 			if not listenerRegistered and not headless then
 				Log:warn("OnLoadGridsquare listener not registered (Events unavailable)")
 			end
 			if not headless then
-				Log:info("Squares fact plan started (listener=%s, probe=%s)", tostring(listenerRegistered), tostring(probeRegistered))
+				Log:info(
+					"Squares fact plan started (listener=%s, probe=%s)",
+					tostring(listenerRegistered),
+					tostring(probeRegistered)
+				)
 			end
-			-- Replace emitter in scope to keep counter active.
-			ctx.emit = countedEmit
-			ctx.ingest = countedEmit
+			ctx.emit = originalEmit
+			ctx.ingest = originalEmit
 		end,
 		stop = function(entry)
 			local state = entry.state or {}

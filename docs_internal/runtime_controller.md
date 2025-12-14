@@ -132,9 +132,9 @@ Recommended “core signals”:
 
 Measured using the runtime clock:
 - `woTickMs`: ms spent inside *all* WorldObserver per-tick work (draining + any tick-scheduled probes + controller overhead)
-- window aggregates (over N ticks or ~1–5 seconds):
+  - window aggregates (over N ticks or ~1–5 seconds):
   - `woAvgTickMs`
-  - `woMaxTickMs` (spike detector)
+  - `tickSpikeMs` (spike detector; max tick time observed in the window)
 
 ### 5.2 Ingest pressure (secondary control signal)
 
@@ -162,7 +162,9 @@ The controller should be able to change:
 ### 6.1 Scheduler drain budget
 
 Minimum viable:
-- set `scheduler.maxItemsPerTick` based on mode
+- treat `scheduler.maxItemsPerTick` as a **baseline** and choose an **effective** `maxItemsPerTick` dynamically:
+  - increase in multiplicative steps when backlog pressure is high and WO is well under its ms budget
+  - decrease in multiplicative steps when WO exceeds its ms budget or shows repeated spikes
 - keep `quantum` small for fairness (or raise when overhead dominates)
 
 Future improvement:
@@ -195,18 +197,18 @@ Goal: keep WO’s measured tick cost under budget while draining enough to avoid
 
 Actions:
 - probes enabled (default caps)
-- scheduler budget uses the configured “normal” value
+- scheduler budget uses the configured “normal” value as a baseline; runtime may temporarily raise it to burn backlog, but will decay back toward baseline once pressure is gone
 
 ### 7.2 Mode: Degraded (safety mode)
 
 Entry conditions (examples; thresholds must be tuned empirically):
-- `woMaxTickMs` repeatedly exceeds budget (spikes)
+- `tickSpikeMs` repeatedly exceeds budget (spikes; e.g. at least 2 spikes in a row)
 - `woAvgTickMs` exceeds budget for a sustained window
 - drops are increasing quickly (buffer at capacity)
 
 Actions:
 - throttle probes first (reduce caps, possibly disable)
-- reduce drain budget growth; clamp `maxItemsPerTick`
+- reduce effective drain budget if WO is CPU-bound, but allow “burn backlog” increases when we have headroom
 - warn once per window with summary + suggested user actions
 
 Exit conditions:
@@ -231,7 +233,7 @@ Actions:
 
 Entry conditions (WO-attributable):
 - WO tick cost is severe for a sustained window (e.g. average above a “hard” threshold),
-  OR repeated extreme spikes that correlate with WO drain work.
+  OR repeated extreme spike streaks that correlate with WO drain work.
 
 Actions:
 - log a loud error (red console message) but do not halt the game
@@ -259,8 +261,8 @@ WorldObserver should expose a small, cheap, introspection API:
   - `probeEnabled` + per-probe caps (where applicable)
 - `tick`:
   - `lastMs` (last measured WO tick cost sample)
-  - `woAvgTickMs`, `woMaxTickMs` (last completed window)
-  - `woWindowTicks`, `woWindowSpikes` (last completed window)
+  - `woAvgTickMs`, `woTickSpikeMs` (last completed window; `woMaxTickMs` is a legacy alias)
+  - `woWindowTicks`, `woWindowSpikes`, `woWindowSpikeStreakMax` (last completed window)
   - `woTotalAvgTickMs`, `woTotalMaxTickMs` (running totals; mostly for long-lived diagnostics)
 - `ingest` (optional summary):
   - per-type: pending, dropsDelta, trend (`rising/falling/steady`)
@@ -370,7 +372,7 @@ We want a small, stable set of reason strings that explain *why* the controller 
 Suggested v1 set:
 
 - `woTickAvgOverBudget` (sustained over-budget CPU usage)
-- `woTickSpikeOverBudget` (repeated spikes)
+- `woTickSpikeOverBudget` (repeated spike streaks)
 - `ingestBacklogRising` (ingestRate > throughput and backlog trending up)
 - `ingestDropsRising` (drops increasing; we are shedding work)
 - `clockUnavailable` (no usable runtime clock)

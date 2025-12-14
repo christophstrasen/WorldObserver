@@ -28,8 +28,10 @@ builders, etc.) is considered implementation detail and may change without notic
   `observation.zombie`, `observation.vehicle`).
 - **Helper naming conventions:** keep helper names semantic and consistent:
   - spatial constraints use `near*` (`nearIsoObject(...)`, `nearTilesOf(...)`, …);
-  - entity‑specific predicates are prefixed with the entity, e.g.
-    `squareHasBloodSplat()`, `roomIsSafe()`, `zombieIsFast()`;
+  - stream-returning filters use `where*` / `only*` (so it’s obvious they return a filtered stream), e.g.
+    `whereSquareNeedsCleaning()`, `onlySafeRooms()`;
+  - entity‑specific predicates/filters are prefixed with the entity, e.g.
+    `squareHasBloodSplat()` (legacy name), `whereSquareNeedsCleaning()`, `roomIsSafe()`, `zombieIsFast()`;
   - `*Is*` is used for simple flags/enums on that entity, `*Has*` for lookups
     into collections/relationships (loot, decals, tags, outfit tags, etc.).
 - **LQR windows are internal:** join/group/distinct windows are tuned inside
@@ -146,10 +148,11 @@ builders, etc.) is considered implementation detail and may change without notic
     set, but have it read from `observation[<that string>]` instead”.
   - This allows custom or derived streams to reuse existing helper sets even
     when they expose a type under a different per‑observation field name.
-  - Stream methods are thin delegators that always dispatch through the helper
-    tables, so helpers remain patch‑able:
-  updating `WorldObserver.helpers.square.squareNeedsCleaning` is enough for
-  all streams with `enabled_helpers.square` to see the new behavior.
+- Stream methods are thin delegators that always dispatch through the helper
+  tables, so helpers remain patch‑able:
+  updating `WorldObserver.helpers.square.whereSquareNeedsCleaning` is enough for
+  all streams with `enabled_helpers.square` to see the new behavior (older
+  `squareNeedsCleaning()` remains as a compatibility alias).
 
 ### Shape of `subscribe` callbacks
 
@@ -212,7 +215,7 @@ builders, etc.) is considered implementation detail and may change without notic
   `local lqrStream = stream:getLQR()`.
 - `getLQR()` returns the underlying LQR observable / query pipeline **as built
   so far**, including any WorldObserver helpers you have already chained
-  (`distinct`, `filter`, `squareNeedsCleaning`, etc.).
+  (`distinct`, `filter`, `whereSquareNeedsCleaning`, etc.).
 - The returned value is still “cold”: no probes or event listeners are
   activated until someone subscribes (either via WorldObserver’s `subscribe`
   or via LQR directly).
@@ -413,7 +416,7 @@ local WorldObserver = require("WorldObserver")
 
 local dirtySquares = WorldObserver.observations
   .squares()
-  :squareNeedsCleaning()
+  :whereSquareNeedsCleaning()
 
 dirtySquares:subscribe(function(observation)
   -- observation.square carries the square instance
@@ -426,7 +429,7 @@ Custom helper definition (square helper set extension):
 ```lua
 -- Somewhere in the square helper set definition:
 
-function SquareHelpers.squareNeedsCleaning(stream)
+function SquareHelpers.whereSquareNeedsCleaning(stream)
   return stream:filter(function(observation)
     local square = observation.square or {}
 
@@ -441,12 +444,12 @@ end
 
 Notes:
 
-- `squareNeedsCleaning()` is a thin, named wrapper around a `filter`
+- `whereSquareNeedsCleaning()` is a thin, named wrapper around a `filter`
   predicate that operates on the `observation.square` instance; it does not add
   new schemas or perform joins.
 - The helper can live in the same square helper set that attaches helpers
   like `squareHasBloodSplat()`; ObservationStreams that enable the square
-  helpers automatically gain access to `squareNeedsCleaning()`.
+  helpers automatically gain access to `whereSquareNeedsCleaning()`.
 - This pattern lets mod authors create and ship their own reusable
   ObservationStream helpers while keeping the core WorldObserver API small
   and focused.

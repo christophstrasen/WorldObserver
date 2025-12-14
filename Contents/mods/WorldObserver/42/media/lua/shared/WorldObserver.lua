@@ -28,9 +28,62 @@ local SquareHelpers = require("WorldObserver/helpers/square")
 local Debug = require("WorldObserver/debug")
 local Runtime = require("WorldObserver/runtime")
 
+local WorldObserver
+
 local config = Config.load()
-local runtime = Runtime.new(config.runtime and config.runtime.controller or {})
-local factRegistry = FactRegistry.new(config, runtime)
+local runtimeOpts = {}
+do
+	local cfg = config.runtime and config.runtime.controller or {}
+	for k, v in pairs(cfg) do
+		runtimeOpts[k] = v
+	end
+	local base = config.ingest and config.ingest.scheduler and config.ingest.scheduler.maxItemsPerTick
+	if type(base) == "number" and base > 0 then
+		runtimeOpts.baseDrainMaxItems = base
+	end
+end
+local runtime = Runtime.new(runtimeOpts)
+local runtimeDiagnosticsHandle = nil
+local debugApi = nil
+local function setRuntimeDiagnosticsActive(active)
+	local headless = config and config.facts and config.facts.squares and config.facts.squares.headless == true
+	if headless then
+		return
+	end
+	if not debugApi or not debugApi.attachRuntimeDiagnostics then
+		return
+	end
+	local diagCfg = config and config.runtime and config.runtime.controller and config.runtime.controller.diagnostics
+	if not (diagCfg and diagCfg.enabled) then
+		return
+	end
+	if active then
+		if not runtimeDiagnosticsHandle then
+			runtimeDiagnosticsHandle = debugApi.attachRuntimeDiagnostics({})
+			if WorldObserver and WorldObserver._internal then
+				WorldObserver._internal.runtimeDiagnosticsHandle = runtimeDiagnosticsHandle
+			end
+		end
+	else
+		if runtimeDiagnosticsHandle and runtimeDiagnosticsHandle.stop then
+			pcall(runtimeDiagnosticsHandle.stop)
+		end
+		runtimeDiagnosticsHandle = nil
+		if WorldObserver and WorldObserver._internal then
+			WorldObserver._internal.runtimeDiagnosticsHandle = nil
+		end
+	end
+end
+
+local factRegistry = FactRegistry.new(config, runtime, {
+	-- Stop DIAG spam when nothing is subscribed (e.g. smoke handle:stop()).
+	onFirstSubscriber = function()
+		setRuntimeDiagnosticsActive(true)
+	end,
+	onLastSubscriber = function()
+		setRuntimeDiagnosticsActive(false)
+	end,
+})
 
 -- Convenience: emergency reset that clears ingest buffers (pending items) and emits a runtime status change.
 function runtime:emergency_resetIngest()
@@ -53,21 +106,36 @@ local observationRegistry = ObservationsCore.new({
 
 SquaresObservations.register(observationRegistry, factRegistry, ObservationsCore.nextObservationId)
 
-local WorldObserver = {
-	config = config,
-	observations = observationRegistry:api(),
-	helpers = {
-		square = SquareHelpers,
-	},
-	debug = Debug.new(factRegistry, observationRegistry),
-	nextObservationId = ObservationsCore.nextObservationId,
-	runtime = runtime,
-	_internal = {
-		-- Expose internals for tests and advanced users until a fuller API exists.
-		runtime = runtime,
-		facts = factRegistry,
-		observationRegistry = observationRegistry,
-	},
-}
+		WorldObserver = {
+			config = config,
+			observations = observationRegistry:api(),
+			helpers = {
+				square = SquareHelpers,
+			},
+			debug = nil,
+			nextObservationId = ObservationsCore.nextObservationId,
+			runtime = runtime,
+			_internal = {
+				-- Expose internals for tests and advanced users until a fuller API exists.
+				runtime = runtime,
+				facts = factRegistry,
+				observationRegistry = observationRegistry,
+				runtimeDiagnosticsHandle = nil,
+			},
+		}
+
+	debugApi = Debug.new(factRegistry, observationRegistry)
+		WorldObserver.debug = debugApi
+
+	-- Register runtime controller LuaEvents and attach default diagnostics (engine-only).
+	do
+			local headless = config and config.facts and config.facts.squares and config.facts.squares.headless == true
+			if not headless then
+				if _G.LuaEventManager and type(_G.LuaEventManager.AddEvent) == "function" then
+					pcall(_G.LuaEventManager.AddEvent, "WorldObserverRuntimeStatusChanged")
+					pcall(_G.LuaEventManager.AddEvent, "WorldObserverRuntimeStatusReport")
+				end
+			end
+		end
 
 return WorldObserver

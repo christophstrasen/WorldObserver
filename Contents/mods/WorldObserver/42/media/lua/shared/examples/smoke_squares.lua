@@ -15,7 +15,7 @@ local SmokeSquares = {}
 -- Pretty-printer for a square observation row.
 local function formatSquare(observation)
 	local sq = observation.square or {}
-	return ("[square] id=%s x=%s y=%s z=%s source=%s blood=%s corpse=%s trash=%s time=%s"):format(
+	return ("[square ] TO CLEAN! id=%s x=%s y=%s z=%s source=%s blood=%s corpse=%s trash=%s time=%s"):format(
 		tostring(sq.squareId),
 		tostring(sq.x),
 		tostring(sq.y),
@@ -40,7 +40,7 @@ function SmokeSquares.start(opts)
 	end
 	if opts.withHelpers then
 		-- Example: only keep squares that need cleaning.
-		stream = stream:squareNeedsCleaning()
+		stream = stream:whereSquareNeedsCleaning()
 	end
 
 	Log.info(
@@ -56,37 +56,11 @@ function SmokeSquares.start(opts)
 		print(formatSquare(observation))
 	end)
 
-	-- One-off ingest diagnostics right after subscribing.
-	if WorldObserver.debug and WorldObserver.debug.describeFactsMetrics then
-		WorldObserver.debug.describeFactsMetrics("squares", { full = true })
-	end
-
-	-- Optional heartbeat once per minute.
-	local heartbeatFn = nil
-	local events = _G.Events
-	if events and events.EveryOneMinute and type(events.EveryOneMinute.Add) == "function" then
-		heartbeatFn = function()
-			Log.info("[smoke] heartbeat received=%s", tostring(receivedCount))
-			if WorldObserver.debug and WorldObserver.debug.describeFactsMetrics then
-				WorldObserver.debug.describeFactsMetrics("squares", { full = true })
-			end
-		end
-		events.EveryOneMinute.Add(heartbeatFn)
-	end
-
 	return {
 		stop = function()
 			if subscription and subscription.unsubscribe then
 				subscription:unsubscribe()
 				Log.info("[smoke] squares subscription stopped")
-			end
-			if
-				heartbeatFn
-				and events
-				and events.EveryOneMinute
-				and type(events.EveryOneMinute.Remove) == "function"
-			then
-				pcall(events.EveryOneMinute.Remove, events.EveryOneMinute, heartbeatFn)
 			end
 		end,
 	}
