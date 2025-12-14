@@ -1,8 +1,18 @@
 -- config.lua -- owns WorldObserver defaults (currently fact strategies) and validates overrides.
 
+local moduleName = ...
 local Config = {}
+if type(moduleName) == "string" then
+	local loaded = package.loaded[moduleName]
+	if type(loaded) == "table" then
+		Config = loaded
+	else
+		package.loaded[moduleName] = Config
+	end
+end
+Config._internal = Config._internal or {}
 
-local function detectHeadlessFlag()
+local function defaultDetectHeadlessFlag()
 	if _G.WORLDOBSERVER_HEADLESS == true then
 		return true
 	end
@@ -13,12 +23,16 @@ local function detectHeadlessFlag()
 	return false
 end
 
-local function defaults()
+if Config.detectHeadlessFlag == nil then
+	Config.detectHeadlessFlag = defaultDetectHeadlessFlag
+end
+
+local function defaultBuildDefaults()
 	return {
 		facts = {
 			squares = {
 				strategy = "balanced",
-				headless = detectHeadlessFlag(),
+				headless = Config.detectHeadlessFlag(),
 				ingest = {
 					enabled = true,
 					mode = "latestByKey",
@@ -66,19 +80,19 @@ local function defaults()
 					diagnostics = {
 						enabled = true, -- when Log level is info, print periodic runtime+ingest diagnostics via WO.DIAG
 					},
-				},
 			},
+		},
 	}
 end
 
-local function clone(tbl)
+local function defaultClone(tbl)
 	if type(tbl) ~= "table" then
 		return tbl
 	end
 	local out = {}
 	for key, value in pairs(tbl) do
 		if type(value) == "table" then
-			out[key] = clone(value)
+			out[key] = defaultClone(value)
 		else
 			out[key] = value
 		end
@@ -86,7 +100,7 @@ local function clone(tbl)
 	return out
 end
 
-local function applyOverrides(target, overrides)
+local function defaultApplyOverrides(target, overrides)
 	if type(overrides) ~= "table" then
 		return
 	end
@@ -120,29 +134,38 @@ local function applyOverrides(target, overrides)
 	end
 end
 
-local function validate(cfg)
+local function defaultValidate(cfg)
 	local strategy = cfg.facts.squares.strategy
 	if strategy ~= "balanced" then
 		error(("Unsupported squares strategy '%s' (only 'balanced' in MVP)"):format(tostring(strategy)))
 	end
 end
 
+Config._internal.buildDefaults = defaultBuildDefaults
+Config._internal.clone = defaultClone
+Config._internal.applyOverrides = defaultApplyOverrides
+Config._internal.validate = defaultValidate
+
 ---Creates a copy of the default config.
 ---@return table
-function Config.defaults()
-	return clone(defaults())
+if Config.defaults == nil then
+	function Config.defaults()
+		return Config._internal.clone(Config._internal.buildDefaults())
+	end
 end
 
 ---Merges user overrides into defaults and validates the result.
 ---@param overrides table|nil
 ---@return table
-function Config.load(overrides)
-	local cfg = Config.defaults()
-	if type(overrides) == "table" then
-		applyOverrides(cfg, overrides)
+if Config.load == nil then
+	function Config.load(overrides)
+		local cfg = Config.defaults()
+		if type(overrides) == "table" then
+			Config._internal.applyOverrides(cfg, overrides)
+		end
+		Config._internal.validate(cfg)
+		return cfg
 	end
-	validate(cfg)
-	return cfg
 end
 
 return Config

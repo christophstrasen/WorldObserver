@@ -1,7 +1,18 @@
 -- facts/squares.lua -- square fact plan (balanced strategy): listeners + near-player probe to emit SquareObservation facts.
 local Log = require("LQR/util/log").withTag("WO.FACTS.squares")
 
+local moduleName = ...
 local Squares = {}
+if type(moduleName) == "string" then
+	local loaded = package.loaded[moduleName]
+	if type(loaded) == "table" then
+		Squares = loaded
+	else
+		package.loaded[moduleName] = Squares
+	end
+end
+Squares._internal = Squares._internal or {}
+Squares._defaults = Squares._defaults or {}
 
 local function nowMillis()
 	local gameTime = _G.getGameTime
@@ -57,7 +68,9 @@ local function detectFlag(square, detector)
 	return false
 end
 
-local function makeSquareRecord(square, source)
+-- Default square record builder.
+-- Intentionally exposed via Squares.makeSquareRecord so other mods can patch/override it.
+local function defaultMakeSquareRecord(square, source)
 	if not square then
 		return nil
 	end
@@ -86,6 +99,11 @@ local function makeSquareRecord(square, source)
 	return record
 end
 
+Squares._defaults.makeSquareRecord = defaultMakeSquareRecord
+if Squares.makeSquareRecord == nil then
+	Squares.makeSquareRecord = defaultMakeSquareRecord
+end
+
 local function registerOnLoadGridSquare(state, emitFn)
 	local events = _G.Events
 	local handler = events and events.LoadGridsquare
@@ -98,7 +116,7 @@ local function registerOnLoadGridSquare(state, emitFn)
 	end
 
 	local fn = function(square)
-		local record = makeSquareRecord(square, "event")
+		local record = Squares.makeSquareRecord(square, "event")
 		if record then
 			emitFn(record)
 		end
@@ -186,7 +204,7 @@ local function runNearPlayersProbe(emitFn, budget)
 				-- Probe a small 5x5 area around each player (Chebyshev radius 2).
 				-- Intention: keep probe cost predictable and near-player focused; chunk-load events cover the rest.
 				for _, probeSquare in ipairs(iterSquaresInRing(square, 0, 2, budget - processed)) do
-					local record = makeSquareRecord(probeSquare, "probe")
+					local record = Squares.makeSquareRecord(probeSquare, "probe")
 					if record then
 						if record.squareId == nil then
 							Log:warn("Probe emitted square without id; dropping")
@@ -244,7 +262,14 @@ local function registerProbe(state, emitFn, budgetPerRun, headless, runtime)
 	return true
 end
 
-function Squares.register(registry, config)
+Squares._internal.registerOnLoadGridSquare = registerOnLoadGridSquare
+Squares._internal.iterSquaresInRing = iterSquaresInRing
+Squares._internal.nearbyPlayers = nearbyPlayers
+Squares._internal.runNearPlayersProbe = runNearPlayersProbe
+Squares._internal.registerProbe = registerProbe
+
+if Squares.register == nil then
+	function Squares.register(registry, config)
 	local headless = config and config.facts and config.facts.squares and config.facts.squares.headless == true
 	local probeCfg = config and config.facts and config.facts.squares and config.facts.squares.probe or {}
 	local probeEnabled = probeCfg.enabled ~= false
@@ -273,10 +298,10 @@ function Squares.register(registry, config)
 		start = function(ctx)
 			local state = ctx.state or {}
 			local originalEmit = ctx.ingest or ctx.emit
-			local listenerRegistered = registerOnLoadGridSquare(state, originalEmit)
+			local listenerRegistered = Squares._internal.registerOnLoadGridSquare(state, originalEmit)
 			local probeRegistered = false
 			if probeEnabled then
-				probeRegistered = registerProbe(state, originalEmit, probeMaxPerRun, headless, ctx.runtime)
+				probeRegistered = Squares._internal.registerProbe(state, originalEmit, probeMaxPerRun, headless, ctx.runtime)
 			end
 
 			if not listenerRegistered and not headless then
@@ -330,8 +355,13 @@ function Squares.register(registry, config)
 	})
 
 	return {
-		makeSquareRecord = makeSquareRecord,
-	}
+		makeSquareRecord = function(square, source)
+			return Squares.makeSquareRecord(square, source)
+		end,
+		defaultMakeSquareRecord = defaultMakeSquareRecord,
+			_internal = Squares._internal,
+		}
+	end
 end
 
 return Squares

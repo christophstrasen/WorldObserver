@@ -4,6 +4,19 @@ local Query = LQR.Query
 local Schema = LQR.Schema
 local Log = require("LQR/util/log").withTag("WO.STREAM")
 
+local moduleName = ...
+local ObservationsCore = {}
+if type(moduleName) == "string" then
+	local loaded = package.loaded[moduleName]
+	if type(loaded) == "table" then
+		ObservationsCore = loaded
+	else
+		package.loaded[moduleName] = ObservationsCore
+	end
+end
+ObservationsCore._internal = ObservationsCore._internal or {}
+ObservationsCore._defaults = ObservationsCore._defaults or {}
+
 local ObservationStream = {}
 
 local BaseMethods = {}
@@ -168,7 +181,7 @@ local function buildHelperMethods(helperSets, enabledHelpers)
 			-- Helper sets can target alternative field names (enabled_helpers value), defaulting to their own key.
 			local targetField = fieldName == true and helperKey or fieldName
 			for methodName, helperFn in pairs(helperSet) do
-				if methods[methodName] == nil then
+				if type(helperFn) == "function" and methods[methodName] == nil then
 					methods[methodName] = function(stream, ...)
 						return helperFn(stream, targetField, ...)
 					end
@@ -248,9 +261,24 @@ local function wrapSchema(observable, schemaName, opts)
 	return Schema.wrap(schemaName, observable, opts or {})
 end
 
-return {
-	new = ObservationRegistry.new,
-	ObservationStream = ObservationStream,
-	wrapSchema = wrapSchema,
-	nextObservationId = nextObservationId,
-}
+ObservationsCore._defaults.new = ObservationRegistry.new
+ObservationsCore._defaults.wrapSchema = wrapSchema
+ObservationsCore._defaults.nextObservationId = nextObservationId
+ObservationsCore._internal.nowMillis = nowMillis
+ObservationsCore._internal.resolveNowMillis = resolveNowMillis
+ObservationsCore._internal.cloneTable = cloneTable
+ObservationsCore._internal.newObservationStream = newObservationStream
+ObservationsCore._internal.buildHelperMethods = buildHelperMethods
+
+if ObservationsCore.new == nil then
+	ObservationsCore.new = ObservationRegistry.new
+end
+ObservationsCore.ObservationStream = ObservationsCore.ObservationStream or ObservationStream
+if ObservationsCore.wrapSchema == nil then
+	ObservationsCore.wrapSchema = wrapSchema
+end
+if ObservationsCore.nextObservationId == nil then
+	ObservationsCore.nextObservationId = nextObservationId
+end
+
+return ObservationsCore

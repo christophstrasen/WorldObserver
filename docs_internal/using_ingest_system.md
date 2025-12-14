@@ -240,3 +240,24 @@ Minimum confidence gates:
 ### API surface for modders
 - What minimal, friendly debug API do we commit to (e.g. `WorldObserver.debug.factsMetrics()`), and what stays internal?
   - Answer: No hard opinions. We don't need to hide things behind `local` but also we don't need to jump through hoops providing more info, yet.
+
+### Patching conventions
+
+WorldObserver follows the “Zomboid way”: patch by reassigning module fields after `require(...)`.
+
+Example: patch square record shaping (affects both event and probe production):
+
+```lua
+local SquaresFacts = require("WorldObserver/facts/squares")
+local original = SquaresFacts.makeSquareRecord
+
+SquaresFacts.makeSquareRecord = function(square, source)
+	local record = original(square, source)
+	if record then
+		record.myTag = "from-my-mod"
+	end
+	return record
+end
+```
+
+Implementation note: where patching matters (callbacks, handlers), WorldObserver code dispatches through module fields (not `local` upvalues), so patches apply even after producers have started.
