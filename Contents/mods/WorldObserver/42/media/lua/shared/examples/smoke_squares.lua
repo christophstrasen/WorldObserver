@@ -2,7 +2,7 @@
 -- Usage in PZ console:
 --[[ 
 	smoke = require("examples/smoke_squares")
- 	smokestart({ distinctSeconds = 2, withHelpers = true })
+ 	smoke.start({ distinctSeconds = 2, withHelpers = true })
 	later: smoke:stop()
 ]]
 --
@@ -45,6 +45,15 @@ function SmokeSquares.start(opts)
 		tostring(opts.distinctSeconds),
 		tostring(opts.withHelpers)
 	)
+
+	-- Emit a small one-off diagnostic snapshot so we can confirm ingest buffering is active in-engine.
+	if WorldObserver.debug and WorldObserver.debug.describeFactsMetrics then
+		WorldObserver.debug.describeFactsMetrics("squares")
+	end
+	if WorldObserver.debug and WorldObserver.debug.describeIngestScheduler then
+		WorldObserver.debug.describeIngestScheduler()
+	end
+
 	local subscription = stream:subscribe(function(observation)
 		print(fmt(observation))
 	end)

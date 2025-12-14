@@ -1,340 +1,168 @@
-# Fact layer – design draft
+# Fact layer – current design + implementation notes
 
-Internal design notes for how WorldObserver generates **Facts** via
-Event Listeners and Active Probes before they become ObservationStreams.
-This complements `docs_internal/vision.md` and `docs_internal/api_proposal.md`.
+Internal notes on how WorldObserver generates **Facts** (engine events, probes, LuaEvents) and turns them into
+ObservationStreams.
+
+This file used to be a pure design draft. It is now updated to reflect the current implementation reality, while
+still capturing the longer-term direction.
+
+Related docs:
+- Vision: `docs_internal/vision.md`
+- Ingest integration plan: `docs_internal/using_ingest_system.md`
+- LQR ingest docs: `external/LQR/docs/concepts/ingest_buffering.md`
 
 ---
 
 ## 1. Purpose and scope
 
-- Own all world‑level fact generation (squares, rooms, zombies, vehicles, …)
-  so mods do not wire `OnTick`/`OnLoadGridsquare` directly.
-- Provide a configurable but opinionated set of **fact plans** that balance
-  freshness, completeness, and cost.
-- Feed base ObservationStreams with schema‑tagged observations; everything
-  above the fact layer should think only in terms of ObservationStreams.
+- Own world-level fact generation (squares, rooms, zombies, vehicles, …) so mods do not wire engine events directly.
+- Keep fact production predictable and budgeted so downstream LQR work does not run inside bursty engine callbacks.
+- Feed base ObservationStreams with stable, schema-tagged observation records.
 
 ---
 
-## 2. Fact plans (per type)
+## 2. Current implementation overview
 
-- A **fact plan** describes how Facts for a world type are produced:
-  - which engine events to listen to (Event Listeners);
-  - which probes to run (Active Probes); and
-  - how often / how deep to probe under different strategies.
-- Plans are defined per type (`squares`, `rooms`, `zombies`, `vehicles`, …)
-  and can be switched via `WorldObserver.config.facts.<type>.strategy`.
-- Hybrid or multi‑type plans are allowed internally: for example, a square probe may
-  also refresh room Facts for any rooms it touches. From the outside, squares
-  and rooms still have distinct fact plans and configuration surfaces.
-- Plans are internal; modders only see the resulting ObservationStreams plus
-  a small, documented config surface for strategies.
+### 2.1 Entry points (code locations)
 
----
+- Public wiring: `Contents/mods/WorldObserver/42/media/lua/shared/WorldObserver.lua`
+- Fact registry: `Contents/mods/WorldObserver/42/media/lua/shared/WorldObserver/facts/registry.lua`
+- Squares facts: `Contents/mods/WorldObserver/42/media/lua/shared/WorldObserver/facts/squares.lua`
+- Base squares observation stream: `Contents/mods/WorldObserver/42/media/lua/shared/WorldObserver/observations/squares.lua`
 
-## 3. Event Listeners
+### 2.2 Lifecycle: lazy start on first subscription
 
-- Wrap Project Zomboid events (e.g. `OnLoadGridsquare`, `OnPlayerMove`,
-  container/vehicle/room events) and normalize them into Facts.
-- Responsibilities:
-  - register/unregister handlers for engine events;
-  - shape raw event payloads into schema‑ready records (with IDs, timestamps);
-  - push records into the type’s fact stream in accordance with scheduler
-    budgets.
-- Mod code never subscribes to these events directly for core types; it goes
-  through WorldObserver’s ObservationStreams instead.
+- Fact types are registered at startup (currently only `squares`).
+- Fact producers start lazily when the first ObservationStream subscribes (`FactRegistry:onSubscribe(...)`).
+- Fact producers stop when the last subscriber unsubscribes.
+  - If a type cannot fully unregister its handlers (missing `Remove`), it may return `false` from `stop()` so the
+    registry keeps it “started” and does not double-register callbacks on later subscriptions.
 
 ---
 
-## 4. Active Probes
+## 3. Ingest boundary (new reality)
 
-- **Probes** initiate scans when events are insufficient or when periodic
-  reconfirmation is required (“shine a light” on parts of the world).
-- Example probes per type:
-  - `squares`: near‑player rings at high frequency; wider rings at lower
-    frequency; occasional full‑area sweeps split over many ticks.
-  - `rooms`: rooms around players or areas of interest.
-  - `zombies`/`vehicles`: probes near players or points of interest.
-- Probes are scheduled and throttled centrally:
-  - work is batched per tick to stay within a budget;
-  - schedules can adapt based on strategy and subscriber demand.
+WorldObserver now uses `LQR/ingest` as the “admission control” layer *before* schemas and queries.
 
----
+### 3.1 Per-type buffers + one global scheduler
 
-## 5. Strategies and configuration
+- Each fact type may enable ingest buffering via config at `WorldObserver.config.facts.<type>.ingest`.
+- When enabled, the registry creates one `Ingest.buffer` for that type and attaches it to one global
+  `Ingest.scheduler` (`WorldObserver.factScheduler`).
+- The scheduler is drained on `Events.OnTick` with a global budget (`WorldObserver.config.ingest.scheduler.maxItemsPerTick`).
+- Buffers with the same priority are drained round-robin (no starvation).
 
-- For each type, a small set of named strategies (e.g. `"balanced"`,
-  `"gentle"`, `"intense"`) describe how aggressively WorldObserver should work
-  to keep Facts fresh for that type. A **strategy** is a high‑level intent
-  (for example “cheap but fresh near players” vs. “very gentle background
-  scans”), not a list of handlers.
-- Internally, each `(type, strategy)` pair is resolved into a concrete
-  **plan**: the specific combination of Event Listeners and Active Probes,
-  plus their intervals and budgets, that the scheduler will run for that
-  type. Plans are derived from strategies; mods configure strategies, the
-  engine chooses and executes the corresponding plan.
-- Public config lives under `WorldObserver.config.facts.<type>` and is
-  intentionally small; detailed knobs remain internal.
-- Strategies may react to usage:
-  - scale down probes when there are no subscribers for a type;
-  - scale up or alter patterns when certain ObservationStreams are active.
+### 3.2 The important rule
+
+- Event listeners and probes should **ingest**, not emit:
+  - `ctx.ingest(record)` is cheap and safe to call inside bursty callbacks.
+  - Drain emits into the Rx subject on tick, so downstream LQR work happens in a controlled cadence.
+
+### 3.3 Producer context API (what listeners/probes call)
+
+When a fact type starts, its `start(ctx)` receives a small context with these stable fields:
+
+- `ctx.config`: per-type config table (`WorldObserver.config.facts.<type>`).
+- `ctx.state`: per-type mutable state table (used to remember handler functions, cursors, etc.).
+- `ctx.ingest(record)`: the *normal* entry point for high-frequency/bursty producers.
+  - If ingest is enabled for the type, this enqueues into the type’s `Ingest.buffer` and is emitted later during tick drain.
+  - If ingest is disabled, this falls back to immediate emission (same behavior as `ctx.emit`).
+- `ctx.emit(record)`: immediate emission into the type’s Rx subject (bypasses buffering).
+  - Use this only for low-frequency “already budgeted” producers or for tests; it defeats backpressure when used in event callbacks.
 
 ---
 
-## 6. From Facts to ObservationStreams
+## 4. Event listeners (engine callbacks)
 
-- Each fact plan feeds one or more **base ObservationStreams** by:
-  - tagging records with schemas (`SquareObs`, `RoomObs`, `ZombieObs`, …);
-  - emitting observations whenever new facts are produced or re‑confirmed.
-- Base streams expose observations as per‑emission tables (what the API calls
-  a single `observation`) with fields such as `observation.square`,
-  `observation.room`, or `observation.zombie`; derived streams (built via LQR
-  queries) layer on top without knowing how facts were gathered.
-- The fact layer must preserve “observations over time” semantics:
-  - no implicit per‑instance dedup; multiple observations for the same
-    instance are expected and may matter for time‑based logic.
+Event listeners:
+- subscribe to engine events (example: `Events.LoadGridsquare`);
+- shape payloads into stable records (ids + timestamps + small primitive fields); and
+- call `ctx.ingest(record)`.
+
+Important design note:
+- We intentionally avoid buffering live game objects.
+  Today, square facts store coords + derived flags, not `IsoGridSquare` references.
 
 ---
 
-## 7. Throttling and backpressure (high level)
+## 5. Active probes (periodic scans)
 
-- All listeners and probes share a **budgeted scheduler** that decides how
-  much work to perform per tick / per time slice.
-- Patterns from the older WorldScanner project (batched scans on `OnTick`,
-  configurable max items per tick, etc.) can be reused and refined here.
-- LQR and lua‑reactivex provide shaping operators (`throttle`, `buffer`,
-  windows, `distinct`, etc.) but **do not** implement a full backpressure
-  protocol where downstream explicitly signals demand. The fact layer must
-  therefore treat world events and probes as the primary place to enforce
-  budgets and avoid overload.
-- The scheduler and strategies operate only on work that WorldObserver owns
-  (events listened to, probes run, facts emitted). Subscriber callbacks are
-  opaque and are not assumed to be cheap or expensive; mod authors are
-  responsible for throttling their own gameplay logic if needed.
-- Usage can still inform strategy: subscription counts per type and knowledge
-  of which ObservationStreams depend on which fact plans can be used to:
-  - scale down or idle plans when there are no subscribers for a type; and
-  - avoid aggressive downshifts while several streams depend on the same facts.
-- Within the LQR layer, WorldObserver can use shaping operators (e.g.
-  `distinct`, sampling helpers) to keep in‑memory state and per‑tick work
-  bounded, but **upstream pacing** remains the responsibility of the fact
-  scheduler and strategies.
-- The fact layer is a natural place to gather lightweight metrics (facts
-  generated per type, drops, probe timings) that can feed both human‑facing
-  debugging (`describeFacts`) and future automatic tuning of strategies.
-- Pipeline‑level instrumentation inside LQR (per‑operator counts, buffer
-  sizes) should be owned by LQR itself; WorldObserver can surface that
-  information in domain terms via `describeStream` rather than duplicating
-  instrumentation logic.
-- The goal is to keep fact generation predictable and cheap by default,
-  while still allowing “heavier” strategies for debugging or offline analysis,
-  and to make any future, more advanced backpressure support in LQR a bonus,
-  not a requirement for correctness.
+Probes initiate scans when events are insufficient or when periodic reconfirmation is required.
+
+Current reality (MVP):
+- Probes are not centrally scheduled as a generic system yet.
+- The squares probe runs on `Events.EveryOneMinute` (cheap, infrequent) and ingests a bounded amount of work per run:
+  - `WorldObserver.config.facts.squares.probe.enabled`
+  - `WorldObserver.config.facts.squares.probe.maxPerRun`
+
+Probes ingest into the same type buffer as event listeners, but typically in a different lane so we can express bias.
 
 ---
 
-## 8. External LuaEvent fact sources (cross‑mod signals)
+## 6. Lanes, bias, and priorities (within a type)
 
-- In addition to engine events and probes, WorldObserver can treat selected
-  Starlit LuaEvents as fact sources. This is useful when other mods already
-  emit facts (often higher‑level status signals) that we do not want to
-  recompute.
-- Example: a `RoomAlarms` mod emits `RoomAlarms.OnRoomStatus`
-  whenever it recomputes the status of a room:
+Within a type buffer, we classify work by “lane” to express bias between sources:
 
-  ```lua
-  LuaEvent.trigger("RoomAlarms.OnRoomStatus", {
-    id       = roomId,
-    status   = status,       -- "safe" | "warning" | "breached"
-    lastSeen = getGameTime():getWorldAgeHours(),
-  })
-  ```
+- `"event"`: engine callbacks (can be bursty and include far-edge chunk loads)
+- `"probe"`: near-player sampling/reconfirmation
+- `"luaevent"`: planned cross-mod signals
 
-- WorldObserver can register this as an external fact source:
+Current squares policy:
+- `lanePriority("probe") > lanePriority("event")` so that “near-player reconfirmation” can win over chunk-load bursts.
 
-  ```lua
-  WorldObserver.facts.registerLuaEventSource({
-    eventName = "RoomAlarms.OnRoomStatus",
-    type      = "roomStatus",  -- becomes observation.roomStatus
-    idField   = "id",          -- or an idSelector
-  })
-  ```
-
-- From that point on, `roomStatus` observations flow into the fact layer
-  like any other Facts and can back a base ObservationStream. Other mods can
-  subscribe to `WorldObserver.observations.roomStatus()` without knowing
-  whether the data came from probes, engine events, or LuaEvents.
-- LuaEvent sources are **opt‑in** and registered explicitly; core world types
-  (squares, rooms, zombies, vehicles, …) still rely primarily on their own
-  fact plans (events + probes). LuaEvents can also carry basic facts, but
-  using fact plans for core world types keeps scheduling, throttling, and
-  coverage consistent.
+Lane priorities are a domain decision and may differ by type.
 
 ---
 
-## 9. Example: squares strategies, plans, and builders
+## 7. Strategies and configuration
 
-The following sketch shows how the Strategy → Plan idea and the listener/probe
-builders can come together for the `squares` type.
+The original design described `balanced/gentle/intense` strategies and a generic “plan builder” API.
 
-### 9.1 Strategies and plans for `squares`
+Current reality:
+- `WorldObserver.config.facts.squares.strategy` exists but only `"balanced"` is implemented today.
+- Ingest and probe behavior is controlled via explicit config knobs:
+  - `WorldObserver.config.ingest.scheduler.maxItemsPerTick`
+  - `WorldObserver.config.ingest.scheduler.quantum`
+  - `WorldObserver.config.facts.squares.ingest.*`
+  - `WorldObserver.config.facts.squares.probe.*`
 
-For `squares`, config sets the strategy:
-
-```lua
-WorldObserver.config.facts.squares.strategy = "balanced"  -- or "gentle", "intense"
-```
-
-Internally, WorldObserver resolves this to a concrete plan:
-
-```lua
-WorldObserver.facts.registerType("squares", function(Fact)
-  return Fact.type{
-    defaultStrategy = "balanced",
-
-    plans = {
-      balanced = Fact.plan{
-        listeners = {
-          Fact.listener{
-            name  = "OnLoadGridsquare:squares",
-            event = "OnLoadGridsquare",
-
-            handle = function(ctx, isoGridSquare)
-              if not isoGridSquare then return end
-              local record = ctx.makeSquareRecord(isoGridSquare)
-              ctx.emit(record)
-            end,
-          },
-        },
-
-        probes = {
-          Fact.probe{
-            name     = "nearPlayers_closeRing",
-            schedule = {
-              intervalTicks = 1,    -- every tick
-              budgetPerTick = 200,  -- max squares per tick
-            },
-
-            run = function(ctx, budget)
-              local processed = 0
-
-              for _, player in ipairs(ctx.players:nearby()) do
-                for square in ctx.iterSquaresInRing(player, 1, 8) do
-                  if processed >= budget then
-                    return
-                  end
-
-                  local record = ctx.makeSquareRecord(square)
-                  ctx.emit(record)
-                  processed = processed + 1
-                end
-              end
-            end,
-          },
-        },
-      },
-
-      gentle = Fact.plan{
-        listeners = {
-          -- maybe only events, no probes
-        },
-        probes = {},
-      },
-
-      intense = Fact.plan{
-        listeners = {
-          -- same events as balanced
-        },
-        probes = {
-          -- e.g. closeRing + a wider, less frequent probe, higher budgets
-        },
-      },
-    },
-  }
-end)
-```
-
-- Config chooses the **strategy**; the engine resolves it to a **plan** for
-  that type by picking the right listeners and probes and handing them to the
-  scheduler.
-- The plan is what actually runs and feeds the `squares` fact stream, which in
-  turn backs `WorldObserver.observations.squares()`.
-
-### 9.2 Listener builder
-
-`Fact.listener{ ... }` hides engine wiring and provides a consistent context:
-
-```lua
-Fact.listener{
-  name  = "OnLoadGridsquare:squares",
-  event = "OnLoadGridsquare",
-
-  handle = function(ctx, isoGridSquare)
-    -- ctx.emit(record) pushes into the squares fact stream
-    if not isoGridSquare then return end
-
-    local record = ctx.makeSquareRecord(isoGridSquare)
-    ctx.emit(record)
-  end,
-}
-```
-
-The builder is responsible for:
-
-- registering/unregistering handlers against the underlying game event;
-- wrapping the handler with a `ctx` table that provides:
-  - `emit(record)` into the per‑type fact stream;
-  - helpers such as `makeSquareRecord`;
-  - access to shared config/metrics if needed.
-
-### 9.3 Probe builder
-
-`Fact.probe{ ... }` describes a scheduled job that “shines a light” on the
-world and emits Facts via `ctx.emit`:
-
-```lua
-Fact.probe{
-  name     = "nearPlayers_closeRing",
-  schedule = {
-    intervalTicks = 1,
-    budgetPerTick = 200,
-  },
-
-  run = function(ctx, budget)
-    local processed = 0
-
-    for _, player in ipairs(ctx.players:nearby()) do
-      for square in ctx.iterSquaresInRing(player, 1, 8) do
-        if processed >= budget then
-          return
-        end
-
-        local record = ctx.makeSquareRecord(square)
-        ctx.emit(record)
-        processed = processed + 1
-      end
-    end
-  end,
-}
-```
-
-The builder is responsible for:
-
-- registering the probe with the global budgeted scheduler so that `run(ctx, budget)`
-  is called with the per‑tick budget; and
-- providing `ctx` with:
-  - `emit(record)` into the fact stream;
-  - helpers such as `players:nearby()` and `iterSquaresInRing`;
-  - a small `ctx.state` table for incremental scanning where needed;
-  - `ctx.metrics` for counters/timings that can inform strategy tuning.
+Near-term direction:
+- Keep strategies as user-friendly presets, but have them map to ingest + probe budgets internally.
 
 ---
 
-## 10. Open questions
+## 8. From facts to ObservationStreams
 
-- Exact structure of a fact plan (data‑driven tables vs. builder API).
-- How to expose minimal yet useful strategy introspection (e.g.
-  `WorldObserver.debug.describeFacts("squares")`).
-- Whether certain probes should be conditional on specific ObservationStreams
-  being in use (demand‑driven probing) or purely strategy‑driven.
+Base ObservationStreams wrap facts into schemas and then feed LQR queries.
+
+Important: with ingest enabled, facts are emitted on tick drain, so LQR work stays out of event callbacks.
+
+---
+
+## 9. Debugging and observability
+
+WorldObserver exposes minimal debug helpers:
+
+- `WorldObserver.debug.describeFactsMetrics("<type>")` prints ingest-buffer health
+  (pending, drops, load average, throughput, ingest rate).
+- `WorldObserver.debug.describeIngestScheduler()` prints scheduler totals.
+
+These are intentionally lightweight and expected to evolve as we learn what modders need.
+
+---
+
+## 10. External LuaEvent fact sources (planned)
+
+We still intend to support cross-mod facts via LuaEvents, but they must route through ingest:
+
+- LuaEvent handler ingests into the appropriate type buffer (lane `"luaevent"`).
+- The same global scheduler budget applies, so external bursts cannot bypass backpressure.
+
+---
+
+## 11. Gaps and next steps
+
+- Make probes a first-class “plan” concept (shared scheduling patterns, per-probe budgets, subscriber-aware behavior).
+- Add more fact types (`zombies`, `vehicles`, …) and attach them to the same global scheduler budget.
+- Improve teardown/unregister story for event handlers where PZ supports removal.
+- Validate in-engine (FPS stability + bounded backlog) and tune default budgets/caps based on observed load.

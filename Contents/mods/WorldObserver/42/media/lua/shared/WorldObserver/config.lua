@@ -19,6 +19,23 @@ local function defaults()
 			squares = {
 				strategy = "balanced",
 				headless = detectHeadlessFlag(),
+				ingest = {
+					enabled = true,
+					mode = "latestByKey",
+					capacity = 5000,
+					ordering = "fifo",
+					priority = 1,
+				},
+				probe = {
+					enabled = true,
+					maxPerRun = 50, -- per EveryOneMinute
+				},
+			},
+		},
+		ingest = {
+			scheduler = {
+				maxItemsPerTick = 200,
+				quantum = 1,
 			},
 		},
 	}
@@ -49,6 +66,21 @@ local function applyFactsConfig(target, source)
 	end
 	if type(squares) == "table" and type(squares.headless) == "boolean" then
 		target.facts.squares.headless = squares.headless
+	end
+	if type(squares) == "table" and type(squares.ingest) == "table" then
+		for k, v in pairs(squares.ingest) do
+			target.facts.squares.ingest[k] = v
+		end
+	end
+	if type(squares) == "table" and type(squares.probe) == "table" then
+		for k, v in pairs(squares.probe) do
+			target.facts.squares.probe[k] = v
+		end
+	end
+	if type(source.ingest) == "table" and type(source.ingest.scheduler) == "table" then
+		for k, v in pairs(source.ingest.scheduler) do
+			target.ingest.scheduler[k] = v
+		end
 	end
 end
 
