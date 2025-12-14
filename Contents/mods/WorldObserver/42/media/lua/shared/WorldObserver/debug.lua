@@ -1,5 +1,5 @@
 -- debug.lua -- minimal debug helpers to introspect whether facts/streams are registered.
-local Log = require("LQR/util/log").withTag("WO.DEBUG")
+local Log = require("LQR/util/log").withTag("WO.DIAG")
 
 local Debug = {}
 
@@ -28,15 +28,21 @@ function Debug.new(factRegistry, observationRegistry)
 				return
 			end
 			Log:info(
-				"[%s] pending=%s peak=%s ingested=%s drained=%s dropped=%s load15=%.2f throughput15=%.2f ingestRate15=%.2f",
+				"[%s] pending=%s peak=%s ingested=%s drained=%s dropped=%s load=%.2f/%.2f/%.2f throughput=%.2f/%.2f/%.2f ingestRate=%.2f/%.2f/%.2f",
 				tostring(typeName),
 				tostring(snap.pending),
 				tostring(snap.peakPending),
 				tostring(snap.totals and snap.totals.ingestedTotal),
 				tostring(snap.totals and snap.totals.drainedTotal),
 				tostring(snap.totals and snap.totals.droppedTotal),
+				tonumber(snap.load1) or 0,
+				tonumber(snap.load5) or 0,
 				tonumber(snap.load15) or 0,
+				tonumber(snap.throughput1) or 0,
+				tonumber(snap.throughput5) or 0,
 				tonumber(snap.throughput15) or 0,
+				tonumber(snap.ingestRate1) or 0,
+				tonumber(snap.ingestRate5) or 0,
 				tonumber(snap.ingestRate15) or 0
 			)
 		end,

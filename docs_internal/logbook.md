@@ -167,6 +167,7 @@
 - **Fixed time-window correctness in WorldObserver distinct:** Aligned `observations.core:distinct(dimension, seconds)` with the ms-based `RxMeta.sourceTime` convention by using millisecond offsets and a millisecond `currentFn`, preventing distinct time windows from behaving unpredictably in-engine.
 - **Reduced log volume and improved readability:** Moved per-record query filter logging (`where`) to debug-only and reduced squares ingest progress logs to every 100 records to keep info-level output usable during real gameplay testing.
 - **Chased down real-world performance cliffs:** When chunk-load bursts pushed thousands of unique squares through a short distinct window, we saw throughput collapse. The fix landed in LQR (order-based interval GC + optional batching) and directly improved the in-engine smoke test behavior.
+- **Made ingest observability cheaper and clearer:** Renamed the user-facing diagnostics tag to `WO.DIAG`, expanded the metrics line to include `load/throughput/ingestRate` for `1/5/15`, and switched fact metrics snapshots to use LQR’s light metrics in hot paths to avoid accidental O(n) work while profiling.
 - **Kept dependency direction clean:** Ensured LQR remains independent of WorldObserver (no WorldObserver flags referenced inside LQR). WorldObserver tests now set `_G.LQR_HEADLESS = true` explicitly so headless runs stay quiet without leaking domain concerns into the library.
 
 ### Lessons

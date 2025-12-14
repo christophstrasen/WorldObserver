@@ -69,7 +69,7 @@ function SmokeSquares.start(opts)
 	local events = _G.Events
 	if events and events.EveryOneMinute and type(events.EveryOneMinute.Add) == "function" then
 		heartbeatFn = function()
-			Log.info("[smoke] heartbeat: received=%s", tostring(receivedCount))
+			Log.info("[smoke] heartbeat received=%s", tostring(receivedCount))
 			if WorldObserver.debug and WorldObserver.debug.describeFactsMetrics then
 				WorldObserver.debug.describeFactsMetrics("squares")
 			end

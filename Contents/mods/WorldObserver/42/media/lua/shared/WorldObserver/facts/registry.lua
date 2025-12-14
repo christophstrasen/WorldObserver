@@ -405,10 +405,17 @@ end
 
 ---Return ingest metrics for a fact type when enabled.
 ---@param name string
-function FactRegistry:getIngestMetrics(name)
+function FactRegistry:getIngestMetrics(name, opts)
+	opts = opts or {}
 	local entry = self._types[name]
 	if not entry or not entry.buffer then
 		return nil
+	end
+	if opts.full and entry.buffer.metrics_getFull then
+		return entry.buffer:metrics_getFull()
+	end
+	if entry.buffer.metrics_getLight then
+		return entry.buffer:metrics_getLight()
 	end
 	return entry.buffer:metrics_get()
 end
