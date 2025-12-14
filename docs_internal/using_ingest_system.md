@@ -141,7 +141,7 @@ WorldObserver.config.facts.squares.probe = {
   maxPerRun = 50, -- EveryOneMinute
 }
 WorldObserver.config.ingest.scheduler = {
-  maxItemsPerTick = 200,
+  maxItemsPerTick = 10,
   quantum = 1,
 }
 ```

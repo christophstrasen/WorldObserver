@@ -28,7 +28,7 @@ local SquareHelpers = require("WorldObserver/helpers/square")
 local Debug = require("WorldObserver/debug")
 
 local config = Config.load()
-local factRegistry = FactRegistry.new(config.facts)
+local factRegistry = FactRegistry.new(config)
 SquaresFacts.register(factRegistry, config)
 
 local observationRegistry = ObservationsCore.new({

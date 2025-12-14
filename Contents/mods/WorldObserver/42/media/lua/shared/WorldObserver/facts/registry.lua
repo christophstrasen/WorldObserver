@@ -27,8 +27,11 @@ end
 function FactRegistry.new(config)
 	-- Registry uses a metatable for method lookup; e.g. self:register(...) resolves to FactRegistry.register.
 	-- The payload is a plain table with config/state.
+	local factsConfig = (type(config) == "table" and type(config.facts) == "table") and config.facts or config or {}
+	local ingestConfig = (type(config) == "table" and type(config.ingest) == "table") and config.ingest or (config and config.ingest) or {}
 	local self = setmetatable({
-		_config = config or {},
+		_factsConfig = factsConfig or {},
+		_ingestConfig = ingestConfig or {},
 		_types = {},
 		_scheduler = nil,
 		_drainHookRegistered = false,
@@ -56,7 +59,7 @@ function FactRegistry:register(name, opts)
 		start = opts and opts.start,
 		stop = opts and opts.stop,
 		ingestOpts = opts and opts.ingest,
-		config = (self._config and self._config[name]) or {},
+		config = (self._factsConfig and self._factsConfig[name]) or {},
 		rxSubject = nil,
 		observable = nil,
 		started = false,
@@ -129,10 +132,18 @@ local function ensureScheduler(self)
 	if self._scheduler then
 		return self._scheduler
 	end
-	local schedCfg = (self._config and self._config.ingest and self._config.ingest.scheduler) or {}
+	local schedCfg = (self._ingestConfig and self._ingestConfig.scheduler) or {}
+	local maxItemsPerTick = schedCfg.maxItemsPerTick or 0
+	if type(maxItemsPerTick) ~= "number" then
+		Log:warn("Ingest scheduler maxItemsPerTick is not a number; defaulting to 0")
+		maxItemsPerTick = 0
+	end
+	if maxItemsPerTick <= 0 and not isHeadless() then
+		Log:warn("Ingest scheduler maxItemsPerTick=%s; draining is disabled", tostring(maxItemsPerTick))
+	end
 	self._scheduler = Ingest.scheduler({
 		name = "WorldObserver.factScheduler",
-		maxItemsPerTick = schedCfg.maxItemsPerTick or 0,
+		maxItemsPerTick = maxItemsPerTick,
 		quantum = schedCfg.quantum or 1,
 	})
 	return self._scheduler

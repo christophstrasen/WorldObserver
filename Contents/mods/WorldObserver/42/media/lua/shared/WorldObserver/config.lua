@@ -34,7 +34,7 @@ local function defaults()
 		},
 		ingest = {
 			scheduler = {
-				maxItemsPerTick = 200,
+				maxItemsPerTick = 10,
 				quantum = 1,
 			},
 		},
@@ -56,11 +56,12 @@ local function clone(tbl)
 	return out
 end
 
-local function applyFactsConfig(target, source)
-	if type(source) ~= "table" then
+local function applyOverrides(target, overrides)
+	if type(overrides) ~= "table" then
 		return
 	end
-	local squares = source.squares
+	local facts = overrides.facts
+	local squares = type(facts) == "table" and facts.squares or nil
 	if type(squares) == "table" and type(squares.strategy) == "string" and squares.strategy ~= "" then
 		target.facts.squares.strategy = squares.strategy
 	end
@@ -77,8 +78,8 @@ local function applyFactsConfig(target, source)
 			target.facts.squares.probe[k] = v
 		end
 	end
-	if type(source.ingest) == "table" and type(source.ingest.scheduler) == "table" then
-		for k, v in pairs(source.ingest.scheduler) do
+	if type(overrides.ingest) == "table" and type(overrides.ingest.scheduler) == "table" then
+		for k, v in pairs(overrides.ingest.scheduler) do
 			target.ingest.scheduler[k] = v
 		end
 	end
@@ -103,7 +104,7 @@ end
 function Config.load(overrides)
 	local cfg = Config.defaults()
 	if type(overrides) == "table" then
-		applyFactsConfig(cfg, overrides.facts)
+		applyOverrides(cfg, overrides)
 	end
 	validate(cfg)
 	return cfg

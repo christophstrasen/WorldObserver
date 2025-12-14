@@ -2,8 +2,8 @@
 -- Usage in PZ console:
 --[[ 
 	smoke = require("examples/smoke_squares")
- 	smoke.start({ distinctSeconds = 2, withHelpers = true })
-	later: smoke:stop()
+ 	handle = smoke.start({ distinctSeconds = 2, withHelpers = true })
+	later: handle:stop()
 ]]
 --
 
@@ -46,7 +46,13 @@ function SmokeSquares.start(opts)
 		tostring(opts.withHelpers)
 	)
 
-	-- Emit a small one-off diagnostic snapshot so we can confirm ingest buffering is active in-engine.
+	local receivedCount = 0
+	local subscription = stream:subscribe(function(observation)
+		receivedCount = receivedCount + 1
+		print(fmt(observation))
+	end)
+
+	-- Emit a small diagnostic snapshot after subscribing so we can confirm ingest buffering/draining is active in-engine.
 	if WorldObserver.debug and WorldObserver.debug.describeFactsMetrics then
 		WorldObserver.debug.describeFactsMetrics("squares")
 	end
@@ -54,15 +60,30 @@ function SmokeSquares.start(opts)
 		WorldObserver.debug.describeIngestScheduler()
 	end
 
-	local subscription = stream:subscribe(function(observation)
-		print(fmt(observation))
-	end)
+	-- Optional heartbeat: once per minute, print ingest metrics + how many rows reached this smoke subscriber.
+	local heartbeatFn = nil
+	local events = _G.Events
+	if events and events.EveryOneMinute and type(events.EveryOneMinute.Add) == "function" then
+		heartbeatFn = function()
+			Log.info("[smoke] heartbeat: received=%s", tostring(receivedCount))
+			if WorldObserver.debug and WorldObserver.debug.describeFactsMetrics then
+				WorldObserver.debug.describeFactsMetrics("squares")
+			end
+			if WorldObserver.debug and WorldObserver.debug.describeIngestScheduler then
+				WorldObserver.debug.describeIngestScheduler()
+			end
+		end
+		events.EveryOneMinute.Add(heartbeatFn)
+	end
 
 	return {
 		stop = function()
 			if subscription and subscription.unsubscribe then
 				subscription:unsubscribe()
 				Log.info("[smoke] squares subscription stopped")
+			end
+			if heartbeatFn and events and events.EveryOneMinute and type(events.EveryOneMinute.Remove) == "function" then
+				pcall(events.EveryOneMinute.Remove, events.EveryOneMinute, heartbeatFn)
 			end
 		end,
 	}
