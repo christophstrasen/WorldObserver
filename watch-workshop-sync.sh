@@ -14,7 +14,6 @@ REACTIVEX_DEST="$DEST_WRAPPER/Contents/mods/WorldObserver/42/media/lua/shared"
 # Root-level shims so PZ can require folder modules without init.lua auto-loading.
 SHIM_DEST="$DEST_WRAPPER/Contents/mods/WorldObserver/42/media/lua/shared"
 LQR_SHIM_SRC="external/LQR/LQR.lua"
-RX_SHIM_SRC="external/LQR/reactivex.lua"
 
 GREEN="\033[32m"
 RED_BG="\033[41;97m"
@@ -48,11 +47,6 @@ sync_once() {
     rsync -a "$LQR_SHIM_SRC" "$SHIM_DEST/LQR.lua"
   else
     echo "[warn] LQR shim missing at $LQR_SHIM_SRC; skipped"
-  fi
-  if [ -f "$RX_SHIM_SRC" ]; then
-    rsync -a "$RX_SHIM_SRC" "$SHIM_DEST/reactivex.lua"
-  else
-    echo "[warn] reactivex shim missing at $RX_SHIM_SRC; skipped"
   fi
   # Tertiary sync: ship lua-reactivex (reactivex.lua + reactivex/*) alongside the mod.
   if [ -d "$REACTIVEX_SRC/reactivex" ]; then
