@@ -17,7 +17,7 @@ builders, etc.) is considered implementation detail and may change without notic
 - **ObservationStreams are event streams:** they carry all observations over
   time, including multiple observations for the same entity. There is no
   implicit per‑key de‑duplication; any “once per X” behavior is opt‑in.
-- **Helpers only reduce:** helpers attached to ObservationStreams may filter,
+- **Helpers don't add rows:** helpers attached to ObservationStreams may filter,
   reshape, or de‑duplicate observations, but they never introduce new schemas
   or perform joins/enrichment. Joins live inside ObservationStream `build`
   functions or advanced LQR usage.
@@ -434,10 +434,9 @@ function SquareHelpers.whereSquareNeedsCleaning(stream)
     local square = observation.square or {}
 
     local hasBlood   = square.hasBloodSplat == true
-    local hasCorpse  = square.hasCorpse == true
     local hasTrash   = square.hasTrashItems == true
 
-    return hasBlood or hasCorpse or hasTrash
+    return hasBlood or hasTrash
   end)
 end
 ```

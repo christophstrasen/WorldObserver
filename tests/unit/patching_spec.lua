@@ -80,5 +80,84 @@ describe("WorldObserver patch seams", function()
 			assert.is_equal("event", emitted[1].source)
 		end)
 	end)
-end)
 
+	describe("squareRecord:getIsoSquare()", function()
+		local savedGetWorld
+
+		before_each(function()
+			savedGetWorld = _G.getWorld
+		end)
+
+		after_each(function()
+			_G.getWorld = savedGetWorld
+		end)
+
+		it("rehydrates via SquareHelpers.record.getIsoSquare when hydration globals are available", function()
+			local SquareHelpers = require("WorldObserver/helpers/square")
+
+			local record = {
+				x = 1,
+				y = 2,
+				z = 0,
+				IsoSquare = nil,
+			}
+
+			local hydrated = {
+				getX = function()
+					return 1
+				end,
+				getY = function()
+					return 2
+				end,
+				getZ = function()
+					return 0
+				end,
+			}
+
+			local cell = {
+				getGridSquare = function(_, x, y, z)
+					assert.equals(1, x)
+					assert.equals(2, y)
+					assert.equals(0, z)
+					return hydrated
+				end,
+			}
+
+			_G.getWorld = function()
+				return {
+					getCell = function()
+						return cell
+					end,
+				}
+			end
+
+			local iso = SquareHelpers.record.getIsoSquare(record)
+			assert.is_equal(hydrated, iso)
+			assert.is_equal(hydrated, record.IsoSquare)
+		end)
+
+		it("populates hasCorpse via getDeadBody when present", function()
+			local corpseObj = {}
+			local fakeIsoSquare = {
+				getX = function()
+					return 1
+				end,
+				getY = function()
+					return 2
+				end,
+				getZ = function()
+					return 0
+				end,
+				hasBlood = function()
+					return false
+				end,
+				getDeadBody = function()
+					return corpseObj
+				end,
+			}
+
+			local record = SquaresFacts.makeSquareRecord(fakeIsoSquare, "event")
+			assert.is_true(record.hasCorpse)
+		end)
+	end)
+end)

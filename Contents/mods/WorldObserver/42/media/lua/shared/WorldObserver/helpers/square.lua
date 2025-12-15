@@ -10,6 +10,7 @@ if type(moduleName) == "string" then
 		package.loaded[moduleName] = SquareHelpers
 	end
 end
+SquareHelpers.record = SquareHelpers.record or {}
 
 local function squareField(observation, fieldName)
 	-- Helpers should be forgiving if a stream remaps the square field.
@@ -21,23 +22,48 @@ local function squareField(observation, fieldName)
 	return square
 end
 
-local function squareHasCorpse(square)
-	local IsoSquare = square.IsoSquare
-	-- Support both shapes:
-	-- - WorldObserver square records (preferred): precomputed boolean fields
-	-- - Vanilla IsoGridSquare (fallback): compute via API calls
-	if type(square) == "table" and square.hasCorpse ~= nil then
-		return square.hasCorpse == true
+local function squareHasCorpse(squareRecord)
+	-- This predicate is used by stream helpers after they extracted `square` from an observation.
+	-- It expects the WorldObserver square record shape (a table) and may use best-effort hydration.
+	if type(squareRecord) ~= "table" then
+		return false
 	end
-	if type(IsoSquare) == "userdata" and type(IsoSquare.getDeadBody) == "function" then
-		-- IsoGridSquare:getDeadBody() returns one body (or nil), getDeadBodys() returns a List.
-		-- Prefer getDeadBody() as the cheapest "any corpse?" check.
-		local ok, body = pcall(IsoSquare.getDeadBody, IsoSquare)
+
+	-- Preferred: fact already materialized the boolean.
+	if squareRecord.hasCorpse ~= nil then
+		return squareRecord.hasCorpse == true
+	end
+
+	local isoSquare = squareRecord.IsoSquare
+	if isoSquare == nil and SquareHelpers.record and SquareHelpers.record.getIsoSquare then
+		isoSquare = SquareHelpers.record.getIsoSquare(squareRecord)
+	end
+	if isoSquare == nil then
+		return false
+	end
+
+	-- Prefer the direct boolean getter when available (matches how facts compute hasCorpse).
+	if type(isoSquare.hasCorpse) == "function" then
+		local ok, value = pcall(isoSquare.hasCorpse, isoSquare)
+		return ok and value == true
+	end
+
+	-- Fallback: IsoGridSquare:getDeadBody() returns one body (or nil), getDeadBodys() returns a List.
+	if type(isoSquare.getDeadBody) == "function" then
+		local ok, body = pcall(isoSquare.getDeadBody, isoSquare)
 		return ok and body ~= nil
 	end
+
 	return false
 end
 
+-- Patch seam convention:
+-- We only define exported helper functions when the field is nil, so other mods can patch by reassigning
+-- `SquareHelpers.<name>` (or `SquareHelpers.record.<name>`) and so module reloads (tests/console via `package.loaded`)
+-- don't clobber an existing patch.
+if SquareHelpers.record.squareHasCorpse == nil then
+	SquareHelpers.record.squareHasCorpse = squareHasCorpse
+end
 if SquareHelpers.squareHasBloodSplat == nil then
 	function SquareHelpers.squareHasBloodSplat(stream, fieldName)
 		local target = fieldName or "square"
@@ -65,17 +91,12 @@ if SquareHelpers.whereSquareNeedsCleaning == nil then
 		local target = fieldName or "square"
 		return stream:filter(function(observation)
 			local square = squareField(observation, target)
-			if square == nil then
+			if type(square) ~= "table" then
 				return false
 			end
 
 			-- For WorldObserver square records, these booleans are already materialized at fact time.
-			if type(square) == "table" then
-				return squareHasCorpse(square) or (square.hasBloodSplat == true) or (square.hasTrashItems == true)
-			end
-
-			-- Fallback shape: IsoGridSquare. We only have a reliable corpse check right now.
-			return squareHasCorpse(square)
+			return SquareHelpers.record.squareHasCorpse(square) or (square.hasBloodSplat == true) or (square.hasTrashItems == true)
 		end)
 	end
 end
@@ -104,6 +125,133 @@ local KNOWN_HEDGE_SPRITES = {
 	vegetation_ornamental_01_12 = true,
 	vegetation_ornamental_01_13 = true,
 }
+
+local function validateIsoSquare(squareRecord, isoSquare)
+	if type(squareRecord) ~= "table" then
+		return nil
+	end
+	if isoSquare == nil then
+		return nil
+	end
+
+	if type(isoSquare.getX) ~= "function" or type(isoSquare.getY) ~= "function" then
+		return nil
+	end
+
+	local okX, x = pcall(isoSquare.getX, isoSquare)
+	local okY, y = pcall(isoSquare.getY, isoSquare)
+	if not okX or not okY then
+		return nil
+	end
+
+	local z = nil
+	if type(isoSquare.getZ) == "function" then
+		local okZ, value = pcall(isoSquare.getZ, isoSquare)
+		if not okZ then
+			return nil
+		end
+		z = value
+	end
+
+	if x ~= squareRecord.x or y ~= squareRecord.y then
+		return nil
+	end
+	local rz = squareRecord.z or 0
+	if z ~= nil and z ~= rz then
+		return nil
+	end
+
+	return isoSquare
+end
+
+local function hydrateIsoSquare(squareRecord, opts)
+	if type(squareRecord) ~= "table" then
+		return nil
+	end
+	local x, y, z = squareRecord.x, squareRecord.y, squareRecord.z or 0
+	if type(x) ~= "number" or type(y) ~= "number" or type(z) ~= "number" then
+		return nil
+	end
+
+	local cell = nil
+	if type(opts) == "table" and opts.cell and type(opts.cell.getGridSquare) == "function" then
+		cell = opts.cell
+	else
+		local getWorld = _G.getWorld
+		if type(getWorld) == "function" then
+			local okWorld, world = pcall(getWorld)
+			if okWorld and world and type(world.getCell) == "function" then
+				local okCell, c = pcall(world.getCell, world)
+				if okCell then
+					cell = c
+				end
+			end
+		end
+		if not cell then
+			local getCell = _G.getCell
+			if type(getCell) == "function" then
+				local okCell, c = pcall(getCell)
+				if okCell then
+					cell = c
+				end
+			end
+		end
+	end
+
+	if not cell or type(cell.getGridSquare) ~= "function" then
+		return nil
+	end
+
+	local okSquare, isoSquare = pcall(cell.getGridSquare, cell, x, y, z)
+	if okSquare and isoSquare ~= nil then
+		return isoSquare
+	end
+	return nil
+end
+
+-- Patch seam: only assign defaults when nil, to preserve mod overrides across reloads.
+SquareHelpers.record.validateIsoSquare = SquareHelpers.record.validateIsoSquare or validateIsoSquare
+SquareHelpers.record.hydrateIsoSquare = SquareHelpers.record.hydrateIsoSquare or hydrateIsoSquare
+
+-- Best-effort access to a live IsoGridSquare based on a square record (x/y/z + optional cached IsoSquare).
+-- Contract: returns IsoGridSquare when available, otherwise nil; never throws.
+if SquareHelpers.record.getIsoSquare == nil then
+	function SquareHelpers.record.getIsoSquare(squareRecord, opts)
+		if type(squareRecord) ~= "table" then
+			return nil
+		end
+
+		local iso = SquareHelpers.record.validateIsoSquare(squareRecord, squareRecord.IsoSquare)
+		if iso then
+			return iso
+		end
+
+		local hydrated = SquareHelpers.record.hydrateIsoSquare(squareRecord, opts)
+		iso = SquareHelpers.record.validateIsoSquare(squareRecord, hydrated)
+		if iso then
+			squareRecord.IsoSquare = iso
+			return iso
+		end
+
+		squareRecord.IsoSquare = nil
+		return nil
+	end
+end
+
+-- Stream helper: keeps only observations whose square record resolves to a live IsoGridSquare.
+-- Side-effect: when resolution succeeds, caches it on the record as `square.IsoSquare`.
+if SquareHelpers.whereSquareHasIsoSquare == nil then
+	function SquareHelpers.whereSquareHasIsoSquare(stream, fieldName, opts)
+		local target = fieldName or "square"
+		return stream:filter(function(observation)
+			local square = squareField(observation, target)
+			if type(square) ~= "table" then
+				return false
+			end
+			return SquareHelpers.record.getIsoSquare(square, opts) ~= nil
+		end)
+	end
+end
 
 if SquareHelpers.squareHasHedge == nil then
 	function SquareHelpers.squareHasHedge(square)

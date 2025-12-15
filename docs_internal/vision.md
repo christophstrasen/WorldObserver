@@ -286,6 +286,10 @@ At a high level, WorldObserver should:
   time, …) that filter, de‑duplicate, or reshape observations without
   introducing new sources. Mod‑facing code chains helpers on top of
   ObservationStreams instead of wiring `OnTick` loops or manual joins.
+  Helpers are patch‑able by default: modders can override helper functions by
+  reassigning `WorldObserver.helpers.<type>.<name>`, and WorldObserver avoids
+  clobbering overrides on reload by only defining helpers when the field is
+  `nil`.
 
 - **Manage lifecycle and backpressure at the engine level.**  
   Start and stop fact plans and probes based on demand (subscriptions and

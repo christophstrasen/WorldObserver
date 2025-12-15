@@ -13,6 +13,109 @@ if type(moduleName) == "string" then
 end
 Debug._internal = Debug._internal or {}
 
+local function isScalar(valueType)
+	return valueType == "string" or valueType == "number" or valueType == "boolean"
+end
+
+local function formatValue(value)
+	local t = type(value)
+	if isScalar(t) then
+		return tostring(value)
+	end
+	if value == nil then
+		return "nil"
+	end
+	return "<" .. t .. ">"
+end
+
+local function formatRxMetaCompact(meta)
+	if type(meta) ~= "table" then
+		return formatValue(meta)
+	end
+
+	local parts = {}
+	if meta.schema ~= nil then
+		parts[#parts + 1] = ("schema=%s"):format(formatValue(meta.schema))
+	end
+	if meta.id ~= nil then
+		parts[#parts + 1] = ("id=%s"):format(formatValue(meta.id))
+	end
+	if meta.sourceTime ~= nil then
+		parts[#parts + 1] = ("sourceTime=%s"):format(formatValue(meta.sourceTime))
+	elseif meta.sourceTimeMs ~= nil then
+		parts[#parts + 1] = ("sourceTimeMs=%s"):format(formatValue(meta.sourceTimeMs))
+	end
+	if meta.shape ~= nil then
+		parts[#parts + 1] = ("shape=%s"):format(formatValue(meta.shape))
+	end
+	if type(meta.schemaMap) == "table" then
+		local schemaNames = {}
+		for schemaName in pairs(meta.schemaMap) do
+			if type(schemaName) == "string" then
+				schemaNames[#schemaNames + 1] = schemaName
+			end
+		end
+		table.sort(schemaNames)
+		local maxSchemas = 4
+		local shown = {}
+		for i = 1, math.min(#schemaNames, maxSchemas) do
+			shown[#shown + 1] = schemaNames[i]
+		end
+		local suffix = ""
+		if #schemaNames > maxSchemas then
+			suffix = ("…(+%d)"):format(#schemaNames - maxSchemas)
+		end
+		parts[#parts + 1] = ("schemas=%s%s"):format(table.concat(shown, ","), suffix)
+	end
+
+	if #parts == 0 then
+		return "<empty>"
+	end
+	return table.concat(parts, " ")
+end
+
+local function formatRecordCompact(record, opts)
+	opts = opts or {}
+	if type(record) ~= "table" then
+		return formatValue(record)
+	end
+
+	local parts = {}
+	local maxFields = opts.maxFields or 12
+	local fieldCount = 0
+
+	-- Print a compact set of scalar fields (ignore nested tables/functions).
+	local keys = {}
+	for k, v in pairs(record) do
+		if k ~= "RxMeta" and type(k) == "string" then
+			local vt = type(v)
+			if isScalar(vt) or vt == "userdata" or v == nil then
+				keys[#keys + 1] = k
+			end
+		end
+	end
+	table.sort(keys)
+
+	for _, k in ipairs(keys) do
+		if fieldCount >= maxFields then
+			parts[#parts + 1] = "…"
+			break
+		end
+		parts[#parts + 1] = ("%s=%s"):format(k, formatValue(record[k]))
+		fieldCount = fieldCount + 1
+	end
+
+	local meta = record.RxMeta
+	if opts.includeRxMeta ~= false and type(meta) == "table" then
+		parts[#parts + 1] = ("rxMeta(%s)"):format(formatRxMetaCompact(meta))
+	end
+
+	if #parts == 0 then
+		return "<empty>"
+	end
+	return table.concat(parts, " ")
+end
+
 local function describeRuntimeStatus(payload, factRegistry)
 	local status = payload and payload.status or nil
 	if type(status) ~= "table" then
@@ -42,7 +145,7 @@ local function describeRuntimeStatus(payload, factRegistry)
 		currentPending = nil
 	end
 	Log:info(
-		"[runtime] mode=%s pressure=%s reason=%s drainMaxItems=%s baseMaxItems=%s avgMsPerTick=%.2f tickSpikeMs=%.2f budgetMs=%s spikeBudgetMs=%s spikeStreakMax=%s currentPending=%s avgPendingWin=%.2f avgFillWin=%.3f dropDelta=%s rate15(in/out /s)=%.2f/%.2f",
+		"[runtime] mode=%s pressure=%s reason=%s drainMaxItems=%s baseMaxItems=%s avgMsPerTick=%.2f tickSpikeMs=%.2f budgetMs=%s spikeBudgetMs=%s spikeStreakMax=%s currentPending=%s avgPendingWin=%.2f avgFillWin=%.3f dropDelta=%s rate15(in/out per sec)=%.2f/%.2f",
 		tostring(status.mode),
 		pressure,
 		tostring(windowReason),
@@ -72,7 +175,7 @@ local function describeFactsMetricsCompact(factRegistry, typeName)
 		fill = (snap.pending or 0) / snap.capacity
 	end
 	Log:info(
-		"[%s] pending=%s peak=%s fill=%s dropped=%s rate15(in/out /s)=%.2f/%.2f load15=%.2f totals(in/drain/drop)=%s/%s/%s",
+		"[%s] pending=%s peak=%s fill=%s dropped=%s rate15(in/out per sec)=%.2f/%.2f load15=%.2f totals(in/drain/drop)=%s/%s/%s",
 		tostring(typeName),
 		tostring(snap.pending),
 		tostring(snap.peakPending),
@@ -92,7 +195,11 @@ end
 
 Debug._internal.describeRuntimeStatus = describeRuntimeStatus
 Debug._internal.describeFactsMetricsCompact = describeFactsMetricsCompact
+Debug._internal.formatRecordCompact = formatRecordCompact
+Debug._internal.formatRxMetaCompact = formatRxMetaCompact
 
+-- Patch seam: define only when nil so mods can override by reassigning `Debug.new` and so reloads
+-- (tests/console via `package.loaded`) don't clobber an existing patch.
 if Debug.new == nil then
 	function Debug.new(factRegistry, observationRegistry)
 		return {
@@ -156,6 +263,70 @@ if Debug.new == nil then
 					tostring(snap.drainCallsTotal),
 					snap.lastDrain and tostring(snap.lastDrain.spentMillis) or "n/a"
 				)
+			end,
+
+			-- Debug-print a single observation row in a compact, human-readable way.
+			-- Prints only top-level record fields (no deep table traversal) plus RxMeta when present.
+			-- Returns the emitted lines (useful for tests or custom printers).
+			printObservation = function(observation, opts)
+				opts = opts or {}
+				local printFn = opts.printFn
+				if printFn == nil then
+					printFn = print
+				end
+				local prefix = opts.prefix or "[observation]"
+				local indent = opts.indent or "  "
+
+				local lines = {}
+				if type(observation) ~= "table" then
+					lines[1] = ("%s %s"):format(prefix, formatValue(observation))
+				else
+					lines[#lines + 1] = prefix
+
+					if opts.includeRxMeta ~= false and observation.RxMeta ~= nil then
+						lines[#lines + 1] = ("%srxMeta: %s"):format(indent, formatRxMetaCompact(observation.RxMeta))
+					end
+
+					local keys = {}
+					for k in pairs(observation) do
+						if k ~= "_raw_result" and k ~= "RxMeta" and type(k) == "string" then
+							keys[#keys + 1] = k
+						end
+					end
+					table.sort(keys)
+
+					if #keys == 0 then
+						lines[#lines + 1] = ("%s<empty>"):format(indent)
+					else
+						for _, k in ipairs(keys) do
+							local record = observation[k]
+							local schemaName = nil
+							if type(record) == "table" and type(record.RxMeta) == "table" then
+								schemaName = record.RxMeta.schema
+							end
+
+							local label = k
+							if schemaName ~= nil and schemaName ~= k then
+								label = ("%s(%s)"):format(tostring(schemaName), tostring(k))
+							elseif schemaName ~= nil then
+								label = tostring(schemaName)
+							end
+
+							lines[#lines + 1] = ("%s%s: %s"):format(indent, label, formatRecordCompact(record, opts))
+						end
+					end
+
+					if opts.includeRaw == true and observation._raw_result ~= nil then
+						lines[#lines + 1] = ("%s_raw_result=%s"):format(indent, formatValue(observation._raw_result))
+					end
+				end
+
+				if type(printFn) == "function" then
+					for _, line in ipairs(lines) do
+						printFn(line)
+					end
+				end
+				return lines
 			end,
 
 			-- Attach a periodic "runtime heartbeat" that prints controller status + compact ingest metrics.

@@ -23,6 +23,8 @@ local function defaultDetectHeadlessFlag()
 	return false
 end
 
+-- Patch seam: only assign defaults when nil, so mods can override by reassigning `Config.<name>` and so
+-- module reloads (tests/console via `package.loaded`) don't clobber an existing patch.
 if Config.detectHeadlessFlag == nil then
 	Config.detectHeadlessFlag = defaultDetectHeadlessFlag
 end
@@ -148,6 +150,8 @@ Config._internal.validate = defaultValidate
 
 ---Creates a copy of the default config.
 ---@return table
+-- Patch seam: define only when nil so mods can override by reassigning `Config.defaults` and so reloads
+-- (tests/console via `package.loaded`) don't clobber an existing patch.
 if Config.defaults == nil then
 	function Config.defaults()
 		return Config._internal.clone(Config._internal.buildDefaults())
@@ -157,6 +161,8 @@ end
 ---Merges user overrides into defaults and validates the result.
 ---@param overrides table|nil
 ---@return table
+-- Patch seam: define only when nil so mods can override by reassigning `Config.load` and so reloads
+-- (tests/console via `package.loaded`) don't clobber an existing patch.
 if Config.load == nil then
 	function Config.load(overrides)
 		local cfg = Config.defaults()

@@ -137,7 +137,7 @@ least the following:
 ---@field y integer                 -- world Y coordinate
 ---@field z integer                 -- world Z level
 ---@field hasBloodSplat boolean?    -- true if any blood decal is present
----@field hasCorpse boolean?        -- true if a corpse is present
+---@field hasCorpse boolean?        -- true if any corpse is present
 ---@field hasTrashItems boolean?    -- true if items considered "trash" are present
 ---@field observedAtTimeMS number?  -- game time (timeCalendar:getTimeInMillis())
 ---@field source string?            -- optional: "event" | "probe" (diagnostic)
@@ -254,7 +254,7 @@ Implementation decisions and deferred work:
   semi-stable identifier for the square itself, not as the unique identifier
   for individual observations.
 - For MVP, `makeSquareRecord` will initially stub out the detection for
-  `hasBloodSplat`, `hasCorpse`, and `hasTrashItems` (for example, always
+  `hasBloodSplat` and `hasTrashItems` (for example, always
   `false` or `nil`), and helpers such as `whereSquareNeedsCleaning()` should be
   implemented with that limitation in mind. Richer heuristics for these
   fields are explicitly deferred.
@@ -321,7 +321,6 @@ MVP and later versions, and we explicitly avoid shims/backward-compatibility.
 ---@field y integer
 ---@field z integer
 ---@field hasBloodSplat boolean?
----@field hasCorpse boolean?
 ---@field hasTrashItems boolean?
 ---@field observedAtTimeMS number?
 ---@field source string?

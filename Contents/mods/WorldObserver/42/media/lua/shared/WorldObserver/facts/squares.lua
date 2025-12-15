@@ -68,9 +68,36 @@ local function detectFlag(square, detector)
 	return false
 end
 
+local function detectCorpse(square)
+	if not square then
+		return false
+	 end
+	if type(square.getDeadBody) == "function" then
+		local ok, body = pcall(square.getDeadBody, square)
+		if ok and body ~= nil then
+			return true
+		end
+	end
+	-- Some builds expose a list-returning API; treat any non-empty list as "has corpse".
+	if type(square.getDeadBodys) == "function" then
+		local ok, list = pcall(square.getDeadBodys, square)
+		if ok and list ~= nil then
+			if type(list.size) == "function" then
+				local okSize, size = pcall(list.size, list)
+				if okSize and type(size) == "number" then
+					return size > 0
+				end
+			end
+			-- Best-effort: if we can't introspect size, a non-nil list still suggests corpses may exist.
+			-- Keep this conservative: only treat it as "true" when we can prove it's non-empty.
+		end
+	end
+	return detectFlag(square, square.hasCorpse)
+end
+
 -- Default square record builder.
 -- Intentionally exposed via Squares.makeSquareRecord so other mods can patch/override it.
-local function defaultMakeSquareRecord(square, source)
+function Squares.makeSquareRecord(square, source)
 	if not square then
 		return nil
 	end
@@ -89,7 +116,7 @@ local function defaultMakeSquareRecord(square, source)
 		y = y,
 		z = z,
 		hasBloodSplat = detectFlag(square, square.hasBlood),
-		hasCorpse = detectFlag(square, square.hasCorpse),
+		hasCorpse = detectCorpse(square),
 		hasTrashItems = false, -- placeholder until we wire real trash detection
 		observedAtTimeMS = nowMillis(),
 		IsoSquare = square,
@@ -99,10 +126,7 @@ local function defaultMakeSquareRecord(square, source)
 	return record
 end
 
-Squares._defaults.makeSquareRecord = defaultMakeSquareRecord
-if Squares.makeSquareRecord == nil then
-	Squares.makeSquareRecord = defaultMakeSquareRecord
-end
+Squares._defaults.makeSquareRecord = Squares._defaults.makeSquareRecord or Squares.makeSquareRecord
 
 local function registerOnLoadGridSquare(state, emitFn)
 	local events = _G.Events
@@ -172,9 +196,23 @@ end
 
 local function nearbyPlayers()
 	local players = {}
+
+	-- Prefer the simple single-player API: in most WO use cases we want "the local player"
+	-- as the probe center, not a global iteration. This also avoids environments where
+	-- getNumActivePlayers/getSpecificPlayer aren't available yet.
+	local getPlayer = _G.getPlayer
+	if type(getPlayer) == "function" then
+		local ok, player = pcall(getPlayer)
+		if ok and player ~= nil then
+			players[1] = player
+			return players
+		end
+	end
+
+	-- Fallback for environments that don't expose getPlayer() but do expose indexed players.
 	local getNumPlayers = _G.getNumActivePlayers
-	local getPlayer = _G.getSpecificPlayer
-	if type(getNumPlayers) ~= "function" or type(getPlayer) ~= "function" then
+	local getSpecificPlayer = _G.getSpecificPlayer
+	if type(getNumPlayers) ~= "function" or type(getSpecificPlayer) ~= "function" then
 		return players
 	end
 
@@ -184,7 +222,7 @@ local function nearbyPlayers()
 	end
 
 	for index = 0, math.max(0, count - 1) do
-		local ok, player = pcall(getPlayer, index)
+		local ok, player = pcall(getSpecificPlayer, index)
 		if ok and player ~= nil then
 			players[#players + 1] = player
 		end
@@ -201,6 +239,21 @@ local function runNearPlayersProbe(emitFn, budget)
 		if type(player.getSquare) == "function" then
 			local ok, square = pcall(player.getSquare, player)
 			if ok and square then
+				local cx = coordOf(square, "getX")
+				local cy = coordOf(square, "getY")
+				local cz = coordOf(square, "getZ") or 0
+				local centerId = deriveSquareId(square, cx, cy, cz)
+				Log:info(
+					"[probe] center square x=%s y=%s z=%s squareId=%s",
+					cx ~= nil and tostring(cx) or "n/a",
+					cy ~= nil and tostring(cy) or "n/a",
+					cz ~= nil and tostring(cz) or "n/a",
+					centerId ~= nil and tostring(centerId) or "n/a"
+				)
+
+				local emitted = 0
+				local flaggedCleaning = 0
+
 				-- Probe a small 5x5 area around each player (Chebyshev radius 2).
 				-- Intention: keep probe cost predictable and near-player focused; chunk-load events cover the rest.
 				for _, probeSquare in ipairs(iterSquaresInRing(square, 0, 2, budget - processed)) do
@@ -209,6 +262,10 @@ local function runNearPlayersProbe(emitFn, budget)
 						if record.squareId == nil then
 							Log:warn("Probe emitted square without id; dropping")
 						else
+							emitted = emitted + 1
+							if record.hasCorpse == true or record.hasBloodSplat == true or record.hasTrashItems == true then
+								flaggedCleaning = flaggedCleaning + 1
+							end
 							emitFn(record)
 							processed = processed + 1
 							if processed >= budget then
@@ -217,7 +274,17 @@ local function runNearPlayersProbe(emitFn, budget)
 						end
 					end
 				end
+
+				Log:info(
+					"[probe] emitted=%s flaggedCleaning=%s processedTotal=%s budget=%s",
+					tostring(emitted),
+					tostring(flaggedCleaning),
+					tostring(processed),
+					tostring(budget)
+				)
 			end
+		else
+			Log:warn("[probe] cannot run: player has no getSquare()")
 		end
 	end
 end
@@ -268,97 +335,100 @@ Squares._internal.nearbyPlayers = nearbyPlayers
 Squares._internal.runNearPlayersProbe = runNearPlayersProbe
 Squares._internal.registerProbe = registerProbe
 
+-- Patch seam: define only when nil so mods can override by reassigning `Squares.register` and so reloads
+-- (tests/console via `package.loaded`) don't clobber an existing patch.
 if Squares.register == nil then
 	function Squares.register(registry, config)
-	local headless = config and config.facts and config.facts.squares and config.facts.squares.headless == true
-	local probeCfg = config and config.facts and config.facts.squares and config.facts.squares.probe or {}
-	local probeEnabled = probeCfg.enabled ~= false
-	local probeMaxPerRun = probeCfg.maxPerRun or 50
+		local headless = config and config.facts and config.facts.squares and config.facts.squares.headless == true
+		local probeCfg = config and config.facts and config.facts.squares and config.facts.squares.probe or {}
+		local probeEnabled = probeCfg.enabled ~= false
+		local probeMaxPerRun = probeCfg.maxPerRun or 50
 
-	registry:register("squares", {
-		ingest = {
-			mode = "latestByKey",
-			ordering = "fifo",
-			key = function(record)
-				return record and record.squareId
-			end,
-			lane = function(record)
-				return (record and record.source) or "default"
-			end,
-			lanePriority = function(laneName)
-				if laneName == "probe" then
-					return 2
-				end
-				if laneName == "event" then
+		registry:register("squares", {
+			ingest = {
+				mode = "latestByKey",
+				ordering = "fifo",
+				key = function(record)
+					return record and record.squareId
+				end,
+				lane = function(record)
+					return (record and record.source) or "default"
+				end,
+				lanePriority = function(laneName)
+					if laneName == "probe" then
+						return 2
+					end
+					if laneName == "event" then
+						return 1
+					end
 					return 1
+				end,
+			},
+			start = function(ctx)
+				local state = ctx.state or {}
+				local originalEmit = ctx.ingest or ctx.emit
+				local listenerRegistered = Squares._internal.registerOnLoadGridSquare(state, originalEmit)
+				local probeRegistered = false
+				if probeEnabled then
+					probeRegistered =
+						Squares._internal.registerProbe(state, originalEmit, probeMaxPerRun, headless, ctx.runtime)
 				end
-				return 1
+
+				if not listenerRegistered and not headless then
+					Log:warn("OnLoadGridsquare listener not registered (Events unavailable)")
+				end
+				if not headless then
+					Log:info(
+						"Squares fact plan started (listener=%s, probe=%s)",
+						tostring(listenerRegistered),
+						tostring(probeRegistered)
+					)
+				end
+				ctx.emit = originalEmit
+				ctx.ingest = originalEmit
 			end,
-		},
-		start = function(ctx)
-			local state = ctx.state or {}
-			local originalEmit = ctx.ingest or ctx.emit
-			local listenerRegistered = Squares._internal.registerOnLoadGridSquare(state, originalEmit)
-			local probeRegistered = false
-			if probeEnabled then
-				probeRegistered = Squares._internal.registerProbe(state, originalEmit, probeMaxPerRun, headless, ctx.runtime)
-			end
+			stop = function(entry)
+				local state = entry.state or {}
+				local events = _G.Events
+				local fullyStopped = true
 
-			if not listenerRegistered and not headless then
-				Log:warn("OnLoadGridsquare listener not registered (Events unavailable)")
-			end
-			if not headless then
-				Log:info(
-					"Squares fact plan started (listener=%s, probe=%s)",
-					tostring(listenerRegistered),
-					tostring(probeRegistered)
-				)
-			end
-			ctx.emit = originalEmit
-			ctx.ingest = originalEmit
-		end,
-		stop = function(entry)
-			local state = entry.state or {}
-			local events = _G.Events
-			local fullyStopped = true
-
-			if entry.buffer and entry.buffer.clear then
-				entry.buffer:clear()
-			end
-
-			if state.loadGridsquareHandler then
-				local handler = events and events.LoadGridsquare
-				if handler and type(handler.Remove) == "function" then
-					pcall(handler.Remove, handler, state.loadGridsquareHandler)
-					state.loadGridsquareHandler = nil
-				else
-					fullyStopped = false
+				if entry.buffer and entry.buffer.clear then
+					entry.buffer:clear()
 				end
-			end
 
-			if state.everyOneMinuteHandler then
-				local handler = events and events.EveryOneMinute
-				if handler and type(handler.Remove) == "function" then
-					pcall(handler.Remove, handler, state.everyOneMinuteHandler)
-					state.everyOneMinuteHandler = nil
-				else
-					fullyStopped = false
+				if state.loadGridsquareHandler then
+					local handler = events and events.LoadGridsquare
+					if handler and type(handler.Remove) == "function" then
+						pcall(handler.Remove, handler, state.loadGridsquareHandler)
+						state.loadGridsquareHandler = nil
+					else
+						fullyStopped = false
+					end
 				end
-			end
 
-			if not fullyStopped and not headless then
-				Log:warn("Squares fact stop requested but could not remove all handlers; keeping started=true")
-			end
+				if state.everyOneMinuteHandler then
+					local handler = events and events.EveryOneMinute
+					if handler and type(handler.Remove) == "function" then
+						pcall(handler.Remove, handler, state.everyOneMinuteHandler)
+						state.everyOneMinuteHandler = nil
+					else
+						fullyStopped = false
+					end
+				end
 
-			return fullyStopped
-		end,
-	})
+				if not fullyStopped and not headless then
+					Log:warn("Squares fact stop requested but could not remove all handlers; keeping started=true")
+				end
 
-	return {
-		makeSquareRecord = function(square, source)
-			return Squares.makeSquareRecord(square, source)
-		end,
-		defaultMakeSquareRecord = defaultMakeSquareRecord,
+				return fullyStopped
+			end,
+		})
+
+		return {
+			makeSquareRecord = function(square, source)
+				return Squares.makeSquareRecord(square, source)
+			end,
+			defaultMakeSquareRecord = defaultMakeSquareRecord,
 			_internal = Squares._internal,
 		}
 	end

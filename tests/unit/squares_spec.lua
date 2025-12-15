@@ -18,9 +18,15 @@ end
 
 describe("WorldObserver observations.squares()", function()
 	local WorldObserver
+	local savedGetWorld
 
 	before_each(function()
+		savedGetWorld = _G.getWorld
 		WorldObserver = reload("WorldObserver")
+	end)
+
+	after_each(function()
+		_G.getWorld = savedGetWorld
 	end)
 
 	it("emits Observation rows with SquareObservation payload", function()
@@ -102,6 +108,55 @@ describe("WorldObserver observations.squares()", function()
 
 		assert.is_equal(1, #hasBlood)
 		assert.is_equal(2, hasBlood[1].square.squareId)
+	end)
+
+	it("whereSquareHasIsoSquare hydrates and filters observations", function()
+		local hydrated = {
+			getX = function()
+				return 1
+			end,
+			getY = function()
+				return 2
+			end,
+			getZ = function()
+				return 0
+			end,
+		}
+
+		local cell = {
+			getGridSquare = function(_, x, y, z)
+				assert.equals(1, x)
+				assert.equals(2, y)
+				assert.equals(0, z)
+				return hydrated
+			end,
+		}
+
+		_G.getWorld = function()
+			return {
+				getCell = function()
+					return cell
+				end,
+			}
+		end
+
+		local received = {}
+		local stream = WorldObserver.observations.squares():whereSquareHasIsoSquare()
+		stream:subscribe(function(row)
+			received[#received + 1] = row
+		end)
+
+		WorldObserver._internal.facts:emit("squares", {
+			squareId = 99,
+			x = 1,
+			y = 2,
+			z = 0,
+			IsoSquare = nil,
+			observedAtTimeMS = 1,
+		})
+
+		assert.is_equal(1, #received)
+		assert.is_equal(hydrated, received[1].square.IsoSquare)
 	end)
 
 	it("tracks fact subscribers when subscribing and unsubscribing", function()

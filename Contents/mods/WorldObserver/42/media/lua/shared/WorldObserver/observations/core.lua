@@ -270,6 +270,8 @@ ObservationsCore._internal.cloneTable = cloneTable
 ObservationsCore._internal.newObservationStream = newObservationStream
 ObservationsCore._internal.buildHelperMethods = buildHelperMethods
 
+-- Patch seam: define only when nil so mods can override by reassigning these module fields and so reloads
+-- (tests/console via `package.loaded`) don't clobber an existing patch.
 if ObservationsCore.new == nil then
 	ObservationsCore.new = ObservationRegistry.new
 end

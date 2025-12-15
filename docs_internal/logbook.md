@@ -63,9 +63,9 @@
   - Clarified in `api_proposal.md` that core schemas (e.g. `SquareObservation`) are structured and documented, while custom schemas are “opaque but honest” and only constrained where they opt into helper sets or debug tooling.
 
 - Defined `SquareObservation` and time handling:
-  - Specified the `SquareObservation` schema, including `squareId`, `square` (IsoSquare reference), flags like `hasBloodSplat`/`hasCorpse`/`hasTrashItems`, and `observedAtTimeMS` (from `timeCalendar:getTimeInMillis()`).
+  - Specified the `SquareObservation` schema, including `squareId`, `square` (IsoSquare reference), flags like `hasBloodSplat`/`hasTrashItems`, and `observedAtTimeMS` (from `timeCalendar:getTimeInMillis()`).
   - Decided that `squareId` represents the semi-stable identity of the square (e.g. from `IsoGridSquare` ID), while `RxMeta.id` is a per-observation identifier.
-  - For MVP, left content heuristics for `hasBloodSplat`/`hasCorpse`/`hasTrashItems` as stubs, with richer detection explicitly deferred.
+  - For MVP, left content heuristics for `hasBloodSplat`/`hasTrashItems` as stubs, with richer detection explicitly deferred.
 
 - Integrated event time and observation IDs with LQR:
   - Agreed not to patch LQR ad-hoc but to extend `LQR.Schema.wrap` with a clean option to populate `RxMeta.sourceTime` from a payload field (e.g. `sourceTimeField = "observedAtTimeMS"`) and to allow a custom `idSelector`.
@@ -175,3 +175,51 @@
 - The “right” abstraction is **mechanics vs policy**: LQR/ingest provides buffering/draining/metrics; WorldObserver owns budgets, modes, and user-facing behavior.
 - Windowed telemetry is the sweet spot: it’s cheap enough to keep on, and rich enough to diagnose “ingest cost” vs “downstream query cost”.
 - A safe runtime must be able to *recover* (decay + backoff), not just “push harder”; otherwise it will eventually hitch when workloads shift.
+
+## day8 – Patchable-by-default helpers + square hydration + schema fixes
+
+### Highlights
+- Made patch seams explicit and reload-safe:
+  - Standardized on “define only when nil” for mod-facing functions (helpers and key module entry points) so other mods can patch by reassigning table fields.
+  - Added rationale comments next to these nil-guards so the intent is clear (preserve mod overrides and avoid clobbering on module reload via `package.loaded`, including busted and console reload workflows).
+  - Added a dedicated `tests/unit/patching_spec.lua` to exercise patch seams and ensure patches affect long-lived handlers.
+
+- Refined square helper strategy around “stable payload + optional live object”:
+  - Implemented square hydration as a **stream helper** (`whereSquareHasIsoSquare`) instead of record decoration, aligning with the existing helper attachment mechanism.
+  - Implemented `SquareHelpers.record.getIsoSquare` with `validateIsoSquare` + `hydrateIsoSquare` as patchable seams, using `getWorld():getCell():getGridSquare(x,y,z)` (and `getCell()` fallback) guarded by `pcall`.
+
+- Restored and clarified corpse detection:
+  - Re-introduced `SquareObservation.hasCorpse` as a materialized boolean and populated it primarily via `IsoGridSquare:getDeadBody()` at record creation time (fallback to `hasCorpse` when needed).
+  - Updated square helpers to treat corpse detection as a patchable record-level predicate (`SquareHelpers.record.squareHasCorpse`) used by `whereSquareNeedsCleaning`.
+  - Updated schema docs (`docs_internal/mvp.md`) and added a unit test ensuring `hasCorpse` is set when `getDeadBody()` returns a corpse.
+
+- Tightened “patchable by default” policy in docs:
+  - Added an explicit statement in `docs_internal/vision.md` and `.aicontext/context.md` that helper sets are patchable by default and should be defined behind nil-guards.
+
+- Debuggability + smoke test ergonomics improvements:
+  - Added `WorldObserver.debug.printObservation(observation, opts)` for compact, labeled observation printing (including join shapes) and updated `examples/smoke_squares.lua` to use it.
+  - Improved `WO.DIAG` log readability by renaming `rate15(in/out /s)` to `rate15(in/out per sec)`.
+  - Extended the squares smoke to support floor highlighting for:
+    - squares that pass `whereSquareNeedsCleaning()`; and
+    - all squares emitted by the probe lane (`source="probe"`) so the probe’s scan area is visible even when filters suppress output.
+  - Added highlight TTL cleanup and an in-engine `OnTick` refresher to keep highlights visible, plus rate-limited stats logs explaining when highlight calls are no-ops (missing `floor`, missing highlight setters, etc.).
+
+- Probe diagnostics to explain “why no YUK?”:
+  - Logged the probe center square coordinates each tick (`[probe] center square ...`).
+  - Logged per-probe summary counts (`emitted` + `flaggedCleaning`) to distinguish “probe ran but nothing matched” from “probe didn’t run”.
+  - Switched probe player discovery to prefer `getPlayer()` and fall back to indexed players, to better match the common single-player console workflow.
+
+- Made corpse detection more resilient:
+  - Updated `detectCorpse` to fall back to other checks when `getDeadBody()` returns `nil`, and to consider `getDeadBodys().size()` when available.
+
+### Lessons
+- For modder ergonomics, patch seams should be **obvious** (public table fields) and **stable** (not hidden behind locals or overwritten on reload).
+- “Convenience APIs” belong where they’re already discovered: for WorldObserver that’s the stream helper surface, not ad-hoc record decoration.
+- Materializing a few “high-value” booleans (like `hasCorpse`) at fact time keeps helpers fast and predictable, while hydration remains available for advanced cases.
+- LQR query execution matters for ergonomics: `where` predicates (and thus helper filters) run against LQR’s row-view *before* any `selectSchemas` renames, so “helper field naming” needs to match that reality or we need a dedicated post-selection filter hook.
+
+### Next steps
+- Document a small, explicit list of “supported patch seams” per module (facts, observations, helper sets) so modders know what to rely on long-term.
+- Consider whether to expose an always-available “built-in/original” reference for key patch seams (for modders who want to wrap the true base implementation rather than whatever is currently installed).
+- Decide how to present (and debug) “why didn’t my helper fire?”:
+  - Buffer replacement (`latestByKey`) and `distinct()` can suppress emissions even when the probe “saw” a condition; we should surface this more directly (optional debug stream / counter snapshots).
