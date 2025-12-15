@@ -1,5 +1,5 @@
--- runtime.lua -- runtime controller scaffold: clock resolution, status tracking, and transition metadata.
 local Log = require("LQR/util/log").withTag("WO.RUNTIME")
+local Time = require("WorldObserver/helpers/time")
 
 local Runtime = {}
 Runtime.Events = {
@@ -35,42 +35,15 @@ local Reasons = {
 }
 
 local function resolveWallClock()
-	-- Prefer a monotonic-ish wall clock if available.
-	if _G.UIManager and type(_G.UIManager.getMillisSinceStart) == "function" then
-		local ok, ms = pcall(_G.UIManager.getMillisSinceStart)
-		if ok and type(ms) == "number" then
-			return function()
-				return _G.UIManager.getMillisSinceStart()
-			end,
-				"UIManager.getMillisSinceStart"
-		end
-	end
-	if type(_G.getTimestampMs) == "function" then
-		local ok, ms = pcall(_G.getTimestampMs)
-		if ok and type(ms) == "number" then
-			return function()
-				return _G.getTimestampMs()
-			end,
-				"getTimestampMs"
-		end
-	end
-	if type(os) == "table" and type(os.time) == "function" then
-		return function()
-			return os.time() * 1000
-		end,
-			"os.time()*1000"
-	end
-	return nil, "none"
+	return function()
+		return Time.gameMillis()
+	end, "getGameTime.getTimeInMillis"
 end
 
 local function resolveCpuClock()
-	if type(os) == "table" and type(os.clock) == "function" then
-		return function()
-			return os.clock() * 1000
-		end,
-			"os.clock()*1000"
-	end
-	return nil, "none"
+	return function()
+		return Time.cpuMillis()
+	end, "os.clock()*1000"
 end
 
 --- @class WorldObserverRuntime
@@ -180,22 +153,14 @@ function Runtime.new(opts)
 		if not self._wallClock then
 			return nil
 		end
-		local ok, val = pcall(self._wallClock)
-		if ok and type(val) == "number" then
-			return val
-		end
-		return nil
+		return self._wallClock()
 	end
 
 	function self:nowCpu()
 		if not self._cpuClock then
 			return nil
 		end
-		local ok, val = pcall(self._cpuClock)
-		if ok and type(val) == "number" then
-			return val
-		end
-		return nil
+		return self._cpuClock()
 	end
 
 	function self:recordTick(ms)

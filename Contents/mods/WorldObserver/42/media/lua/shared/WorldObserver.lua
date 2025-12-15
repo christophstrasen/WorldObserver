@@ -112,6 +112,7 @@ SquaresObservations.register(observationRegistry, factRegistry, ObservationsCore
 			helpers = {
 				square = SquareHelpers,
 			},
+			highlight = SquareHelpers.highlight,
 			debug = nil,
 			nextObservationId = ObservationsCore.nextObservationId,
 			runtime = runtime,

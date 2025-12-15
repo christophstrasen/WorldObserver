@@ -3,6 +3,7 @@ local LQR = require("LQR")
 local Query = LQR.Query
 local Schema = LQR.Schema
 local Log = require("LQR/util/log").withTag("WO.STREAM")
+local Time = require("WorldObserver/helpers/time")
 
 local moduleName = ...
 local ObservationsCore = {}
@@ -24,35 +25,8 @@ BaseMethods.__index = BaseMethods -- let streams inherit BaseMethods via metatab
 
 local resolvedNowMillis = nil
 local function resolveNowMillis()
-	local gameTime = _G.getGameTime
-	if type(gameTime) == "function" then
-		local ok, timeObj = pcall(gameTime)
-		if ok and timeObj and type(timeObj.getTimeCalendar) == "function" then
-			local okCal, cal = pcall(timeObj.getTimeCalendar, timeObj)
-			if okCal and cal and type(cal.getTimeInMillis) == "function" then
-				resolvedNowMillis = function()
-					local t = gameTime()
-					local c = t:getTimeCalendar()
-					return c:getTimeInMillis()
-				end
-				return
-			end
-		end
-	end
-	if type(os.clock) == "function" then
-		resolvedNowMillis = function()
-			return os.clock() * 1000
-		end
-		return
-	end
-	if type(os.time) == "function" then
-		resolvedNowMillis = function()
-			return os.time() * 1000
-		end
-		return
-	end
 	resolvedNowMillis = function()
-		return nil
+		return Time.gameMillis()
 	end
 end
 

@@ -1,5 +1,6 @@
 -- helpers/square.lua -- square helper set (MVP) providing named filters for square observations.
 local Log = require("LQR/util/log").withTag("WO.HELPER.square")
+local Highlight = require("WorldObserver/helpers/highlight")
 local moduleName = ...
 local SquareHelpers = {}
 if type(moduleName) == "string" then
@@ -250,6 +251,34 @@ if SquareHelpers.whereSquareHasIsoSquare == nil then
 			end
 			return SquareHelpers.record.getIsoSquare(square, opts) ~= nil
 		end)
+	end
+end
+
+-- Highlight a square's floor for a duration with a fading alpha.
+if SquareHelpers.highlight == nil then
+	function SquareHelpers.highlight(squareOrRecord, durationMs, opts)
+		opts = opts or {}
+		if type(durationMs) == "number" and opts.durationMs == nil then
+			opts.durationMs = durationMs
+		end
+
+		local isoSquare = nil
+		local t = type(squareOrRecord)
+		if (t == "table" or t == "userdata") and type(squareOrRecord.getFloor) == "function" then
+			isoSquare = squareOrRecord
+		elseif t == "table" then
+			isoSquare = SquareHelpers.record.getIsoSquare(squareOrRecord)
+		end
+		if isoSquare == nil then
+			return nil, "noIsoSquare"
+		end
+
+		local okFloor, floor = pcall(isoSquare.getFloor, isoSquare)
+		if not okFloor or floor == nil then
+			return nil, "noFloor"
+		end
+
+		return Highlight.highlightTarget(floor, opts)
 	end
 end
 

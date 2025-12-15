@@ -1,5 +1,7 @@
 -- facts/squares.lua -- square fact plan (balanced strategy): listeners + near-player probe to emit SquareObservation facts.
 local Log = require("LQR/util/log").withTag("WO.FACTS.squares")
+local Time = require("WorldObserver/helpers/time")
+local Highlight = require("WorldObserver/helpers/highlight")
 
 local moduleName = ...
 local Squares = {}
@@ -15,20 +17,10 @@ Squares._internal = Squares._internal or {}
 Squares._defaults = Squares._defaults or {}
 
 local function nowMillis()
-	local gameTime = _G.getGameTime
-	if type(gameTime) == "function" then
-		local ok, timeObj = pcall(gameTime)
-		if ok and timeObj and type(timeObj.getTimeCalendar) == "function" then
-			local okCal, cal = pcall(timeObj.getTimeCalendar, timeObj)
-			if okCal and cal and type(cal.getTimeInMillis) == "function" then
-				local okMs, ms = pcall(cal.getTimeInMillis, cal)
-				if okMs and ms then
-					return ms
-				end
-			end
-		end
+	local ms = Time.gameMillis()
+	if ms then
+		return ms
 	end
-	-- Headless/tests: fall back to wall-clock if the game clock is missing.
 	return math.floor(os.time() * 1000)
 end
 
@@ -230,7 +222,10 @@ local function nearbyPlayers()
 	return players
 end
 
-local function runNearPlayersProbe(emitFn, budget)
+local PROBE_HIGHLIGHT_COLOR = { 1.0, 0.6, 0.2 }
+local PROBE_HIGHLIGHT_MS = 1500
+
+local function runNearPlayersProbe(emitFn, budget, headless)
 	local processed = 0
 	for _, player in ipairs(nearbyPlayers()) do
 		if processed >= budget then
@@ -265,6 +260,16 @@ local function runNearPlayersProbe(emitFn, budget)
 							emitted = emitted + 1
 							if record.hasCorpse == true or record.hasBloodSplat == true or record.hasTrashItems == true then
 								flaggedCleaning = flaggedCleaning + 1
+							end
+							if not headless then
+								local okFloor, floor = pcall(probeSquare.getFloor, probeSquare)
+								if okFloor and floor then
+									Highlight.highlightTarget(floor, {
+										durationMs = PROBE_HIGHLIGHT_MS,
+										color = PROBE_HIGHLIGHT_COLOR,
+										alpha = 0.9,
+									})
+								end
 							end
 							emitFn(record)
 							processed = processed + 1
@@ -312,7 +317,7 @@ local function registerProbe(state, emitFn, budgetPerRun, headless, runtime)
 			end
 		end
 
-		runNearPlayersProbe(emitFn, budgetPerRun)
+		runNearPlayersProbe(emitFn, budgetPerRun, headless)
 
 		if runtime and type(t0) == "number" then
 			local t1 = useCpu and runtime:nowCpu() or runtime:nowWall()
