@@ -223,3 +223,22 @@
 - Consider whether to expose an always-available “built-in/original” reference for key patch seams (for modders who want to wrap the true base implementation rather than whatever is currently installed).
 - Decide how to present (and debug) “why didn’t my helper fire?”:
   - Buffer replacement (`latestByKey`) and `distinct()` can suppress emissions even when the probe “saw” a condition; we should surface this more directly (optional debug stream / counter snapshots).
+
+## day9 – Universal square highlighting + distinct debugging
+
+### Highlights
+- Added a universal, multi-square highlight utility: `WorldObserver.highlight(square, durationMs, opts)` fades alpha smoothly and disables highlighting when complete.
+- Centralized highlight scheduling behind a single `OnTick` updater that attaches only while highlights are active (supports many concurrent squares with different start/durations).
+- Made near-player probes visually inspectable by highlighting just-probed squares with a distinct color, and added a smoke option to run probe-only (disable `LoadGridsquare` listener) for cleaner experiments.
+- Improved debugging ergonomics while investigating “distinct stops emitting”:
+  - Clarified that `SquareObservation-<n>` in logs is a per-emission `RxMeta.id` (not “unique squares”), and that multiple subscriptions will multiply IDs.
+  - Added probe-side and ingest-side debug logs for “dirty” squares to separate “fact generation” from “stream suppression”.
+  - Reduced log flood by moving LQR `Query.where` decision logging to TRACE level.
+
+### Lessons
+- In the PZ/Kahlua runtime, `#table` on tables with holes is not reliable; any queue-like structure that nils out head indices must track its own head/tail/count.
+- When diagnosing “missing emissions”, separating “probe emitted” vs “ingest drained” vs “query suppressed” is the fastest way to locate the real bottleneck.
+
+### Next steps
+- Expose a small diagnostic surface for `distinct()` (e.g. counters for suppressed/expired per dimension) so “why didn’t this re-emit?” is explainable without deep log spelunking.
+- Extend the highlighting helper pattern so we can highlight other object types (not just floor squares) with the same lifecycle model.

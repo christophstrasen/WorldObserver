@@ -2,7 +2,7 @@
 -- Usage in PZ console:
 --[[ @AI agent dont change this
    smoke = require("examples/smoke_squares")
-   handle = smoke.start({ distinctSeconds = 2, withHelpers = true })
+   handle = smoke.start({ distinctSeconds = 20, withHelpers = true })
    handle:stop()
 ]]
 --

@@ -28,6 +28,7 @@ NixOS + `zsh`; ignore noisy `gpg-agent` warnings at shell start. No git history 
 - Do not use DOT as director separator but SLASH for all lua requires
 - Do not use package.path unless in a conscious compatible way that does not inhibit proper function of requires in the project zomboid runtime
 - Ensure that things work in both project zomboid runtime and in vanilla lua 5.1 on the console
+- never blindly rely on #table for any table that could reasonably "shrink" as engines such as project zomboids don't implement it reliably e.g. it can become 0 once table[1] is nil
 
 ## Naming
 - Prefer full names. "observation" instead of "obs" etc.
