@@ -30,7 +30,7 @@ local Runtime = require("WorldObserver/runtime")
 
 local WorldObserver
 
-local config = Config.load()
+local config = Config.load(_G.WORLDOBSERVER_CONFIG_OVERRIDES)
 local runtimeOpts = {}
 do
 	local cfg = config.runtime and config.runtime.controller or {}

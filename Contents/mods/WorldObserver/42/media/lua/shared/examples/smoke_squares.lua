@@ -9,9 +9,19 @@
 
 local Log = require("LQR/util/log")
 local Time = require("WorldObserver/helpers/time")
-Log.setLevel("info")
+Log.setLevel("debug")
 
 local SmokeSquares = {}
+
+local function applyWorldObserverOverrides(opts)
+	if not (opts and opts.probeOnly == true) then
+		return
+	end
+	_G.WORLDOBSERVER_CONFIG_OVERRIDES = _G.WORLDOBSERVER_CONFIG_OVERRIDES or {}
+	_G.WORLDOBSERVER_CONFIG_OVERRIDES.facts = _G.WORLDOBSERVER_CONFIG_OVERRIDES.facts or {}
+	_G.WORLDOBSERVER_CONFIG_OVERRIDES.facts.squares = _G.WORLDOBSERVER_CONFIG_OVERRIDES.facts.squares or {}
+	_G.WORLDOBSERVER_CONFIG_OVERRIDES.facts.squares.listener = { enabled = false }
+end
 
 local function getObservationIsoSquare(WorldObserver, squareRecord)
 	if type(squareRecord) ~= "table" then
@@ -33,8 +43,9 @@ end
 
 -- Subscribe to the squares stream with optional filters and a heartbeat.
 function SmokeSquares.start(opts)
-	local WorldObserver = require("WorldObserver")
 	opts = opts or {}
+	applyWorldObserverOverrides(opts)
+	local WorldObserver = require("WorldObserver")
 
 	-- Build stream.
 	local stream = WorldObserver.observations.squares()

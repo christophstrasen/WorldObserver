@@ -412,6 +412,17 @@ function FactRegistry:_drainSchedulerOnce()
 			local t0 = emitTimed and nowFn() or nil
 			local emitFn = item.__emit
 			local record = item.payload or item
+			if type(record) == "table" and (record.hasCorpse == true or record.hasBloodSplat == true or record.hasTrashItems == true) then
+				IngestLog:debug(
+					"Draining record squareId=%s source=%s corpse=%s blood=%s trash=%s sourceTime=%s",
+					tostring(record.squareId),
+					tostring(record.source),
+					tostring(record.hasCorpse),
+					tostring(record.hasBloodSplat),
+					tostring(record.hasTrashItems),
+					tostring(record.observedAtTimeMS)
+				)
+			end
 			if emitFn then
 				emitFn(record)
 			end

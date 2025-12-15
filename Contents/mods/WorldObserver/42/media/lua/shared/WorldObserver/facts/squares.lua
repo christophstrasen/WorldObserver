@@ -259,6 +259,18 @@ local function runNearPlayersProbe(emitFn, budget, headless)
 						else
 							emitted = emitted + 1
 							if record.hasCorpse == true or record.hasBloodSplat == true or record.hasTrashItems == true then
+								Log:debug(
+									"[probe] dirty square squareId=%s x=%s y=%s z=%s corpse=%s blood=%s trash=%s",
+									tostring(record.squareId),
+									tostring(record.x),
+									tostring(record.y),
+									tostring(record.z),
+									tostring(record.hasCorpse),
+									tostring(record.hasBloodSplat),
+									tostring(record.hasTrashItems)
+								)
+							end
+							if record.hasCorpse == true or record.hasBloodSplat == true or record.hasTrashItems == true then
 								flaggedCleaning = flaggedCleaning + 1
 							end
 							if not headless then
@@ -348,6 +360,8 @@ if Squares.register == nil then
 		local probeCfg = config and config.facts and config.facts.squares and config.facts.squares.probe or {}
 		local probeEnabled = probeCfg.enabled ~= false
 		local probeMaxPerRun = probeCfg.maxPerRun or 50
+		local listenerCfg = config and config.facts and config.facts.squares and config.facts.squares.listener or {}
+		local listenerEnabled = listenerCfg.enabled ~= false
 
 		registry:register("squares", {
 			ingest = {
@@ -372,7 +386,10 @@ if Squares.register == nil then
 			start = function(ctx)
 				local state = ctx.state or {}
 				local originalEmit = ctx.ingest or ctx.emit
-				local listenerRegistered = Squares._internal.registerOnLoadGridSquare(state, originalEmit)
+				local listenerRegistered = false
+				if listenerEnabled then
+					listenerRegistered = Squares._internal.registerOnLoadGridSquare(state, originalEmit)
+				end
 				local probeRegistered = false
 				if probeEnabled then
 					probeRegistered =
@@ -380,7 +397,11 @@ if Squares.register == nil then
 				end
 
 				if not listenerRegistered and not headless then
-					Log:warn("OnLoadGridsquare listener not registered (Events unavailable)")
+					if listenerEnabled then
+						Log:warn("OnLoadGridsquare listener not registered (Events unavailable)")
+					else
+						Log:info("OnLoadGridsquare listener disabled by config")
+					end
 				end
 				if not headless then
 					Log:info(

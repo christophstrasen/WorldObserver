@@ -35,6 +35,9 @@ local function defaultBuildDefaults()
 			squares = {
 				strategy = "balanced",
 				headless = Config.detectHeadlessFlag(),
+				listener = {
+					enabled = true,
+				},
 				ingest = {
 					enabled = true,
 					mode = "latestByKey",
@@ -113,6 +116,11 @@ local function defaultApplyOverrides(target, overrides)
 	end
 	if type(squares) == "table" and type(squares.headless) == "boolean" then
 		target.facts.squares.headless = squares.headless
+	end
+	if type(squares) == "table" and type(squares.listener) == "table" then
+		for k, v in pairs(squares.listener) do
+			target.facts.squares.listener[k] = v
+		end
 	end
 	if type(squares) == "table" and type(squares.ingest) == "table" then
 		for k, v in pairs(squares.ingest) do
