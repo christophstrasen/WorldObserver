@@ -230,6 +230,9 @@
 - Added a universal, multi-square highlight utility: `WorldObserver.highlight(square, durationMs, opts)` fades alpha smoothly and disables highlighting when complete.
 - Centralized highlight scheduling behind a single `OnTick` updater that attaches only while highlights are active (supports many concurrent squares with different start/durations).
 - Made near-player probes visually inspectable by highlighting just-probed squares with a distinct color, and added a smoke option to run probe-only (disable `LoadGridsquare` listener) for cleaner experiments.
+- Added an in-engine LQR benchmark harness (`examples/lqr_benchmarks.lua`) so we can measure query primitives under Kahlua using realistic tick pacing and a “CI-like” small run mode.
+- Improved benchmark measurement fidelity by splitting “wall time across ticks” vs “work time spent inside the OnTick handler” (plus ticks used), making engine vs CLI numbers interpretable.
+- Reduced in-engine noise by defaulting benchmarks to WARN-level logs and clamping the in-engine `ci=true` run sizes so they complete quickly without spamming the console.
 - Improved debugging ergonomics while investigating “distinct stops emitting”:
   - Clarified that `SquareObservation-<n>` in logs is a per-emission `RxMeta.id` (not “unique squares”), and that multiple subscriptions will multiply IDs.
   - Added probe-side and ingest-side debug logs for “dirty” squares to separate “fact generation” from “stream suppression”.
@@ -238,6 +241,7 @@
 ### Lessons
 - In the PZ/Kahlua runtime, `#table` on tables with holes is not reliable; any queue-like structure that nils out head indices must track its own head/tail/count.
 - When diagnosing “missing emissions”, separating “probe emitted” vs “ingest drained” vs “query suppressed” is the fastest way to locate the real bottleneck.
+- “Engine benchmark time” must be separated into compute time vs tick/frame spacing; otherwise short pipelines look artificially slow and comparisons to CLI microbenchmarks are misleading.
 
 ### Next steps
 - Expose a small diagnostic surface for `distinct()` (e.g. counters for suppressed/expired per dimension) so “why didn’t this re-emit?” is explainable without deep log spelunking.

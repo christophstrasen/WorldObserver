@@ -29,3 +29,46 @@ jobs:
       - name: Run WorldObserver unit tests
         run: |
           busted tests/unit
+
+  lqr-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Lua 5.1
+        uses: leafo/gh-actions-lua@v11
+        with:
+          luaVersion: "5.1"
+
+      - name: Set up LuaRocks
+        uses: leafo/gh-actions-luarocks@v4
+
+      - name: Install busted
+        run: luarocks install busted
+
+      - name: Run LQR unit tests
+        run: |
+          cd external/LQR
+          busted tests/unit
+
+  lqr-benchmarks:
+    runs-on: ubuntu-latest
+    needs: [ lqr-test ]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Lua 5.1
+        uses: leafo/gh-actions-lua@v11
+        with:
+          luaVersion: "5.1"
+
+      - name: Run LQR benchmarks (informational)
+        run: |
+          cd external/LQR
+          lua scripts/benchmarks.lua --ci

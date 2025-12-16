@@ -19,7 +19,19 @@ describe("WorldObserver.debug.printObservation formatting", function()
 		local lines = api.printObservation({
 			RxMeta = { shape = "join_result", schemaMap = { square = {}, zombie = {} } },
 			square = {},
-			zombie = { RxMeta = { schema = "zombie", id = 1, sourceTime = 123 } },
+			zombie = {
+				extra1 = 1,
+				extra2 = 2,
+				extra3 = 3,
+				extra4 = 4,
+				extra5 = 5,
+				extra6 = 6,
+				extra7 = 7,
+				extra8 = 8,
+				extra9 = 9,
+				extra10 = 10,
+				RxMeta = { schema = "zombie", id = 1, sourceTime = 123 },
+			},
 		}, { prefix = "[test]", printFn = function() end })
 
 		assert.is_truthy(lines[1]:match("^%[test%]"))
