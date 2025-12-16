@@ -10,6 +10,7 @@ Related docs:
 - Vision: `docs_internal/vision.md`
 - Ingest integration plan: `docs_internal/using_ingest_system.md`
 - LQR ingest docs: `external/LQR/docs/concepts/ingest_buffering.md`
+- Fact interest declarations (design brief): `docs_internal/fact_interest.md`
 
 ---
 
@@ -114,20 +115,16 @@ Lane priorities are a domain decision and may differ by type.
 
 ---
 
-## 7. Strategies and configuration
+## 7. Configuration (runtime + interest)
 
-The original design described `balanced/gentle/intense` strategies and a generic “plan builder” API.
-
-Current reality:
-- `WorldObserver.config.facts.squares.strategy` exists but only `"balanced"` is implemented today.
-- Ingest and probe behavior is controlled via explicit config knobs:
+- Ingest and drain are controlled via config knobs:
   - `WorldObserver.config.ingest.scheduler.maxItemsPerTick`
   - `WorldObserver.config.ingest.scheduler.quantum`
   - `WorldObserver.config.facts.squares.ingest.*`
-  - `WorldObserver.config.facts.squares.probe.*`
-
-Near-term direction:
-- Keep strategies as user-friendly presets, but have them map to ingest + probe budgets internally.
+  - `WorldObserver.config.facts.squares.probe.*` (safety caps)
+- Probe intensity is now shaped by **interest declarations** (`staleness`, `radius`, `cooldown`) merged across mods,
+  then passed through the runtime-aware policy (see `WorldObserver/interest/policy.lua`).
+  The old `strategy` preset knob has been removed in favor of explicit interest + policy.
 
 ---
 
@@ -163,6 +160,7 @@ We still intend to support cross-mod facts via LuaEvents, but they must route th
 ## 11. Gaps and next steps
 
 - Make probes a first-class “plan” concept (shared scheduling patterns, per-probe budgets, subscriber-aware behavior).
+- Add interest declarations (leases) so mods can collectively shape probe intensity under a global budget.
 - Add more fact types (`zombies`, `vehicles`, …) and attach them to the same global scheduler budget.
 - Improve teardown/unregister story for event handlers where PZ supports removal.
 - Validate in-engine (FPS stability + bounded backlog) and tune default budgets/caps based on observed load.

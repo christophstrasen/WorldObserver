@@ -1,0 +1,70 @@
+package.path = table.concat({
+	"Contents/mods/WorldObserver/42/media/lua/shared/?.lua",
+	"Contents/mods/WorldObserver/42/media/lua/shared/?/init.lua",
+	"external/LQR/?.lua",
+	"external/LQR/?/init.lua",
+	"external/lua-reactivex/?.lua",
+	"external/lua-reactivex/?/init.lua",
+	package.path,
+}, ";")
+
+local Policy = require("WorldObserver/interest/policy")
+
+describe("interest policy", function()
+	local merged = {
+		staleness = { desired = 10, tolerable = 20 },
+		radius = { desired = 8, tolerable = 5 },
+		cooldown = { desired = 30, tolerable = 60 },
+	}
+
+	local function status(opts)
+		return {
+			mode = opts.mode or "normal",
+			window = {
+				dropDelta = opts.dropDelta or 0,
+				avgThroughput15 = opts.avgThroughput15 or 0,
+				avgFill = opts.avgFill,
+			},
+		}
+	end
+
+	it("holds quality when there are no drops", function()
+		local state, eff = Policy.update(nil, merged, status({ mode = "degraded", dropDelta = 0 }))
+		assert.equals(1, state.qualityIndex)
+		assert.equals(10, eff.staleness)
+		assert.equals(8, eff.radius)
+		assert.equals(30, eff.cooldown)
+	end)
+
+	it("degrades on sustained drops that exceed ratio threshold", function()
+		local state, eff = Policy.update(nil, merged, status({ dropDelta = 5, avgThroughput15 = 10 }))
+		assert.equals(2, state.qualityIndex) -- staleness raised to tolerable
+		assert.equals(20, eff.staleness)
+		assert.equals(8, eff.radius)
+		assert.equals(30, eff.cooldown)
+	end)
+
+	it("recovers quality after healthy windows", function()
+		local state
+		state = Policy.update(nil, merged, status({ dropDelta = 5, avgThroughput15 = 10 })) -- degrade once
+		state = Policy.update(state, merged, status({ dropDelta = 5, avgThroughput15 = 10 })) -- degrade twice
+		state = Policy.update(state, merged, status({ mode = "normal", dropDelta = 0, avgFill = 0.1 }))
+		local eff
+		state, eff = Policy.update(state, merged, status({ mode = "normal", dropDelta = 0, avgFill = 0.1 }))
+		assert.equals(2, state.qualityIndex) -- recovered one step
+		assert.equals(20, eff.staleness)
+	end)
+
+	it("enters emergency steps after exhausting tolerable bands", function()
+		local state
+		local eff
+		state = Policy.update(nil, merged, status({ dropDelta = 5, avgThroughput15 = 10 })) -- 2
+		state = Policy.update(state, merged, status({ dropDelta = 5, avgThroughput15 = 10 })) -- 3
+		state = Policy.update(state, merged, status({ dropDelta = 5, avgThroughput15 = 10 })) -- 4
+		state, eff = Policy.update(state, merged, status({ dropDelta = 5, avgThroughput15 = 10 })) -- 5 (first emergency)
+		assert.is_true(state.qualityIndex >= 5)
+		assert.is_true(eff.staleness >= 40) -- doubled once in emergency
+		assert.is_true(eff.radius <= 2.5)
+		assert.is_true(eff.cooldown >= 120)
+	end)
+end)

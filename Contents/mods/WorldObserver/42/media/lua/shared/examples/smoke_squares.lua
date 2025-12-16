@@ -9,7 +9,7 @@
 
 local Log = require("LQR/util/log")
 local Time = require("WorldObserver/helpers/time")
-Log.setLevel("debug")
+Log.setLevel("info")
 
 local SmokeSquares = {}
 
@@ -23,29 +23,26 @@ local function applyWorldObserverOverrides(opts)
 	_G.WORLDOBSERVER_CONFIG_OVERRIDES.facts.squares.listener = { enabled = false }
 end
 
-local function getObservationIsoSquare(WorldObserver, squareRecord)
-	if type(squareRecord) ~= "table" then
-		return nil
-	end
-
-	local isoSquare = squareRecord.IsoSquare
-	if isoSquare ~= nil then
-		return isoSquare
-	end
-
-	local helpers = WorldObserver and WorldObserver.helpers and WorldObserver.helpers.square
-	if helpers and helpers.record and helpers.record.getIsoSquare then
-		return helpers.record.getIsoSquare(squareRecord)
-	end
-
-	return nil
-end
-
 -- Subscribe to the squares stream with optional filters and a heartbeat.
 function SmokeSquares.start(opts)
 	opts = opts or {}
 	applyWorldObserverOverrides(opts)
 	local WorldObserver = require("WorldObserver")
+
+	-- Declare upstream interest (few lines, easy to tweak).
+	local modId = opts.modId or "examples/smoke_squares"
+	local nearLease = WorldObserver.factInterest:declare(modId, "near", opts.interestNear or {
+		type = "squares.nearPlayer",
+		staleness = { desired = 2, tolerable = 10 },
+		radius = { desired = 5, tolerable = 4 },
+		cooldown = { desired = 1, tolerable = 5 },
+	})
+	local visionLease = WorldObserver.factInterest:declare(modId, "vision", opts.interestVision or {
+		type = "squares.vision",
+		staleness = { desired = 5, tolerable = 5 },
+		radius = { desired = 8, tolerable = 6 },
+		cooldown = { desired = 1, tolerable = 5 },
+	})
 
 	-- Build stream.
 	local stream = WorldObserver.observations.squares()
@@ -72,62 +69,12 @@ function SmokeSquares.start(opts)
 	if highlightTtlMs == nil then
 		highlightTtlMs = 5000
 	end
-	local probeHighlightStats = {
-		count = 0,
-		noIsoSquare = 0,
-		noFloor = 0,
-		noSetHighlighted = 0,
-		noSetHighlightColor = 0,
-		lastReportMs = nil,
-	}
 	local handles = {}
-
-	-- Highlight all squares that the probe lane emits, regardless of whether downstream helpers filter them out.
-	-- This makes it obvious what the probe is scanning each tick.
-	local probeHighlightSubscription = nil
-	if opts.highlightProbeHits ~= false then
-		probeHighlightSubscription = WorldObserver.observations
-			.squares()
-			:filter(function(observation)
-				local square = observation and observation.square
-				return type(square) == "table" and square.source == "probe"
-			end)
-			:subscribe(function(observation)
-				local square = observation and observation.square
-				local isoSquare = getObservationIsoSquare(WorldObserver, square)
-				local handle, reason = WorldObserver.highlight(isoSquare, highlightTtlMs, {
-					alpha = opts.highlightProbeAlpha or 0.90,
-				})
-				if handle then
-					handles[handle] = handle
-				end
-				probeHighlightStats.count = probeHighlightStats.count + 1
-				if reason ~= nil then
-					probeHighlightStats[reason] = (probeHighlightStats[reason] or 0) + 1
-				end
-
-				local nowMs = Time.gameMillis()
-				if type(nowMs) == "number" then
-					local last = probeHighlightStats.lastReportMs
-					if last == nil or (nowMs - last) >= 5000 then
-						probeHighlightStats.lastReportMs = nowMs
-						Log.info(
-							"[smoke] probe highlight stats hits=%s noIsoSquare=%s noFloor=%s noSetHighlighted=%s noSetHighlightColor=%s",
-							tostring(probeHighlightStats.count),
-							tostring(probeHighlightStats.noIsoSquare),
-							tostring(probeHighlightStats.noFloor),
-							tostring(probeHighlightStats.noSetHighlighted),
-							tostring(probeHighlightStats.noSetHighlightColor)
-						)
-					end
-				end
-			end)
-	end
 
 	local subscription = stream:subscribe(function(observation)
 		receivedCount = receivedCount + 1
 		if opts.highlightFloors ~= false and type(observation) == "table" and type(observation.square) == "table" then
-			local isoSquare = getObservationIsoSquare(WorldObserver, observation.square)
+			local isoSquare = observation.square.IsoSquare
 			local handle = WorldObserver.highlight(isoSquare, highlightTtlMs, {
 				alpha = opts.highlightAlpha or 0.7,
 			})
@@ -147,8 +94,11 @@ function SmokeSquares.start(opts)
 				subscription:unsubscribe()
 				Log.info("[smoke] squares subscription stopped")
 			end
-			if probeHighlightSubscription and probeHighlightSubscription.unsubscribe then
-				probeHighlightSubscription:unsubscribe()
+			if nearLease and nearLease.stop then
+				pcall(nearLease.stop)
+			end
+			if visionLease and visionLease.stop then
+				pcall(visionLease.stop)
 			end
 
 			for h in pairs(handles) do

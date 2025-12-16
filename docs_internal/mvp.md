@@ -22,9 +22,9 @@ then grow outwards.
 - **Fact layer**
   - A concrete, runnable **fact plan for squares** using:
     - Event listener(s) for `OnLoadGridsquare`.
-    - One “balanced” probe strategy near players (see section 4).
-  - Strategy selection exists only for squares and only supports a `"balanced"`
-    strategy in MVP.
+    - Probes driven by merged interest (`staleness`, `radius`, `cooldown`) near
+      players and (MVP) a vision-based probe; intensity adapts via the runtime-aware
+      interest policy.
 
 - **ObservationStreams**
   - `WorldObserver.observations.squares()` returning a stream of square
@@ -40,8 +40,6 @@ then grow outwards.
     - `:getLQR()` (advanced escape hatch, thin wrapper over LQR).
 
 - **Config & debug surface**
-  - `WorldObserver.config.facts.squares.strategy` with only `"balanced"`
-    supported.
   - A minimal debug/logging hook surface (even if only stubs) consistent with
     `api_proposal.md` (e.g. `WorldObserver.debug.describeFacts("squares")` is
     allowed to be a simple logger in MVP).
@@ -177,28 +175,20 @@ fields (e.g. `observation.room`), but MVP implements only `square`.
 ## 4. Fact layer slice for squares
 
 This section specializes the generic fact layer design for **squares** in the
-MVP. Only the `"balanced"` strategy is implemented; others remain design
-sketches.
+MVP. Probe intensity is shaped by merged interest (`staleness`, `radius`,
+`cooldown`) and the runtime-aware policy instead of preset strategy names.
 
-### 4.1 Strategies (MVP)
+### 4.1 Events and probes (squares)
 
-- `WorldObserver.config.facts.squares.strategy`:
-  - Supported in MVP: `"balanced"`.
-  - Unsupported but reserved for later: `"gentle"`, `"intense"`.
-- If an unsupported strategy is configured, MVP errors loudly during startup.
-  Strategy selection remains an **advanced** surface, not heavily documented
-  for users yet.
+High-level table for the squares plan:
 
-### 4.2 Events and probes (balanced strategy, squares)
+| Source type | Name                     | Included in MVP | Purpose                                                     |
+|------------|--------------------------|-----------------|-------------------------------------------------------------|
+| Event      | `OnLoadGridsquare`       | Yes             | Capture squares as they load into memory.                  |
+| Probe      | `nearPlayers_interest`   | Yes             | Periodically rescan squares near players; radius/tempo driven by interest. |
+| Probe      | `vision_interest`        | Yes             | Periodically emit squares currently visible to the player (engine `getCanSee`). |
 
-High-level table for the `"balanced"` squares plan:
-
-| Source type | Name                     | Included in `"balanced"` | Purpose                                                     |
-|------------|--------------------------|--------------------------|-------------------------------------------------------------|
-| Event      | `OnLoadGridsquare`       | Yes                      | Capture squares as they load into memory.                  |
-| Probe      | `nearPlayers_closeRing`  | Yes                      | Periodically rescan squares in a small radius around players. |
-
-Sketch of the `"balanced"` probes (aligned with `fact_layer.md` but minimal):
+Sketch of the probes (aligned with `fact_layer.md` but minimal):
 
 ```lua
 -- Inside facts/squares.lua (conceptual)
@@ -342,7 +332,6 @@ local ObservationStream = {}
 local Observations = {}
 
 ---@class FactsSquaresConfig
----@field strategy string  -- "balanced" only in MVP
 
 ---@class FactsConfig
 ---@field squares FactsSquaresConfig
@@ -454,10 +443,10 @@ as hard guardrails unless explicitly revised in docs or during design chats:
   - No tile highlighting, overlay windows, or interactive config UIs.
   - Debugging is via logging and simple `print` statements only.
 
-- **No automatic self-tuning or dynamic strategy switching**
-  - Fact strategies (even just `"balanced"` for squares) do not automatically
-    change at runtime based on load or subscriber counts in MVP.
-  - Any such behaviour is future work and requires explicit design.
+- **No automatic self-tuning beyond the current interest policy**
+  - Probe quality follows the simple interest policy (drop-aware degrade +
+    slow recovery) but there is no broader “strategy switching” surface.
+  - Any richer adaptive behaviour is future work and requires explicit design.
 
 - **No persistent config serialization**
   - `WorldObserver.config` is configured via Lua only.

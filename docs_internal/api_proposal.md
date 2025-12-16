@@ -52,24 +52,10 @@ builders, etc.) is considered implementation detail and may change without notic
 - For each element type, the engine defines an internal **fact plan** that
   combines Event Listeners (e.g. `OnLoadGridsquare`) and Active Probes
   (periodic or focused scans) to balance freshness, completeness, and
-  performance.
-- Example strategies for squares (illustrative only):
-  - listen to all `OnLoadGridsquare` events;
-  - probe squares within a small radius around players frequently;
-  - probe squares in a wider radius less often, possibly with patterns
-    (odd/even rows) to reduce load.
-- Strategy selection is an **advanced knob**, exposed via a small config
-  surface, for example:
-
-  ```lua
-  WorldObserver.config.facts.squares.strategy  = "balanced"
-  WorldObserver.config.facts.rooms.strategy    = "gentle"
-  WorldObserver.config.facts.zombies.strategy  = "intense"
-  WorldObserver.config.facts.vehicles.strategy = "balanced"
-  ```
-
+  performance, with intensity shaped by merged interest declarations
+  (`staleness`, `radius`, `cooldown`) rather than preset strategy names.
   ObservationStream semantics remain “stream of observations over time”;
-  strategies only affect timeliness and coverage. The base streams for these
+  interest only affects timeliness and coverage. The base streams for these
   facts are the ones exposed as `WorldObserver.observations.<name>()`
   (for example `squares()`, `rooms()`, `zombies()`, `vehicles()`).
 

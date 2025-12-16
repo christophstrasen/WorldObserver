@@ -33,7 +33,6 @@ local function defaultBuildDefaults()
 	return {
 		facts = {
 			squares = {
-				strategy = "balanced",
 				headless = Config.detectHeadlessFlag(),
 				listener = {
 					enabled = true,
@@ -111,9 +110,6 @@ local function defaultApplyOverrides(target, overrides)
 	end
 	local facts = overrides.facts
 	local squares = type(facts) == "table" and facts.squares or nil
-	if type(squares) == "table" and type(squares.strategy) == "string" and squares.strategy ~= "" then
-		target.facts.squares.strategy = squares.strategy
-	end
 	if type(squares) == "table" and type(squares.headless) == "boolean" then
 		target.facts.squares.headless = squares.headless
 	end
@@ -145,10 +141,6 @@ local function defaultApplyOverrides(target, overrides)
 end
 
 local function defaultValidate(cfg)
-	local strategy = cfg.facts.squares.strategy
-	if strategy ~= "balanced" then
-		error(("Unsupported squares strategy '%s' (only 'balanced' in MVP)"):format(tostring(strategy)))
-	end
 end
 
 Config._internal.buildDefaults = defaultBuildDefaults

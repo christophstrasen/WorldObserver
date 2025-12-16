@@ -25,6 +25,7 @@ local SquaresFacts = require("WorldObserver/facts/squares")
 local ObservationsCore = require("WorldObserver/observations/core")
 local SquaresObservations = require("WorldObserver/observations/squares")
 local SquareHelpers = require("WorldObserver/helpers/square")
+local InterestRegistry = require("WorldObserver/interest/registry")
 local Debug = require("WorldObserver/debug")
 local Runtime = require("WorldObserver/runtime")
 
@@ -45,6 +46,7 @@ end
 local runtime = Runtime.new(runtimeOpts)
 local runtimeDiagnosticsHandle = nil
 local debugApi = nil
+local interestRegistry = InterestRegistry.new({})
 local function setRuntimeDiagnosticsActive(active)
 	local headless = config and config.facts and config.facts.squares and config.facts.squares.headless == true
 	if headless then
@@ -94,7 +96,7 @@ function runtime:emergency_resetIngest()
 	})
 end
 
-SquaresFacts.register(factRegistry, config)
+SquaresFacts.register(factRegistry, config, interestRegistry)
 
 local observationRegistry = ObservationsCore.new({
 	factRegistry = factRegistry,
@@ -109,6 +111,17 @@ SquaresObservations.register(observationRegistry, factRegistry, ObservationsCore
 		WorldObserver = {
 			config = config,
 			observations = observationRegistry:api(),
+			factInterest = {
+				declare = function(_, modId, key, spec, opts)
+					return interestRegistry:declare(modId, key, spec, opts)
+				end,
+				revoke = function(_, modId, key)
+					return interestRegistry:revoke(modId, key)
+				end,
+				effective = function(_, factType)
+					return interestRegistry:effective(factType)
+				end,
+			},
 			helpers = {
 				square = SquareHelpers,
 			},
@@ -121,6 +134,7 @@ SquaresObservations.register(observationRegistry, factRegistry, ObservationsCore
 				runtime = runtime,
 				facts = factRegistry,
 				observationRegistry = observationRegistry,
+				factInterest = interestRegistry,
 				runtimeDiagnosticsHandle = nil,
 			},
 		}
