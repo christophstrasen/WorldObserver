@@ -322,6 +322,37 @@ local function isProbeLagging(signals, cfg)
 	return overdueMs >= (cfg.lagOverdueMinMs or 0)
 end
 
+local function runtimeHasHeadroomForProbeCatchup(status, cfg)
+	-- Prefer probe budget ramping over interest degradation when we have global WO tick headroom.
+	-- Why: "probe lag" is a symptom, but if we are still well under the 4ms budget we can just spend
+	-- more time scanning and keep the requested quality without penalizing mods.
+	if not status or status.mode ~= "normal" then
+		return false
+	end
+	local window = status.window or {}
+	local budgetMs = tonumber(window.budgetMs) or 0
+	if budgetMs <= 0 then
+		return false
+	end
+	if window.reason == "woTickAvgOverBudget" or window.reason == "woTickSpikeOverBudget" then
+		return false
+	end
+	local tick = status.tick or {}
+	local observedMs = tonumber(tick.lastMs) or tonumber(tick.woAvgTickMs) or tonumber(window.avgTickMs) or 0
+	if observedMs < 0 then
+		observedMs = 0
+	end
+	local util = observedMs / math.max(budgetMs, 0.001)
+	local threshold = tonumber(cfg.lagDeferUtilThreshold)
+	if threshold == nil then
+		threshold = 0.80
+	end
+	if threshold <= 0 or threshold > 1 then
+		threshold = 0.80
+	end
+	return util <= threshold
+end
+
 local function estimateProbeSweepMs(signals, fallbackTargetMs)
 	if type(signals) ~= "table" then
 		return nil
@@ -372,6 +403,7 @@ end
 --- @return WOInterestState state
 --- @return table effective
 --- @return string reason
+--- @return table meta
 if Policy.update == nil then
 	function Policy.update(prevState, merged, runtimeStatus, opts)
 		local cfg = cloneTable(defaultConfig)
@@ -402,14 +434,25 @@ if Policy.update == nil then
 
 		local runtimeOverloaded = isRuntimeOverloaded(runtimeStatus, cfg)
 		local lagging = isProbeLagging(signals, cfg)
+		local deferLagDegrade = lagging and runtimeHasHeadroomForProbeCatchup(runtimeStatus, cfg)
+
+		-- Demand ratio is an estimate of "how far we are from meeting desired staleness", based on probe-lag signals.
+		-- It's intentionally independent from the current effective quality rung: even if we are already degraded,
+		-- this ratio tells budget controllers how much work remains to satisfy the original desired request.
+		local desiredMs = secondsToMillis(bands.staleness.desired)
+		local rawEstimateMs = estimateProbeSweepMs(signals, nil)
+		local demandRatio = 0
+		if rawEstimateMs and desiredMs > 0 then
+			demandRatio = rawEstimateMs / math.max(desiredMs, 1)
+		end
 
 		-- Hysteresis for recovery when probes are involved: only recover once we can comfortably meet the
 		-- *desired* staleness again (not merely the current degraded staleness), otherwise we oscillate.
 		local meetsDesired = true
 		if type(signals) == "table" and state.qualityIndex > 1 then
 			local effective = ladder[state.qualityIndex] or ladder[#ladder]
-			local estimateMs = estimateProbeSweepMs(signals, secondsToMillis(effective and effective.staleness))
-			local desiredMs = secondsToMillis(bands.staleness.desired)
+			local effectiveMs = secondsToMillis(effective and effective.staleness)
+			local estimateMs = rawEstimateMs or estimateProbeSweepMs(signals, effectiveMs)
 			if estimateMs and desiredMs > 0 then
 				local ratio = estimateMs / math.max(desiredMs, 1)
 				meetsDesired = ratio <= (cfg.lagRatioRecoverThreshold or cfg.lagRatioThreshold or 1.0)
@@ -431,7 +474,7 @@ if Policy.update == nil then
 					reason = "degraded"
 				end
 			end
-		elseif lagging then
+		elseif lagging and not deferLagDegrade then
 			state.lagStreak = (state.lagStreak or 0) + 1
 			state.overloadStreak = 0
 			state.normalStreak = 0
@@ -444,6 +487,12 @@ if Policy.update == nil then
 					state.lagStreak = 0
 				end
 			end
+		elseif lagging then
+			-- Lag detected, but we're still under budget: allow probes to ramp their CPU budget first.
+			-- We intentionally do not accumulate lagStreak here so the ladder doesn't degrade "too early".
+			state.overloadStreak = 0
+			state.lagStreak = 0
+			state.normalStreak = 0
 		else
 			state.overloadStreak = 0
 			state.lagStreak = 0
@@ -485,7 +534,14 @@ if Policy.update == nil then
 			)
 		end
 
-		return state, effective, reason
+		return state, effective, reason, {
+			desiredStaleness = bands.staleness.desired,
+			desiredStalenessMs = desiredMs,
+			probeLagEstimateMs = rawEstimateMs,
+			demandRatio = demandRatio,
+			lagging = lagging,
+			deferLagDegrade = deferLagDegrade,
+		}
 	end
 end
 

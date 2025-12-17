@@ -22,6 +22,7 @@ InterestEffective._internal = InterestEffective._internal or {}
 --- @param interestType string
 --- @param opts table|nil
 --- @return table|nil effective
+--- @return table|nil meta
 if InterestEffective.ensure == nil then
 	function InterestEffective.ensure(state, interestRegistry, runtime, interestType, opts)
 		state = state or {}
@@ -66,13 +67,15 @@ if InterestEffective.ensure == nil then
 			signals = opts.signals,
 		}
 
-		local effective
-		policyState, effective = InterestPolicy.update(policyState, merged, runtimeStatus, policyOpts)
+		local effective, meta
+		policyState, effective, _, meta = InterestPolicy.update(policyState, merged, runtimeStatus, policyOpts)
 		state._interestPolicyState[interestType] = policyState
 
 		state._effectiveInterestByType = state._effectiveInterestByType or {}
 		state._effectiveInterestByType[interestType] = effective
-		return effective
+		state._effectiveInterestMetaByType = state._effectiveInterestMetaByType or {}
+		state._effectiveInterestMetaByType[interestType] = meta
+		return effective, meta
 	end
 end
 

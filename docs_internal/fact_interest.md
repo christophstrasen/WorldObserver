@@ -149,6 +149,8 @@ Default bounds when a mod omits a band:
 
 Hysteresis (anti-flapping):
 - Degradation reacts to sustained “probe lag” (a sweep cannot complete within the target staleness).
+- When lag is detected but the global WorldObserver tick is still comfortably under budget, we prefer spending that headroom
+  on probe scanning (auto-budget) before stepping down the degradation ladder.
 - Recovery requires sustained healthy windows *and* evidence that we can meet the **desired** staleness again (not merely the
   degraded staleness). This avoids oscillating between desired and tolerable when load is near the edge.
 - Recovery has extra hysteresis after a lag-triggered degrade (to avoid 1↔2 “thrash” when the sweep is borderline).

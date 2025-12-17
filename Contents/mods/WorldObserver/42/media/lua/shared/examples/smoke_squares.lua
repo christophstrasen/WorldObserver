@@ -34,16 +34,17 @@ function SmokeSquares.start(opts)
 	local modId = opts.modId or "examples/smoke_squares"
 	local nearLease = WorldObserver.factInterest:declare(modId, "near", opts.interestNear or {
 		type = "squares.nearPlayer",
-		staleness = { desired = 0.5, tolerable = 5 },
-		radius = { desired = 10, tolerable = 4 },
-		cooldown = { desired = 1, tolerable = 5 },
+		staleness = { desired = 2, tolerable = 5 },
+		radius = { desired = 10, tolerable = 5 },
+		cooldown = { desired = 5, tolerable = 20 },
 	})
 	local visionLease = WorldObserver.factInterest:declare(modId, "vision", opts.interestVision or {
 		type = "squares.vision",
-		staleness = { desired = 2, tolerable = 10 },
-		radius = { desired = 30, tolerable = 5 },
-		cooldown = { desired = 1, tolerable = 3 },
+		staleness = { desired = 10, tolerable = 20 },
+		radius = { desired = 25, tolerable = 15 },
+		cooldown = { desired = 10, tolerable = 60 },
 	})
+	--
 
 	-- Build stream.
 	local stream = WorldObserver.observations.squares()

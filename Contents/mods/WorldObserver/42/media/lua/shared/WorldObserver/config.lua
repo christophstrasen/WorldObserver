@@ -54,7 +54,7 @@ local function defaultBuildDefaults()
 					-- increase probe CPU budget for this tick to avoid degrading interest unnecessarily.
 					autoBudget = true,
 					autoBudgetReserveMs = 0.5, -- keep some budget for draining + other tick work
-					autoBudgetHeadroomFactor = 0.8, -- spend this fraction of observed headroom on probes
+					autoBudgetHeadroomFactor = 1.0, -- spend this fraction of observed headroom on probes
 					autoBudgetMaxMillisPerTick = nil, -- optional cap; defaults to (tickBudgetMs - reserve)
 					autoBudgetMinMillisPerTick = nil, -- optional floor; defaults to maxMillisPerTick
 				},

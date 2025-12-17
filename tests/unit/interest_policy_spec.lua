@@ -25,6 +25,13 @@ describe("interest policy", function()
 				dropDelta = opts.dropDelta or 0,
 				avgThroughput15 = opts.avgThroughput15 or 0,
 				avgFill = opts.avgFill,
+				budgetMs = opts.budgetMs,
+				avgTickMs = opts.avgTickMs,
+				reason = opts.reason,
+			},
+			tick = {
+				lastMs = opts.tickLastMs,
+				woAvgTickMs = opts.woAvgTickMs,
 			},
 		}
 	end
@@ -112,5 +119,30 @@ describe("interest policy", function()
 			signals = { probeLagRatio = 0.5, probeLagOverdueMs = 0, probeLagEstimateMs = 800 },
 		})
 		assert.equals(1, state.qualityIndex)
+	end)
+
+	it("prefers budget headroom over degrading on lag", function()
+		local mergedSmooth = {
+			staleness = { desired = 1, tolerable = 10 },
+			radius = { desired = 20, tolerable = 8 },
+			cooldown = { desired = 1, tolerable = 2 },
+		}
+		local lagSignals = { probeLagRatio = 2, probeLagOverdueMs = 1, probeLagEstimateMs = 2000 }
+
+		-- Under budget: do not degrade even if lag is detected (let probes ramp budget first).
+		local state, eff = Policy.update(nil, mergedSmooth, status({ mode = "normal", dropDelta = 0, avgFill = 0.1, budgetMs = 4, tickLastMs = 1 }), {
+			lagHoldTicks = 1,
+			signals = lagSignals,
+		})
+		assert.equals(1, state.qualityIndex)
+		assert.equals(1, eff.staleness)
+
+		-- Near budget: lag is actionable, so degrade can kick in.
+		state, eff = Policy.update(nil, mergedSmooth, status({ mode = "normal", dropDelta = 0, avgFill = 0.1, budgetMs = 4, tickLastMs = 3.5 }), {
+			lagHoldTicks = 1,
+			signals = lagSignals,
+		})
+		assert.equals(2, state.qualityIndex)
+		assert.equals(2, eff.staleness)
 	end)
 end)

@@ -24,6 +24,21 @@ local INTEREST_TYPE_VISION = "squares.vision"
 local PROBE_HIGHLIGHT_NEAR_COLOR = { 1.0, 0.6, 0.2 }
 local PROBE_HIGHLIGHT_VISION_COLOR = { 0.3, 0.8, 1.0 }
 
+local function tryRuntimeClockMs(runtime, methodName)
+	if not runtime then
+		return nil
+	end
+	local fn = runtime[methodName]
+	if type(fn) ~= "function" then
+		return nil
+	end
+	local ok, value = pcall(fn, runtime)
+	if ok and type(value) == "number" then
+		return value
+	end
+	return nil
+end
+
 local function highlightDurationMsFromStalenessSeconds(stalenessSeconds)
 	-- Visual feedback should roughly match probe cadence so players can “see the sweep” without cluttering forever.
 	-- Half of the requested staleness makes the highlighted area decay before the next expected refresh.
@@ -56,28 +71,22 @@ local function isSquareVisible(square, playerIndex)
 end
 
 local function resolveNowMs(runtime)
-	if runtime and runtime.nowWall then
-		local ok, value = pcall(runtime.nowWall, runtime)
-		if ok and type(value) == "number" then
-			return value
-		end
+	local value = tryRuntimeClockMs(runtime, "nowWall")
+	if value ~= nil then
+		return value
 	end
 	return Time.gameMillis() or math.floor(os.time() * 1000)
 end
 
 local function resolveBudgetMs(runtime)
 	-- Prefer CPU time when available; fall back to a wall clock so probe slicing still works in Kahlua.
-	if runtime and runtime.nowCpu then
-		local ok, value = pcall(runtime.nowCpu, runtime)
-		if ok and type(value) == "number" then
-			return value
-		end
+	local value = tryRuntimeClockMs(runtime, "nowCpu")
+	if value ~= nil then
+		return value
 	end
-	if runtime and runtime.nowWall then
-		local ok, value = pcall(runtime.nowWall, runtime)
-		if ok and type(value) == "number" then
-			return value
-		end
+	value = tryRuntimeClockMs(runtime, "nowWall")
+	if value ~= nil then
+		return value
 	end
 	return Time.cpuMillis() or Time.gameMillis() or 0
 end
@@ -108,7 +117,8 @@ local function resolveProbeBudgetMs(baseBudgetMs, runtimeStatus, demandRatio, pr
 	end
 	local window = runtimeStatus.window or {}
 	local reason = window.reason or "steady"
-	if reason == "ingestBacklogRising" or reason == "ingestDropsRising" or reason == "woTickAvgOverBudget" or reason == "woTickSpikeOverBudget" then
+	-- If WO is already over budget, don't try to "buy our way out" with more probe work.
+	if reason == "woTickAvgOverBudget" or reason == "woTickSpikeOverBudget" then
 		return baseBudgetMs, "fixed"
 	end
 	if demandRatio <= 1.0 then
@@ -142,7 +152,7 @@ local function resolveProbeBudgetMs(baseBudgetMs, runtimeStatus, demandRatio, pr
 
 	local headroomFactor = tonumber(probeCfg.autoBudgetHeadroomFactor)
 	if headroomFactor == nil then
-		headroomFactor = 0.8
+		headroomFactor = 1.0
 	end
 	if headroomFactor < 0 then
 		headroomFactor = 0
@@ -199,6 +209,33 @@ local function resolveProbeBudgetMs(baseBudgetMs, runtimeStatus, demandRatio, pr
 		budgetMs = maxAutoMs
 	end
 	return budgetMs, "auto"
+end
+
+local function scaleMaxSquaresPerTick(baseMaxSquaresPerTick, baseBudgetMs, budgetMs, budgetMode, probeCfg)
+	-- When we deliberately raise the probe CPU budget, also raise the iteration cap so we don't leave
+	-- budget on the table. Still keep a hard cap as a safety net if clocks are unavailable.
+	baseMaxSquaresPerTick = tonumber(baseMaxSquaresPerTick) or 0
+	baseBudgetMs = tonumber(baseBudgetMs) or 0
+	budgetMs = tonumber(budgetMs) or 0
+	if baseMaxSquaresPerTick <= 0 then
+		return 0
+	end
+	if budgetMode ~= "auto" then
+		return baseMaxSquaresPerTick
+	end
+	if baseBudgetMs <= 0 or budgetMs <= baseBudgetMs then
+		return baseMaxSquaresPerTick
+	end
+	probeCfg = probeCfg or {}
+
+	local scale = budgetMs / baseBudgetMs
+	local scaled = math.ceil(baseMaxSquaresPerTick * scale)
+
+	local hardCap = tonumber(probeCfg.maxPerRunHardCap) or 200
+	if hardCap < baseMaxSquaresPerTick then
+		hardCap = baseMaxSquaresPerTick
+	end
+	return math.min(hardCap, math.max(baseMaxSquaresPerTick, scaled))
 end
 
 local function nearbyPlayers()
@@ -451,8 +488,8 @@ local function cursorStartSweepIfDue(cursor, nowMs, stalenessMs, tickSeq)
 	if not cursorCanScanThisTick(cursor, nowMs, stalenessMs, tickSeq) then
 		return false
 	end
-resetProbeSweep(cursor, nowMs, stalenessMs)
-return true
+	resetProbeSweep(cursor, nowMs, stalenessMs)
+	return true
 end
 
 local function computeProbeLagSignals(cursor, nowMs, previousEffective)
@@ -627,47 +664,18 @@ if Probe.tick == nil then
 		visionCursor.lastLagSignals = signalsVision
 
 		local defaultInterest = ctx.defaultInterest
-		local effectiveNear = InterestEffective.ensure(state, ctx.interestRegistry, ctx.runtime, INTEREST_TYPE_NEAR, {
+		local effectiveNear, metaNear = InterestEffective.ensure(state, ctx.interestRegistry, ctx.runtime, INTEREST_TYPE_NEAR, {
 			label = "near",
 			allowDefault = true,
 			defaultInterest = defaultInterest,
 			signals = signalsNear,
 		})
-		local effectiveVision = InterestEffective.ensure(state, ctx.interestRegistry, ctx.runtime, INTEREST_TYPE_VISION, {
+		local effectiveVision, metaVision =
+			InterestEffective.ensure(state, ctx.interestRegistry, ctx.runtime, INTEREST_TYPE_VISION, {
 			label = "vision",
 			allowDefault = false,
 			signals = signalsVision,
 		})
-
-		local function demandRatioForInterest(interestType, signals)
-			if type(signals) ~= "table" then
-				return 0
-			end
-			local policyState = state._interestPolicyState and state._interestPolicyState[interestType]
-			local desiredStaleness = nil
-			if type(policyState) == "table" and type(policyState.ladder) == "table" and type(policyState.ladder[1]) == "table" then
-				desiredStaleness = tonumber(policyState.ladder[1].staleness)
-			end
-			if type(desiredStaleness) ~= "number" or desiredStaleness <= 0 then
-				return 0
-			end
-			local estimateMs = tonumber(signals.probeLagEstimateMs)
-			if type(estimateMs) ~= "number" then
-				local ratio = tonumber(signals.probeLagRatio)
-				local targetMs = tonumber(signals.probeLagTargetMs)
-				if type(ratio) == "number" and type(targetMs) == "number" then
-					estimateMs = ratio * targetMs
-				end
-			end
-			if type(estimateMs) ~= "number" or estimateMs <= 0 then
-				return 0
-			end
-			local desiredMs = desiredStaleness * 1000
-			if desiredMs <= 0 then
-				return 0
-			end
-			return estimateMs / desiredMs
-		end
 
 		local players = nearbyPlayers()
 		local playerCount = #players
@@ -716,25 +724,15 @@ if Probe.tick == nil then
 			local runtimeStatus = ctx.runtime and ctx.runtime.status_get and ctx.runtime:status_get() or nil
 			local baseBudgetMs = tonumber(probeCfg.maxMillisPerTick or probeCfg.maxMsPerTick) or 0.75
 		local demandRatio = 0
-		if effectiveNear then
-			demandRatio = math.max(demandRatio, demandRatioForInterest(INTEREST_TYPE_NEAR, signalsNear))
+		if type(metaNear) == "table" then
+			demandRatio = math.max(demandRatio, tonumber(metaNear.demandRatio) or 0)
 		end
-		if effectiveVision then
-			demandRatio = math.max(demandRatio, demandRatioForInterest(INTEREST_TYPE_VISION, signalsVision))
-			end
+		if type(metaVision) == "table" then
+			demandRatio = math.max(demandRatio, tonumber(metaVision.demandRatio) or 0)
+		end
 			local budgetMs, budgetMode = resolveProbeBudgetMs(baseBudgetMs, runtimeStatus, demandRatio, probeCfg)
-			local maxSquaresPerTick = baseMaxSquaresPerTick
-			if budgetMode == "auto" and baseBudgetMs > 0 and budgetMs > baseBudgetMs then
-				-- When we deliberately raise the probe CPU budget, also raise the iteration cap so we don't
-				-- leave budget on the table. Still keep a hard cap as a safety net if clocks are unavailable.
-				local scale = budgetMs / baseBudgetMs
-				local scaled = math.ceil(baseMaxSquaresPerTick * scale)
-				local hardCap = tonumber(probeCfg.maxPerRunHardCap) or 200
-				if hardCap < baseMaxSquaresPerTick then
-					hardCap = baseMaxSquaresPerTick
-				end
-				maxSquaresPerTick = math.min(hardCap, math.max(baseMaxSquaresPerTick, scaled))
-			end
+			local maxSquaresPerTick =
+				scaleMaxSquaresPerTick(baseMaxSquaresPerTick, baseBudgetMs, budgetMs, budgetMode, probeCfg)
 
 			local rr = state._probeRoundRobin or 1
 			local processed = 0
@@ -886,6 +884,8 @@ if Probe.tick == nil then
 end
 
 Probe._internal.nearbyPlayers = nearbyPlayers
+Probe._internal.resolveProbeBudgetMs = resolveProbeBudgetMs
+Probe._internal.scaleMaxSquaresPerTick = scaleMaxSquaresPerTick
 Probe._internal.ensureProbeCursor = ensureProbeCursor
 Probe._internal.ensureProbeOffsets = ensureProbeOffsets
 Probe._internal.cursorNextSquare = cursorNextSquare
