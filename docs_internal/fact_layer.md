@@ -80,6 +80,10 @@ Event listeners:
 - shape payloads into stable records (ids + timestamps + small primitive fields); and
 - call `ctx.ingest(record)`.
 
+Current squares behavior:
+- `Events.LoadGridsquare` is **interest-controlled** and only enabled when at least one mod declares
+  `type = "squares.onLoad"` (cooldown-only shape; no radius/staleness).
+
 Important design note:
 - We intentionally avoid buffering live game objects.
   Today, square facts store coords + derived flags, not `IsoGridSquare` references.
@@ -92,9 +96,11 @@ Probes initiate scans when events are insufficient or when periodic reconfirmati
 
 Current reality (MVP):
 - Probes are not centrally scheduled as a generic system yet.
-- The squares probe runs on `Events.EveryOneMinute` (cheap, infrequent) and ingests a bounded amount of work per run:
-  - `WorldObserver.config.facts.squares.probe.enabled`
-  - `WorldObserver.config.facts.squares.probe.maxPerRun`
+- The squares probe runs a time-sliced “electron-beam” cursor sweep on `Events.OnTick`.
+  It scans **as fast as it can within the per-tick budget**, then waits until the next sweep is due by `staleness`.
+  It is bounded by:
+  - `WorldObserver.config.facts.squares.probe.maxMillisPerTick` (soft CPU-time budget per tick)
+  - `WorldObserver.config.facts.squares.probe.maxPerRun` (hard cap per tick as a safety net)
 
 Probes ingest into the same type buffer as event listeners, but typically in a different lane so we can express bias.
 

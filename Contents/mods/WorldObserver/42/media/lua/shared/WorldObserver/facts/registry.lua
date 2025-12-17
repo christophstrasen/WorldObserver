@@ -54,10 +54,11 @@ end
 			_controllerCfg = (type(config) == "table" and type(config.runtime) == "table" and config.runtime.controller) or {},
 			_hooks = hooks,
 			_globalSubscribers = 0,
-			_types = {},
-			_scheduler = nil,
-			_drainHookRegistered = false,
-			_ingestDiag = {
+				_types = {},
+				_scheduler = nil,
+				_drainHookRegistered = false,
+				_tickHooks = {},
+				_ingestDiag = {
 			ticks = 0,
 			reportEveryTicks = 300, -- ~5s at 60fps; intentionally coarse to avoid spam.
 			windowTicks = 0,
@@ -70,6 +71,29 @@ end
 		},
 	}, FactRegistry)
 	return self
+end
+
+--- Register a callback to run on every WorldObserver OnTick (inside the drain hook's timing window).
+--- Why: lets upstream producers (e.g. probes) time-slice their work while still contributing to the same runtime budgets.
+--- @param id string
+--- @param fn function
+function FactRegistry:tickHook_add(id, fn)
+	assert(type(id) == "string" and id ~= "", "tick hook id must be a non-empty string")
+	assert(type(fn) == "function", "tick hook fn must be a function")
+	self._tickHooks = self._tickHooks or {}
+	self._tickHooks[id] = fn
+end
+
+--- Remove a previously registered tick hook.
+--- @param id string
+function FactRegistry:tickHook_remove(id)
+	if type(id) ~= "string" or id == "" then
+		return
+	end
+	local hooks = self._tickHooks
+	if hooks then
+		hooks[id] = nil
+	end
 end
 
 ---Registers a fact type with an optional start hook.
@@ -213,20 +237,54 @@ local function ensureDrainHook(self)
 		end
 		return
 	end
+
+	local function runTickHooks()
+		local hooks = self._tickHooks
+		if not hooks then
+			return
+		end
+		for id, fn in pairs(hooks) do
+			local ok, err = pcall(fn)
+			if not ok and not isHeadless() then
+				Log:warn("Tick hook '%s' failed: %s", tostring(id), tostring(err))
+			end
+		end
+	end
+
 	events.OnTick.Add(function()
 		local runtime = self._runtime
 		local tickStart = nil
 		local useCpuClock = false
+
 		if runtime and runtime.nowCpu then
 			tickStart = runtime:nowCpu()
 			useCpuClock = type(tickStart) == "number"
-			if not useCpuClock then
-				tickStart = runtime:nowWall()
+		end
+		if type(tickStart) ~= "number" and runtime and runtime.nowWall then
+			tickStart = runtime:nowWall()
+		end
+
+		local tickHooksMs = 0
+		local drainMs = 0
+
+		local tickHooksStart = tickStart
+		runTickHooks()
+		if runtime and type(tickHooksStart) == "number" then
+			local tickHooksEnd = useCpuClock and runtime:nowCpu() or runtime:nowWall()
+			if type(tickHooksEnd) == "number" and tickHooksEnd >= tickHooksStart then
+				tickHooksMs = tickHooksEnd - tickHooksStart
 			end
 		end
 
 		if self._scheduler then
+			local drainStart = runtime and (useCpuClock and runtime:nowCpu() or runtime:nowWall()) or nil
 			self:_drainSchedulerOnce()
+			if runtime and type(drainStart) == "number" then
+				local drainEnd = useCpuClock and runtime:nowCpu() or runtime:nowWall()
+				if type(drainEnd) == "number" and drainEnd >= drainStart then
+					drainMs = drainEnd - drainStart
+				end
+			end
 		end
 
 		if runtime and type(tickStart) == "number" then
@@ -238,6 +296,8 @@ local function ensureDrainHook(self)
 				-- Feed the controller every tick; it will aggregate into windows.
 				runtime:controller_tick({
 					tickMs = tickMs,
+					probeMs = tickHooksMs,
+					drainMs = drainMs,
 					ingestPending = self._controllerIngestPending or 0,
 					ingestDropped = self._controllerIngestDroppedDelta or 0,
 					ingestTrend = self._controllerTrend,
@@ -251,8 +311,9 @@ local function ensureDrainHook(self)
 	self._drainHookRegistered = true
 end
 
-	function FactRegistry:onSubscribe(name)
-		local entry = ensureEntry(self, name, true)
+function FactRegistry:onSubscribe(name)
+	local entry = ensureEntry(self, name, true)
+
 	if not entry.started and type(entry.start) == "function" then
 		local ctx = defaultContext(self, entry)
 		-- Enable ingest when configured for this type.
@@ -279,54 +340,71 @@ end
 				end
 			end
 		end
+
 		local ok, err = pcall(entry.start, ctx)
 		if not ok then
 			Log:error("Failed to start fact type '%s': %s", tostring(name), tostring(err))
 		else
 			entry.started = true
 		end
-	end
-		entry.subscribers = (entry.subscribers or 0) + 1
-		local prevGlobal = self._globalSubscribers or 0
-		self._globalSubscribers = prevGlobal + 1
-		if prevGlobal == 0 and self._globalSubscribers == 1 then
-			local onFirst = self._hooks and self._hooks.onFirstSubscriber
-			if type(onFirst) == "function" then
-				pcall(onFirst)
+
+		-- Producers may register per-tick work (e.g. time-sliced probes). Ensure we have an OnTick hook
+		-- even when ingest is disabled (no scheduler/buffer), otherwise tick hooks would never run.
+		local hasTickHooks = false
+		local hooksTable = self._tickHooks
+		if hooksTable then
+			for _ in pairs(hooksTable) do
+				hasTickHooks = true
+				break
 			end
 		end
+		if hasTickHooks then
+			ensureDrainHook(self)
+		end
+	end
 
-		local unsubscribed = false
+	entry.subscribers = (entry.subscribers or 0) + 1
+	local prevGlobal = self._globalSubscribers or 0
+	self._globalSubscribers = prevGlobal + 1
+	if prevGlobal == 0 and self._globalSubscribers == 1 then
+		local onFirst = self._hooks and self._hooks.onFirstSubscriber
+		if type(onFirst) == "function" then
+			pcall(onFirst)
+		end
+	end
 
-		return function()
-			if unsubscribed then
-				return
-			end
-			unsubscribed = true
-			local tracked = ensureEntry(self, name, false)
-			tracked.subscribers = math.max(0, (tracked.subscribers or 1) - 1)
-			if tracked.subscribers == 0 and tracked.started and type(tracked.stop) == "function" then
-				local okStop, stopResultOrError = pcall(tracked.stop, tracked)
+	local unsubscribed = false
+
+	return function()
+		if unsubscribed then
+			return
+		end
+		unsubscribed = true
+
+		local tracked = ensureEntry(self, name, false)
+		tracked.subscribers = math.max(0, (tracked.subscribers or 1) - 1)
+		if tracked.subscribers == 0 and tracked.started and type(tracked.stop) == "function" then
+			local okStop, stopResultOrError = pcall(tracked.stop, tracked)
 			if not okStop then
 				Log:warn("Failed to stop fact type '%s': %s", tostring(name), tostring(stopResultOrError))
 			else
 				-- stop() may return false to indicate it could not fully stop (e.g. no remove semantics),
 				-- in which case we keep the type "started" to avoid double-registering handlers.
-					if stopResultOrError ~= false then
-						tracked.started = false
-					end
-				end
-			end
-
-			self._globalSubscribers = math.max(0, (self._globalSubscribers or 1) - 1)
-			if self._globalSubscribers == 0 then
-				local onLast = self._hooks and self._hooks.onLastSubscriber
-				if type(onLast) == "function" then
-					pcall(onLast)
+				if stopResultOrError ~= false then
+					tracked.started = false
 				end
 			end
 		end
+
+		self._globalSubscribers = math.max(0, (self._globalSubscribers or 1) - 1)
+		if self._globalSubscribers == 0 then
+			local onLast = self._hooks and self._hooks.onLastSubscriber
+			if type(onLast) == "function" then
+				pcall(onLast)
+			end
+		end
 	end
+end
 
 ---Returns the observable for a fact type, starting it if needed.
 function FactRegistry:getObservable(name)

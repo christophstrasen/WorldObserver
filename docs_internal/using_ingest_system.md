@@ -128,8 +128,9 @@ Suggested mapping:
   - emits drained square records into the existing Rx subject so `Schema.wrap` + queries stay unchanged
  - data shape:
    - ingest stores lightweight records only (ids/coords/flags/timestamp/source), no live `IsoGridSquare` objects
-   - probe runs via `Events.EveryOneMinute` with a small cap (e.g. 50 squares per run)
-   - probe cap is configurable via `WorldObserver.config.facts.squares.probe.maxPerRun`
+   - probe runs time-sliced on `Events.OnTick` (cursor sweep) to avoid frame hitching on larger radii
+   - probe is bounded by `WorldObserver.config.facts.squares.probe.maxMillisPerTick` (ms budget per tick)
+     and `WorldObserver.config.facts.squares.probe.maxPerRun` (hard cap per tick)
    - global scheduler budget and quantum via `WorldObserver.config.ingest.scheduler`
 
 Deliverable: `examples/smoke_squares.lua` remains functional but should stop causing burst-driven lag.
@@ -138,7 +139,8 @@ Config knobs (current default):
 ```lua
 WorldObserver.config.facts.squares.probe = {
   enabled = true,
-  maxPerRun = 50, -- EveryOneMinute
+  maxPerRun = 50, -- hard cap per OnTick slice
+  maxMillisPerTick = 0.75, -- probe CPU-ms per tick
 }
 WorldObserver.config.ingest.scheduler = {
   maxItemsPerTick = 10,

@@ -14,9 +14,9 @@ _G.LQR_HEADLESS = true
 local SquaresFacts = require("WorldObserver/facts/squares")
 
 describe("WorldObserver patch seams", function()
-	describe("facts/squares.makeSquareRecord", function()
-		local savedEvents
-		local originalMake
+		describe("facts/squares.makeSquareRecord", function()
+			local savedEvents
+			local originalMake
 
 		before_each(function()
 			savedEvents = _G.Events
@@ -28,41 +28,55 @@ describe("WorldObserver patch seams", function()
 			SquaresFacts.makeSquareRecord = originalMake
 		end)
 
-		it("dispatches through the module field inside event handlers", function()
-			local storedHandler = nil
-			_G.Events = {
-				LoadGridsquare = {
-					Add = function(fn)
-						storedHandler = fn
+			it("dispatches through the module field inside event handlers", function()
+				local storedHandler = nil
+				local storedTick = nil
+				_G.Events = {
+					LoadGridsquare = {
+						Add = function(fn)
+							storedHandler = fn
+						end,
+					},
+				}
+
+				local registered = nil
+				local fakeRegistry = {
+					register = function(_, _name, opts)
+						registered = opts
 					end,
-				},
-			}
+					tickHook_add = function(_, _id, fn)
+						storedTick = fn
+					end,
+				}
 
-			local registered = nil
-			local fakeRegistry = {
-				register = function(_, _name, opts)
-					registered = opts
-				end,
-			}
+				local InterestRegistry = require("WorldObserver/interest/registry")
+				local interestRegistry = InterestRegistry.new({ ttlMs = 1000000 })
+				interestRegistry:declare("test", "onLoad", {
+					type = "squares.onLoad",
+					cooldown = { desired = 0, tolerable = 0 },
+				})
 
-			SquaresFacts.register(fakeRegistry, {
-				facts = { squares = { headless = true, probe = { enabled = false } } },
-			})
+				SquaresFacts.register(fakeRegistry, {
+					facts = { squares = { headless = true, probe = { enabled = false } } },
+				}, interestRegistry)
 
-			assert.is_table(registered)
+				assert.is_table(registered)
 
-			local emitted = {}
-			registered.start({
-				state = {},
-				ingest = function(record)
-					emitted[#emitted + 1] = record
-				end,
-			})
+				local emitted = {}
+				registered.start({
+					state = {},
+					ingest = function(record)
+						emitted[#emitted + 1] = record
+					end,
+				})
 
-			assert.is_function(storedHandler)
+				assert.is_function(storedTick)
+				storedTick()
 
-			SquaresFacts.makeSquareRecord = function(_square, source)
-				return {
+				assert.is_function(storedHandler)
+
+				SquaresFacts.makeSquareRecord = function(_square, source)
+					return {
 					squareId = 1,
 					x = 1,
 					y = 2,

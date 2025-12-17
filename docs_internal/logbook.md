@@ -143,7 +143,7 @@
   - Facts now flow **ingest → buffer → drain** so bursty engine callbacks don’t immediately execute downstream LQR queries.
   - Implemented a global ingest scheduler drained on `Events.OnTick`, with a small default budget (`maxItemsPerTick=10`) and round-robin fairness across buffers of equal priority.
 - Migrated the `squares` fact type to ingest:
-  - `Events.LoadGridsquare` and an ad-hoc `Events.EveryOneMinute` probe now call `ctx.ingest(record)` instead of pushing directly into the Rx subject.
+  - `Events.LoadGridsquare` and a time-sliced `Events.OnTick` probe now call `ctx.ingest(record)` instead of pushing directly into the Rx subject.
   - Square records are now lightweight (ids/coords/flags/timestamp/source) and do not buffer `IsoGridSquare` references.
   - Introduced lane bias: `"probe"` work drains ahead of `"event"` work, based on the observation that chunk-load events can be large and include far-edge squares.
 - Improved in-engine diagnostics:
@@ -246,3 +246,34 @@
 ### Next steps
 - Expose a small diagnostic surface for `distinct()` (e.g. counters for suppressed/expired per dimension) so “why didn’t this re-emit?” is explainable without deep log spelunking.
 - Extend the highlighting helper pattern so we can highlight other object types (not just floor squares) with the same lifecycle model.
+
+## day10 – Fact interest + adaptive probes (near + vision) + refactor
+
+### Highlights
+- Introduced a mod-friendly, lease-based **fact interest** API (`WorldObserver.factInterest:declare(...)`) so mods can *declare intent* and refresh/replace it without needing to remember to “turn things off” later (leases expire automatically).
+- Implemented interest merging + adaptive policy (“ladder”) for the core probe knobs:
+  - `staleness` (how old results may be), `radius` (spatial scope), `cooldown` (per-key emission gating).
+  - Automatic degradation/recovery based on runtime pressure, plus a probe-lag signal when a sweep can’t keep up with requested staleness.
+- Smoothed degradation within declared bands by inserting intermediate ladder steps (e.g. `staleness=1 -> 2 -> 4 -> 8 -> 10`) instead of binary jumps.
+- Added hysteresis to avoid “lagged/recovered” flapping:
+  - Lag uses an estimated sweep completion time (based on progress) rather than only elapsed time.
+  - Recovery requires evidence that we can meet **desired** staleness again (not just the degraded staleness).
+  - Added extra recovery hysteresis after a lag-triggered degrade, plus a more stable early-sweep lag estimator (avoid “26x lag” spikes from tiny samples).
+- Added two square probe shapes for training and experimentation:
+  - **Near player** (radius sweep around the player).
+  - **Vision** (squares the player can currently see via `IsoGridSquare:getCanSee(playerIndex)`).
+- Made probes time-sliced and stutter-resistant via a per-tick scan budget: a cursor sweeps the area over multiple ticks, tries to finish “as fast as allowed”, then idles until the next sweep is due.
+- Added an auto-budget “gas pedal” for probes: when probes lag but the overall WorldObserver tick has headroom, spend more of the 4ms budget on probing (capped against drain/other work).
+  - When auto-budget raises `budgetMs`, probes also scale their per-tick iteration cap (up to a hard cap) so budget isn’t left unused due to `maxPerRun`.
+- Improved runtime diagnostics to show probe vs drain vs other vs total cost on one line, including tick spike maxima.
+- Gated `Events.LoadGridsquare` behind explicit interest (`squares.onLoad`) so “smoke probe-only runs” don’t enable event ingestion unless something asked for it.
+- Refactored the large `facts/squares.lua` into smaller modules (record building / geometry / probes / onLoad listener / shared interest resolver) while preserving patch seams and keeping busted tests green.
+
+### Lessons
+- “Declare interest” is a clean seam between **upstream acquisition** and **downstream observation**: it enables coordination and budgeting without entangling mod logic with runtime internals.
+- Separating mechanics (cursor sweep + budgets) from policy (interest ladder + degrade/recover rules) keeps tuning safe and incremental.
+- In-game console debugging needs “live knobs”: reading selected debug overrides at runtime avoids needing module reloads just to change probe logging verbosity.
+
+### Next steps
+- Add a small “probe metrics” surface (beyond logs) so modders can inspect: sweep progress, lag ratio, and current effective interest per probe type.
+- Consider a future “drive-by discovery” hook at square-scan time (e.g. “while scanning squares, also sample zombies/items if there’s declared interest”) without introducing new world sweeps.

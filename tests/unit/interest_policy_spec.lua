@@ -18,6 +18,7 @@ describe("interest policy", function()
 	}
 
 	local function status(opts)
+		opts = opts or {}
 		return {
 			mode = opts.mode or "normal",
 			window = {
@@ -61,10 +62,55 @@ describe("interest policy", function()
 		state = Policy.update(nil, merged, status({ dropDelta = 5, avgThroughput15 = 10 })) -- 2
 		state = Policy.update(state, merged, status({ dropDelta = 5, avgThroughput15 = 10 })) -- 3
 		state = Policy.update(state, merged, status({ dropDelta = 5, avgThroughput15 = 10 })) -- 4
-		state, eff = Policy.update(state, merged, status({ dropDelta = 5, avgThroughput15 = 10 })) -- 5 (first emergency)
-		assert.is_true(state.qualityIndex >= 5)
+		state = Policy.update(state, merged, status({ dropDelta = 5, avgThroughput15 = 10 })) -- 5
+		state, eff = Policy.update(state, merged, status({ dropDelta = 5, avgThroughput15 = 10 })) -- 6 (first emergency)
+		assert.is_true(state.qualityIndex >= 6)
 		assert.is_true(eff.staleness >= 40) -- doubled once in emergency
 		assert.is_true(eff.radius <= 2.5)
 		assert.is_true(eff.cooldown >= 120)
+	end)
+
+	it("smooths ladder within bands (no binary jumps)", function()
+		local mergedSmooth = {
+			staleness = { desired = 1, tolerable = 10 },
+			radius = { desired = 20, tolerable = 8 },
+			cooldown = { desired = 1, tolerable = 2 },
+		}
+		local state, eff = Policy.update(nil, mergedSmooth, status({ mode = "normal", dropDelta = 0, avgFill = 0.1 }), {
+			lagHoldTicks = 1,
+			signals = { probeLagRatio = 2, probeLagOverdueMs = 1, probeLagEstimateMs = 2000 },
+		})
+		assert.equals(2, state.qualityIndex)
+		assert.equals(2, eff.staleness) -- first degrade step is 2s (not 10s)
+	end)
+
+	it("does not recover to desired unless it can meet desired staleness", function()
+		local mergedSmooth = {
+			staleness = { desired = 1, tolerable = 10 },
+			radius = { desired = 20, tolerable = 8 },
+			cooldown = { desired = 1, tolerable = 2 },
+		}
+		local state = Policy.update(nil, mergedSmooth, status({ mode = "normal", dropDelta = 0, avgFill = 0.1 }), {
+			lagHoldTicks = 1,
+			recoverHoldWindows = 1,
+			recoverHoldTicksAfterLag = 1,
+			signals = { probeLagRatio = 2, probeLagOverdueMs = 1, probeLagEstimateMs = 2000 },
+		})
+
+		-- Healthy window but still can't meet desired (estimate >= desired): stay degraded.
+		state = Policy.update(state, mergedSmooth, status({ mode = "normal", dropDelta = 0, avgFill = 0.1 }), {
+			recoverHoldWindows = 1,
+			recoverHoldTicksAfterLag = 1,
+			signals = { probeLagRatio = 0.5, probeLagOverdueMs = 0, probeLagEstimateMs = 1000 },
+		})
+		assert.equals(2, state.qualityIndex)
+
+		-- Once we can comfortably meet desired again, recover.
+		state = Policy.update(state, mergedSmooth, status({ mode = "normal", dropDelta = 0, avgFill = 0.1 }), {
+			recoverHoldWindows = 1,
+			recoverHoldTicksAfterLag = 1,
+			signals = { probeLagRatio = 0.5, probeLagOverdueMs = 0, probeLagEstimateMs = 800 },
+		})
+		assert.equals(1, state.qualityIndex)
 	end)
 end)

@@ -46,7 +46,17 @@ local function defaultBuildDefaults()
 				},
 				probe = {
 					enabled = true,
-					maxPerRun = 50, -- per EveryOneMinute
+					maxPerRun = 50, -- hard cap per OnTick slice (bounds worst-case work if clocks are unavailable)
+					maxPerRunHardCap = 200, -- hard cap for auto-budget scaling (still bounded by maxMillisPerTick)
+					maxMillisPerTick = 0.75, -- CPU-ms budget per tick for probe scanning (kept small to avoid hitching)
+					infoLogEveryMs = 10000, -- emit probe settings summary at most this often (0 disables)
+					-- Auto budget: when probes lag but the overall WO tick has headroom (tickBudgetMs),
+					-- increase probe CPU budget for this tick to avoid degrading interest unnecessarily.
+					autoBudget = true,
+					autoBudgetReserveMs = 0.5, -- keep some budget for draining + other tick work
+					autoBudgetHeadroomFactor = 0.8, -- spend this fraction of observed headroom on probes
+					autoBudgetMaxMillisPerTick = nil, -- optional cap; defaults to (tickBudgetMs - reserve)
+					autoBudgetMinMillisPerTick = nil, -- optional floor; defaults to maxMillisPerTick
 				},
 			},
 		},

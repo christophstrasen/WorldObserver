@@ -1,6 +1,7 @@
 -- smoke_squares.lua — console-friendly smoke test for WorldObserver squares.
 -- Usage in PZ console:
 --[[ @AI agent dont change this
+	_G.WORLDOBSERVER_CONFIG_OVERRIDES = { facts = { squares = { probe = { infoLogEveryMs = 500, logEachSweep = true } } } }
    smoke = require("examples/smoke_squares")
    handle = smoke.start({ distinctSeconds = 20, withHelpers = true })
    handle:stop()
@@ -33,15 +34,15 @@ function SmokeSquares.start(opts)
 	local modId = opts.modId or "examples/smoke_squares"
 	local nearLease = WorldObserver.factInterest:declare(modId, "near", opts.interestNear or {
 		type = "squares.nearPlayer",
-		staleness = { desired = 2, tolerable = 10 },
-		radius = { desired = 5, tolerable = 4 },
+		staleness = { desired = 0.5, tolerable = 5 },
+		radius = { desired = 10, tolerable = 4 },
 		cooldown = { desired = 1, tolerable = 5 },
 	})
 	local visionLease = WorldObserver.factInterest:declare(modId, "vision", opts.interestVision or {
 		type = "squares.vision",
-		staleness = { desired = 5, tolerable = 5 },
-		radius = { desired = 8, tolerable = 6 },
-		cooldown = { desired = 1, tolerable = 5 },
+		staleness = { desired = 2, tolerable = 10 },
+		radius = { desired = 30, tolerable = 5 },
+		cooldown = { desired = 1, tolerable = 3 },
 	})
 
 	-- Build stream.

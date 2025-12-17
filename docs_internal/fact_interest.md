@@ -131,8 +131,13 @@ Per probe type, maintain a small discrete quality state:
    1) increase `staleness` (allow older observations),
    2) decrease `radius`,
    3) increase `cooldown`.
-3. Stop degrading a knob once it hits the **global tolerable bound** (section 5.2), then move to the next knob.
-4. If still over budget after reaching all tolerable bounds, apply **emergency steps** up to 3 times:
+3. Within a knob’s `[desired .. tolerable]` band, degrade in a few **intermediate steps** (rather than jumping straight
+   from desired to tolerable), e.g.:
+   - `staleness`: `1, 2, 4, 8, 10`
+   - `radius`: `20, 15, 12, 9, 8`
+   - `cooldown`: `1, 2`
+4. Stop degrading a knob once it hits the **global tolerable bound** (section 5.2), then move to the next knob.
+5. If still over budget after reaching all tolerable bounds, apply **emergency steps** up to 3 times:
    - double `staleness`
    - halve `radius` (floor at 0/1 as appropriate)
    - double `cooldown`
@@ -141,6 +146,12 @@ Per probe type, maintain a small discrete quality state:
 Default bounds when a mod omits a band:
 - Treat missing bands as “soft” and derive `tolerable` values from project defaults.
 - Emergency scaling still applies when budgets demand it; once we breach a tolerable value, we warn and report effective values.
+
+Hysteresis (anti-flapping):
+- Degradation reacts to sustained “probe lag” (a sweep cannot complete within the target staleness).
+- Recovery requires sustained healthy windows *and* evidence that we can meet the **desired** staleness again (not merely the
+  degraded staleness). This avoids oscillating between desired and tolerable when load is near the edge.
+- Recovery has extra hysteresis after a lag-triggered degrade (to avoid 1↔2 “thrash” when the sweep is borderline).
 
 ---
 
@@ -160,4 +171,6 @@ This is a later optimization; v1 can remain “interval-based probes”.
 
 - Debug: list active leases and their effective merged plan.
 - Runtime status already exists (`WorldObserver/runtime.lua`): keep emitting window reports + degrade reasons.
+- In-engine probe logging knobs can be toggled live (no module reload): `_G.WORLDOBSERVER_CONFIG_OVERRIDES.facts.squares.probe.infoLogEveryMs` and `.logEachSweep`.
+- When `autoBudget` raises `budgetMs`, probes also scale their per-tick iteration cap up to `maxPerRunHardCap` so they can actually spend the budget.
 - Warnings should point to the effective values and to `WorldObserver.debug.describeFactsMetrics("<type>")`.

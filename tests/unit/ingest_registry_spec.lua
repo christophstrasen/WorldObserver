@@ -162,6 +162,11 @@ describe("FactRegistry with ingest", function()
 			},
 		}, runtime)
 
+		local hookCalled = false
+		registry:tickHook_add("unitTestHook", function()
+			hookCalled = true
+		end)
+
 		registry:register("testfacts", {
 			ingest = {
 				mode = "latestByKey",
@@ -183,6 +188,8 @@ describe("FactRegistry with ingest", function()
 
 		-- First tick should observe drops and degrade via ingestDropsRising.
 		storedTickFn()
+
+		assert.is_true(hookCalled)
 
 		local snap = runtime:status_get()
 		assert.equals("degraded", snap.mode)

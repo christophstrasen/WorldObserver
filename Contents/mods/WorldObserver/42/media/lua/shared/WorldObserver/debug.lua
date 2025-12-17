@@ -125,6 +125,7 @@ local function describeRuntimeStatus(payload, factRegistry)
 	local budgets = status.budgets or {}
 	local window = status.window or {}
 	local windowReason = window.reason or "steady"
+
 	local pressure = "none"
 	if windowReason == "woTickAvgOverBudget" or windowReason == "woTickSpikeOverBudget" then
 		pressure = "cpu"
@@ -133,31 +134,43 @@ local function describeRuntimeStatus(payload, factRegistry)
 	elseif windowReason == "ingestBacklogRising" then
 		pressure = "backlog"
 	end
+
 	-- Effective drain cap can come from degraded mode; base cap is what the scheduler was configured with.
 	local drainMaxItems = budgets.schedulerMaxItemsPerTick
-	local baseMaxItems = factRegistry and factRegistry._schedulerConfiguredMaxItems
 	local tickSpikeMs = tonumber(tick.woTickSpikeMs) or tonumber(tick.woMaxTickMs) or 0
-	local spikeStreakMax = window.spikeStreakMax or tick.woWindowSpikeStreakMax
-	local avgPendingWin = tonumber(tick.woWindowAvgPending) or 0
+
+	local probeLastMs = tonumber(tick.probeLastMs) or 0
+	local drainLastMs = tonumber(tick.drainLastMs) or 0
+	local otherLastMs = tonumber(tick.otherLastMs) or 0
+
+	local avgProbeMs = tonumber(tick.woWindowAvgProbeMs) or tonumber(window.avgProbeMs) or 0
+	local avgDrainMs = tonumber(tick.woWindowAvgDrainMs) or tonumber(window.avgDrainMs) or 0
+	local avgOtherMs = tonumber(tick.woWindowAvgOtherMs) or tonumber(window.avgOtherMs) or 0
 	local avgFillWin = tonumber(tick.woWindowAvgFill) or 0
+
 	local currentPending = factRegistry and factRegistry._controllerIngestPending
 	if type(currentPending) ~= "number" then
 		currentPending = nil
 	end
+
 	Log:info(
-		"[runtime] mode=%s pressure=%s reason=%s drainMaxItems=%s baseMaxItems=%s avgMsPerTick=%.2f tickSpikeMs=%.2f budgetMs=%s spikeBudgetMs=%s spikeStreakMax=%s currentPending=%s avgPendingWin=%.2f avgFillWin=%.3f dropDelta=%s rate15(in/out per sec)=%.2f/%.2f",
+		"[runtime] mode=%s pressure=%s reason=%s msAvg(p/d/o/t)=%.2f/%.2f/%.2f/%.2f msLast(p/d/o/t)=%.2f/%.2f/%.2f/%.2f tickSpike=%.2f budget=%s/%s drainMaxItems=%s pending=%s fill=%.3f dropDelta=%s rate15=%.2f/%.2f",
 		tostring(status.mode),
 		pressure,
 		tostring(windowReason),
-		tostring(drainMaxItems),
-		baseMaxItems and tostring(baseMaxItems) or "n/a",
+		avgProbeMs,
+		avgDrainMs,
+		avgOtherMs,
 		tonumber(tick.woAvgTickMs) or 0,
+		probeLastMs,
+		drainLastMs,
+		otherLastMs,
+		tonumber(tick.lastMs) or 0,
 		tickSpikeMs,
 		tostring(status.window and status.window.budgetMs),
 		tostring(status.window and status.window.spikeBudgetMs),
-		spikeStreakMax and tostring(spikeStreakMax) or "n/a",
+		tostring(drainMaxItems),
 		currentPending and tostring(currentPending) or "n/a",
-		avgPendingWin,
 		avgFillWin,
 		tostring(tick.woWindowDropDelta),
 		tonumber(tick.woWindowIngestRate15) or 0,

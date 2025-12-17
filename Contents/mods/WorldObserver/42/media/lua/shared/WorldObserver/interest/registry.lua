@@ -27,8 +27,8 @@ end
 --- @field spec table
 --- @field expiresAtMs number
 
--- Default TTL must be comfortably above the typical probe cadence (EveryOneMinute),
--- otherwise leases expire during normal play even when a mod still cares about them.
+-- Default TTL must be comfortably above how often mods typically refresh their declarations,
+-- otherwise leases can expire during normal play even when a mod still cares about them.
 local DEFAULT_TTL_MS = 10 * 60 * 1000
 
 local DEFAULTS = {
