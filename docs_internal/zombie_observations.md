@@ -56,7 +56,8 @@ These fields are chosen to align with Build 42 getters we can call cheaply:
 - `IsoZombie:isCrawling()` / `IsoGameCharacter:isRunning()` / `IsoGameCharacter:isMoving()` (+ `speedType`) for locomotion
 
 **Identity / location (must-have)**
-- `zombieId` (number; prefer `zombie:getOnlineID()` when > 0, else fallback to `zombie:getID()`; stable enough for `latestByKey`)
+- `zombieId` (integer; use `zombie:getID()` as the primary key; stable enough for `latestByKey`)
+- `zombieOnlineId` (integer; `zombie:getOnlineID()`; may be `0`/unset in SP, but useful to retain for MP correlation)
 - `x`, `y`, `z` (numbers; use `zombie:getX()`, `zombie:getY()`, `zombie:getZ()`; treat as tile coords in v1)
 - `squareId` (number; use `zombie:getCurrentSquare():getID()` when available; else derive like squares)
 - `observedAtTimeMS` (domain timestamp, ms)
@@ -72,10 +73,10 @@ These fields are chosen to align with Build 42 getters we can call cheaply:
 
 **Targeting (useful, but careful)**
 - `hasTarget` (boolean; `zombie:getTarget() ~= nil`)
-- `targetId` (boolean; `zombie:getTarget():getID ~= nil`)
+- `targetId` (integer|nil; best-effort `zombie:getTarget():getID()`; nil when no target / not resolvable)
 - `targetVisible` (boolean; `zombie:isTargetVisible()`)
 - `targetSeenSeconds` (number; `zombie:getTargetSeenTime()`)
-- `targetKind` (`"player" | "character" | "object" | "unknown"`) (best effort EMPTY implementation because complex)
+- `targetKind` (`"player" | "character" | "object" | "unknown"`) (best effort; should use engine type checks like `instanceof`)
 - `targetX`, `targetY`, `targetZ` (number|nil; `target:getX/getY/getZ` if available)
 - `targetSquareId`, (number|nil; `target:getCurrentSquare():getID()` if available)
 
@@ -115,8 +116,8 @@ We need a stable key for:
 - helper dimensions (distinct by zombie)
 
 Preferred order (to confirm in-engine):
-1. `zombie:getOnlineID()` when > 0 (MP-oriented, but if present and stable in SP too, great)
-2. Otherwise `zombie:getID()` (available on `IsoMovingObject` and expected to be stable within a session)
+1. `zombie:getID()` (primary key; expected to be stable within a session)
+2. Also store `zombie:getOnlineID()` for MP correlation (may be `0`/unset in SP)
 
 We want to assume that either getOnlineID or getID will be stable enough to use. 
 
@@ -129,7 +130,7 @@ For Build 42 API work we should treat the demiurgequantified docs as the primary
 
 - Identity:
   - `IsoZombie:getOnlineID()`
-  - `IsoMovingObject:getID()` (fallback identity in SP)
+  - `IsoMovingObject:getID()` (primary identity in SP; also available in MP)
 - Location:
   - `IsoMovingObject:getX()`, `getY()`, `getZ()`
   - `IsoMovingObject:getCurrentSquare()` (then `IsoGridSquare:getID()`)
@@ -155,7 +156,7 @@ We DONT need to provide helpers over simple fields. No need "pass through". Help
 Proposed “rehydration / convenience” helpers under `WorldObserver.helpers.zombie`:
 - `getIsoZombie(zombieRecord)` (see 3.3)
 - `getIsoSquare(zombieRecord)` (uses `x/y/z` and the active cell; mirrors the square helper pattern)
-- `getTarget(zombieRecord)` (best effort: rehydrate the target object if we have `targetOnlineId`, otherwise return nil)
+- `getTarget(zombieRecord)` (best effort: rehydrate the target object when we have `targetId` and a loaded object matches it)
 - ensure it works similar to `WorldObserver.helpers.square.getIsoSquare`
 
 ---
@@ -226,11 +227,12 @@ Start with one interest type that matches immediate modder expectations:
 
 - `staleness` (seconds): how quickly we try to refresh the set
 - `radius` (tiles): only emit zombies within radius of any player
-- `levels` : 1 would be z level of the player, 2 would be z-level of the player and one above, 3 would be one above and one below and so forth. Defaults to 3.
+- `zRange` (integer ≥ 0): include zombies whose `abs(zombieZ - playerZ) <= zRange`.
+  - `zRange = 0` → same floor only; `zRange = 1` → player floor plus one above and one below (3 total levels); etc.
 - `cooldown` (seconds): per-zombie emit throttle (prevents spamming the same zombie every sweep)
 
 Important nuance:
-- With a plain `IsoCell:getZombieList()` probe, `radius` or `levels` do **not** automatically reduce the cost of *acquisition*,
+- With a plain `IsoCell:getZombieList()` probe, `radius` or `zRange` do **not** automatically reduce the cost of *acquisition*,
   because we still have to walk the list to find the near zombies.
 - It still matters in v1 because it reduces *work we do per zombie* (record extraction, ingest calls, downstream processing)
   by filtering out far-away zombies early.
@@ -295,6 +297,8 @@ Confirm with a small console snippet:
 - Which stable id exists (`getID` / `getOnlineID` / …) and its behavior in SP
 - Position getters (`getX/getY/getZ`) return what we expect (tile coords)
 - Any cheap “visible” predicate if we later want `zombies.vision`
+- Validate `zRange` behavior: quick loop that prints `abs(z - playerZ)` distribution to ensure the field matches our definition.
+- Note: Run these in the PZ console; do not ship any runtime changes for Phase A.
 
 ### Phase B — Add the fact family (v1)
 

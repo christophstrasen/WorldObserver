@@ -37,12 +37,14 @@ function SmokeSquares.start(opts)
 		staleness = { desired = 2, tolerable = 5 },
 		radius = { desired = 10, tolerable = 5 },
 		cooldown = { desired = 5, tolerable = 20 },
+		highlight = true,
 	})
 	local visionLease = WorldObserver.factInterest:declare(modId, "vision", opts.interestVision or {
 		type = "squares.vision",
 		staleness = { desired = 10, tolerable = 20 },
 		radius = { desired = 25, tolerable = 15 },
 		cooldown = { desired = 10, tolerable = 60 },
+		highlight = true,
 	})
 	--
 

@@ -45,7 +45,12 @@ local function applyHighlight(entry, alpha)
 
 	local color = entry.color or DEFAULT_COLOR
 	local a = alpha or entry.startAlpha or DEFAULT_ALPHA
-	if type(target.setHighlightColor) == "function" then
+	if entry.useOutline and type(target.setOutlineHighlight) == "function" then
+		if type(target.setOutlineHighlightColor) == "function" then
+			pcall(target.setOutlineHighlightColor, target, color[1], color[2], color[3], a)
+		end
+		pcall(target.setOutlineHighlight, target, true)
+	elseif type(target.setHighlightColor) == "function" then
 		pcall(target.setHighlightColor, target, color[1], color[2], color[3], a)
 	end
 	callSetHighlighted(target, true, entry.blink)
@@ -55,6 +60,9 @@ local function clearHighlight(entry)
 	local target = entry and entry.target
 	if target == nil then
 		return
+	end
+	if entry.useOutline and type(target.setOutlineHighlight) == "function" then
+		pcall(target.setOutlineHighlight, target, false)
 	end
 	callSetHighlighted(target, false, entry.blink)
 end
@@ -165,6 +173,7 @@ if Highlight.highlightTarget == nil then
 			color = DEFAULT_COLOR
 		end
 		local blink = opts.blink == true
+		local useOutline = opts.useOutline == true or (type(target.setOutlineHighlight) == "function" and type(target.setHighlightColor) ~= "function")
 
 		local startedMs = nowMillis() or 0
 		local entry = {
@@ -174,6 +183,7 @@ if Highlight.highlightTarget == nil then
 			color = color,
 			startAlpha = startAlpha,
 			blink = blink,
+			useOutline = useOutline,
 		}
 
 		local existing = state.active[target]

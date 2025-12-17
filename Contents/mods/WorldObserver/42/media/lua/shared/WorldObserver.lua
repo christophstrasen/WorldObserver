@@ -22,9 +22,12 @@ end
 local Config = require("WorldObserver/config")
 local FactRegistry = require("WorldObserver/facts/registry")
 local SquaresFacts = require("WorldObserver/facts/squares")
+local ZombiesFacts = require("WorldObserver/facts/zombies")
 local ObservationsCore = require("WorldObserver/observations/core")
 local SquaresObservations = require("WorldObserver/observations/squares")
+local ZombiesObservations = require("WorldObserver/observations/zombies")
 local SquareHelpers = require("WorldObserver/helpers/square")
+local ZombieHelpers = require("WorldObserver/helpers/zombie")
 local InterestRegistry = require("WorldObserver/interest/registry")
 local Debug = require("WorldObserver/debug")
 local Runtime = require("WorldObserver/runtime")
@@ -97,16 +100,19 @@ function runtime:emergency_resetIngest()
 end
 
 SquaresFacts.register(factRegistry, config, interestRegistry)
+ZombiesFacts.register(factRegistry, config, interestRegistry)
 
 local observationRegistry = ObservationsCore.new({
 	factRegistry = factRegistry,
 	config = config,
 	helperSets = {
 		square = SquareHelpers,
+		zombie = ZombieHelpers,
 	},
 })
 
 SquaresObservations.register(observationRegistry, factRegistry, ObservationsCore.nextObservationId)
+ZombiesObservations.register(observationRegistry, factRegistry, ObservationsCore.nextObservationId)
 
 		WorldObserver = {
 			config = config,
@@ -124,6 +130,7 @@ SquaresObservations.register(observationRegistry, factRegistry, ObservationsCore
 			},
 			helpers = {
 				square = SquareHelpers,
+				zombie = ZombieHelpers,
 			},
 			highlight = SquareHelpers.highlight,
 			debug = nil,

@@ -39,14 +39,17 @@ local function tryRuntimeClockMs(runtime, methodName)
 	return nil
 end
 
-local function highlightDurationMsFromStalenessSeconds(stalenessSeconds)
-	-- Visual feedback should roughly match probe cadence so players can “see the sweep” without cluttering forever.
-	-- Half of the requested staleness makes the highlighted area decay before the next expected refresh.
-	local s = tonumber(stalenessSeconds) or 0
-	if s <= 0 then
+local function highlightDurationMsFromCadenceSeconds(stalenessSeconds, cooldownSeconds)
+	-- Visual feedback should roughly match the fastest possible *emit cadence*.
+	-- If cooldown is larger than staleness, emits (and therefore highlights) cannot happen faster than cooldown anyway.
+	-- Using the max makes highlights persist long enough to look “continuous” at the true cadence, without overstaying.
+	local staleness = tonumber(stalenessSeconds) or 0
+	local cooldown = tonumber(cooldownSeconds) or 0
+	local cadence = math.max(staleness, cooldown)
+	if cadence <= 0 then
 		return 0
 	end
-	return math.floor((s * 1000) / 2)
+	return math.floor((cadence * 1000) / 2)
 end
 
 local function stalenessMsFromSeconds(stalenessSeconds)
@@ -541,20 +544,6 @@ local function computeProbeLagSignals(cursor, nowMs, previousEffective)
 	}
 end
 
-local function highlightSquare(square, cursor, highlightMs, headless)
-	if headless or highlightMs <= 0 or not square then
-		return
-	end
-	local okFloor, floor = pcall(square.getFloor, square)
-	if okFloor and floor then
-		Highlight.highlightTarget(floor, {
-			durationMs = highlightMs,
-			color = cursor.color,
-			alpha = cursor.alpha,
-		})
-	end
-end
-
 local function resolveProbeLoggingCfg(probeCfg)
 	probeCfg = probeCfg or {}
 	local infoEveryMs = tonumber(probeCfg.infoLogEveryMs)
@@ -604,7 +593,7 @@ local function processProbeSquare(ctx, cursor, square, playerIndex, nowMs)
 
 	local highlightMs = tonumber(ctx.highlightMs)
 	if highlightMs == nil then
-		highlightMs = highlightDurationMsFromStalenessSeconds(ctx.stalenessSeconds)
+		highlightMs = highlightDurationMsFromCadenceSeconds(ctx.stalenessSeconds, ctx.cooldownSeconds)
 	end
 	if not ctx.headless and highlightMs > 0 then
 		local okFloor, floor = pcall(square.getFloor, square)
@@ -785,8 +774,6 @@ if Probe.tick == nil then
 
 			local stalenessSeconds = tonumber(effective.staleness) or 0
 			local cooldownSeconds = tonumber(effective.cooldown) or 0
-			local highlightMs = highlightDurationMsFromStalenessSeconds(stalenessSeconds)
-
 			local square, playerIndex = cursorNextSquare(cursor, players, nowMs, tickSeq)
 			if square then
 				cursor.tickVisited = (cursor.tickVisited or 0) + 1
@@ -794,19 +781,6 @@ if Probe.tick == nil then
 				if cursor.isVision then
 					if isSquareVisible(square, playerIndex) then
 						cursor.tickVisible = (cursor.tickVisible or 0) + 1
-						highlightSquare(square, cursor, highlightMs, ctx.headless)
-						emitted = processProbeSquare({
-							state = state,
-							squares = ctx.squares,
-							emitFn = ctx.emitFn,
-							headless = ctx.headless,
-							stalenessSeconds = stalenessSeconds,
-							cooldownSeconds = cooldownSeconds,
-							highlightMs = 0, -- highlight is handled on scan so cooldown doesn't hide sweep progress
-						}, cursor, square, playerIndex, nowMs)
-					end
-				else
-					highlightSquare(square, cursor, highlightMs, ctx.headless)
 					emitted = processProbeSquare({
 						state = state,
 						squares = ctx.squares,
@@ -814,9 +788,20 @@ if Probe.tick == nil then
 						headless = ctx.headless,
 						stalenessSeconds = stalenessSeconds,
 						cooldownSeconds = cooldownSeconds,
-						highlightMs = 0, -- highlight is handled on scan so cooldown doesn't hide sweep progress
+						highlightMs = highlightDurationMsFromCadenceSeconds(stalenessSeconds, cooldownSeconds),
 					}, cursor, square, playerIndex, nowMs)
 				end
+			else
+				emitted = processProbeSquare({
+					state = state,
+					squares = ctx.squares,
+					emitFn = ctx.emitFn,
+					headless = ctx.headless,
+					stalenessSeconds = stalenessSeconds,
+					cooldownSeconds = cooldownSeconds,
+					highlightMs = highlightDurationMsFromCadenceSeconds(stalenessSeconds, cooldownSeconds),
+				}, cursor, square, playerIndex, nowMs)
+			end
 				if emitted then
 					cursor.tickEmitted = (cursor.tickEmitted or 0) + 1
 				end

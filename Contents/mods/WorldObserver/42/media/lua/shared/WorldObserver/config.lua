@@ -59,6 +59,29 @@ local function defaultBuildDefaults()
 					autoBudgetMinMillisPerTick = nil, -- optional floor; defaults to maxMillisPerTick
 				},
 			},
+			zombies = {
+				headless = Config.detectHeadlessFlag(),
+				ingest = {
+					enabled = true,
+					mode = "latestByKey",
+					capacity = 5000,
+					ordering = "fifo",
+					priority = 1,
+				},
+				probe = {
+					enabled = true,
+					maxPerRun = 50,
+					maxPerRunHardCap = 200,
+					maxMillisPerTick = 0.75,
+					infoLogEveryMs = 0,
+					autoBudget = false,
+					autoBudgetReserveMs = 0.5,
+					autoBudgetHeadroomFactor = 1.0,
+					autoBudgetMaxMillisPerTick = nil,
+					autoBudgetMinMillisPerTick = nil,
+					logEachSweep = false,
+				},
+			},
 		},
 		ingest = {
 			scheduler = {
@@ -141,6 +164,20 @@ local function defaultApplyOverrides(target, overrides)
 	if type(overrides.ingest) == "table" and type(overrides.ingest.scheduler) == "table" then
 		for k, v in pairs(overrides.ingest.scheduler) do
 			target.ingest.scheduler[k] = v
+		end
+	end
+	local zombies = type(facts) == "table" and facts.zombies or nil
+	if type(zombies) == "table" and type(zombies.headless) == "boolean" then
+		target.facts.zombies.headless = zombies.headless
+	end
+	if type(zombies) == "table" and type(zombies.ingest) == "table" then
+		for k, v in pairs(zombies.ingest) do
+			target.facts.zombies.ingest[k] = v
+		end
+	end
+	if type(zombies) == "table" and type(zombies.probe) == "table" then
+		for k, v in pairs(zombies.probe) do
+			target.facts.zombies.probe[k] = v
 		end
 	end
 	if type(overrides.runtime) == "table" and type(overrides.runtime.controller) == "table" then

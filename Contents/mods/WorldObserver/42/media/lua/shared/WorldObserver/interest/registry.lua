@@ -36,11 +36,20 @@ local DEFAULTS = {
 		staleness = { desired = 10, tolerable = 20 },
 		radius = { desired = 8, tolerable = 5 },
 		cooldown = { desired = 30, tolerable = 60 },
+		highlight = nil,
 	},
 	["squares.vision"] = {
 		staleness = { desired = 10, tolerable = 20 },
 		radius = { desired = 8, tolerable = 5 },
 		cooldown = { desired = 30, tolerable = 60 },
+		highlight = nil,
+	},
+	["zombies.nearPlayer"] = {
+		staleness = { desired = 5, tolerable = 10 },
+		radius = { desired = 20, tolerable = 30 },
+		zRange = { desired = 1, tolerable = 0 },
+		cooldown = { desired = 2, tolerable = 4 },
+		highlight = nil,
 	},
 }
 
@@ -108,7 +117,9 @@ local function normalizeSpec(spec, defaults)
 		type = interestType,
 		staleness = normalizeBand(spec.staleness, typeDefaults.staleness),
 		radius = normalizeBand(spec.radius, typeDefaults.radius),
+		zRange = normalizeBand(spec.zRange, typeDefaults.zRange),
 		cooldown = normalizeBand(spec.cooldown, typeDefaults.cooldown),
+		highlight = spec.highlight ~= nil and spec.highlight or typeDefaults.highlight,
 	}
 end
 
@@ -121,7 +132,7 @@ local function bandUnion(bands, knob, incoming)
 	-- desired: pick the "best" quality that satisfies all:
 	-- staleness/cooldown (smaller is stricter) -> min; radius (larger is better) -> max.
 	-- tolerable: same direction so the merged band stays inside everyone's bounds.
-	if knob == "radius" then
+	if knob == "radius" or knob == "zRange" then
 		current.desired = math.max(current.desired, incoming.desired)
 		current.tolerable = math.max(current.tolerable, incoming.tolerable)
 	else
@@ -140,13 +151,19 @@ local function mergeSpecs(specs, defaults)
 				type = normalized.type,
 				staleness = cloneTable(normalized.staleness),
 				radius = cloneTable(normalized.radius),
+				zRange = cloneTable(normalized.zRange),
 				cooldown = cloneTable(normalized.cooldown),
+				highlight = normalized.highlight,
 			}
 			mergedByType[normalized.type] = target
 		else
 			bandUnion(target, "staleness", normalized.staleness)
 			bandUnion(target, "radius", normalized.radius)
+			bandUnion(target, "zRange", normalized.zRange)
 			bandUnion(target, "cooldown", normalized.cooldown)
+			if target.highlight == nil and normalized.highlight ~= nil then
+				target.highlight = normalized.highlight
+			end
 		end
 	end
 	return mergedByType

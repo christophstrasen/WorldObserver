@@ -268,12 +268,32 @@
 - Improved runtime diagnostics to show probe vs drain vs other vs total cost on one line, including tick spike maxima.
 - Gated `Events.LoadGridsquare` behind explicit interest (`squares.onLoad`) so “smoke probe-only runs” don’t enable event ingestion unless something asked for it.
 - Refactored the large `facts/squares.lua` into smaller modules (record building / geometry / probes / onLoad listener / shared interest resolver) while preserving patch seams and keeping busted tests green.
+- Added the next fact family: **zombies** (`WorldObserver.observations:zombies()` emitting `observation.zombie`) with:
+  - `zombies.nearPlayer` interest (including `zRange` for vertical filtering).
+  - A time-sliced `IsoCell:getZombieList()` cursor probe (budgeted per tick) and stable `ZombieObservation` record shape.
+  - A smoke example (`examples/smoke_zombies.lua`) to validate leases + subscribe + filters quickly in-game.
+- Added interest-driven highlighting for fact sources:
+  - Mods can set `highlight = true` (default color) or an RGBA table in the interest declaration.
+  - Probes apply highlight only when they actually emit (so cooldown suppresses highlights too).
+  - For zombies, highlights are applied to the floor square under the zombie (zombie self-highlights get reset by engine targeting).
+- Removed legacy “debug causes highlighting” paths so probe visuals are driven exclusively by mod interest (no global toggles needed).
+- For zombies, prefer `IsoZombie:getCurrentSquare()` for square resolution (more stable than deriving from float coordinates), with coordinate/tile fallbacks for robustness.
+- Fixed a major correctness/perf bug in the zombie probe:
+  - The interest policy returns *numeric* effective knobs; treating them as `{desired=...}` bands caused `staleness/cooldown/radius` to collapse to 0, leading to constant sweeps and very high load.
+  - After correcting this, the probe obeys staleness and cooldown again and the load dropped as expected.
+- Improved zombie record join ergonomics:
+  - Added `tileX/tileY/tileZ` (integer) alongside float `x/y/z` so downstream joins can avoid fuzzy float comparisons.
+- Made highlight duration look more “true to cadence”:
+  - Derive highlight duration from `max(effectiveStaleness, effectiveCooldown)` (then take half for fade-out), not just staleness.
 
 ### Lessons
 - “Declare interest” is a clean seam between **upstream acquisition** and **downstream observation**: it enables coordination and budgeting without entangling mod logic with runtime internals.
 - Separating mechanics (cursor sweep + budgets) from policy (interest ladder + degrade/recover rules) keeps tuning safe and incremental.
 - In-game console debugging needs “live knobs”: reading selected debug overrides at runtime avoids needing module reloads just to change probe logging verbosity.
+- Not all game objects are safe to highlight directly: zombies can overwrite highlight state every frame; highlighting the *ground object* underneath is more robust and still communicates probe coverage.
+- Visual debugging should match emission semantics: highlighting only on emit avoids misleading “activity” during cooldown/distinct suppression.
 
 ### Next steps
 - Add a small “probe metrics” surface (beyond logs) so modders can inspect: sweep progress, lag ratio, and current effective interest per probe type.
 - Consider a future “drive-by discovery” hook at square-scan time (e.g. “while scanning squares, also sample zombies/items if there’s declared interest”) without introducing new world sweeps.
+- Decide whether non-ladder knobs like `zRange` should become first-class in the policy ladder (with direction-aware degrade semantics).
