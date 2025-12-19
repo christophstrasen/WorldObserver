@@ -3,6 +3,7 @@ local Log = require("LQR/util/log").withTag("WO.FACTS.squares")
 local Time = require("WorldObserver/helpers/time")
 local Cooldown = require("WorldObserver/facts/cooldown")
 local InterestEffective = require("WorldObserver/facts/interest_effective")
+local Highlight = require("WorldObserver/helpers/highlight")
 
 local moduleName = ...
 local OnLoad = {}
@@ -18,17 +19,42 @@ OnLoad._internal = OnLoad._internal or {}
 
 local INTEREST_TYPE_ONLOAD = "squares.onLoad"
 
+local ONLOAD_HIGHLIGHT_COLOR = { 0.2, 1.0, 0.2 }
+
 local function nowMillis()
 	return Time.gameMillis() or math.floor(os.time() * 1000)
 end
 
-local function emitWithCooldown(state, emitFn, record, nowMs, cooldownMs)
+local function highlightFloor(square, durationMs)
+	if square == nil or durationMs <= 0 then
+		return
+	end
+	if type(square.getFloor) ~= "function" then
+		return
+	end
+	local okFloor, floor = pcall(square.getFloor, square)
+	if not okFloor or floor == nil then
+		return
+	end
+	Highlight.highlightTarget(floor, { durationMs = durationMs, color = ONLOAD_HIGHLIGHT_COLOR, alpha = 0.9 })
+end
+
+local function highlightMsFromCooldownSeconds(cooldownSeconds)
+	local ms = math.max(0, (tonumber(cooldownSeconds) or 0) * 1000)
+	-- Keep the highlight short and readable; this is event-driven, not a probe visualization.
+	return math.max(250, math.min(5000, ms))
+end
+
+local function emitWithCooldown(state, emitFn, record, nowMs, cooldownMs, onEmitFn)
 	if type(emitFn) ~= "function" or type(record) ~= "table" or record.squareId == nil then
 		return false
 	end
 	state.lastEmittedMs = state.lastEmittedMs or {}
 	if not Cooldown.shouldEmit(state.lastEmittedMs, record.squareId, nowMs, cooldownMs) then
 		return false
+	end
+	if type(onEmitFn) == "function" then
+		pcall(onEmitFn, record)
 	end
 	emitFn(record)
 	Cooldown.markEmitted(state.lastEmittedMs, record.squareId, nowMs)
@@ -61,7 +87,15 @@ local function registerListener(ctx)
 
 		local record = squares.makeSquareRecord(square, "event")
 		local cooldownMs = math.max(0, (tonumber(effective.cooldown) or 0) * 1000)
-		emitWithCooldown(state, ctx.emitFn, record, nowMillis(), cooldownMs)
+		emitWithCooldown(state, ctx.emitFn, record, nowMillis(), cooldownMs, function()
+			if ctx.headless then
+				return
+			end
+			if effective.highlight ~= true then
+				return
+			end
+			highlightFloor(square, highlightMsFromCooldownSeconds(effective.cooldown))
+		end)
 	end
 
 	handler.Add(fn)
@@ -82,17 +116,25 @@ if OnLoad.ensure == nil then
 		local listenerCfg = ctx.listenerCfg or {}
 		local listenerEnabled = listenerCfg.enabled ~= false
 
-		local effective = nil
-		if listenerEnabled then
-			effective = InterestEffective.ensure(state, ctx.interestRegistry, ctx.runtime, INTEREST_TYPE_ONLOAD, {
-				label = "onLoad",
-				allowDefault = false,
-				log = Log,
-			})
-		else
-			state._effectiveInterestByType = state._effectiveInterestByType or {}
-			state._effectiveInterestByType[INTEREST_TYPE_ONLOAD] = nil
-		end
+			local effective = nil
+			if listenerEnabled then
+				effective = InterestEffective.ensure(state, ctx.interestRegistry, ctx.runtime, INTEREST_TYPE_ONLOAD, {
+					label = "onLoad",
+					allowDefault = false,
+					log = Log,
+				})
+				if effective and ctx.interestRegistry and ctx.interestRegistry.effective then
+					local okMerged, merged = pcall(function()
+						return ctx.interestRegistry:effective(INTEREST_TYPE_ONLOAD)
+					end)
+					if okMerged and type(merged) == "table" then
+						effective.highlight = merged.highlight
+					end
+				end
+			else
+				state._effectiveInterestByType = state._effectiveInterestByType or {}
+				state._effectiveInterestByType[INTEREST_TYPE_ONLOAD] = nil
+			end
 
 		local wantsListener = listenerEnabled and effective ~= nil
 		if wantsListener then
@@ -120,5 +162,6 @@ end
 
 OnLoad._internal.registerListener = registerListener
 OnLoad._internal.emitWithCooldown = emitWithCooldown
+OnLoad._internal.highlightFloor = highlightFloor
 
 return OnLoad

@@ -22,6 +22,7 @@ local MOD_ID = "YourModId"
 
 -- Declare interest: tell WorldObserver what you want it to look at, and how often.
 -- If you skip this, you may not get any observations at all
+-- (by default WO does not run probes/listeners until at least one mod declares interest).
 --
 -- Time note: durations like `staleness`/`cooldown` are “seconds” on the in-game clock
 -- (same clock as `getGameTime():getTimeCalendar():getTimeInMillis()`), not real-time seconds.
@@ -99,6 +100,6 @@ Once you want custom boolean logic, keep the quickstart chain but switch to `:wh
 local SquareHelper = WorldObserver.helpers.square.record
 local stream = WorldObserver.observations.squares()
   :whereSquare(function(s)
-    return SquareHelper.squareHasCorpse(s) or SquareHelper.squareHasBloodSplat(s)
+    return SquareHelper.squareHasCorpse(s) and SquareHelper.squareHasIsoGridSquare(s)
   end)
 ```

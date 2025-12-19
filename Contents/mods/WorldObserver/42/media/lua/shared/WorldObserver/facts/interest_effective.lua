@@ -42,21 +42,29 @@ if InterestEffective.ensure == nil then
 			end
 		end
 
-		if not merged then
-			if opts.allowDefault then
-				merged = opts.defaultInterest
-				if not merged then
+			if not merged then
+				if opts.allowDefault then
+					merged = opts.defaultInterest
+					if not merged then
+						state._effectiveInterestByType = state._effectiveInterestByType or {}
+						state._effectiveInterestByType[interestType] = nil
+						state._effectiveInterestMetaByType = state._effectiveInterestMetaByType or {}
+						state._effectiveInterestMetaByType[interestType] = nil
+						return nil
+					end
+					state._interestWarnings = state._interestWarnings or {}
+					if not state._interestWarnings[interestType] then
+						log:info("[interest] using default interest bands for %s (no active leases)", tostring(interestType))
+						state._interestWarnings[interestType] = true
+					end
+				else
+					state._effectiveInterestByType = state._effectiveInterestByType or {}
+					state._effectiveInterestByType[interestType] = nil
+					state._effectiveInterestMetaByType = state._effectiveInterestMetaByType or {}
+					state._effectiveInterestMetaByType[interestType] = nil
 					return nil
 				end
-				state._interestWarnings = state._interestWarnings or {}
-				if not state._interestWarnings[interestType] then
-					log:info("[interest] using default interest bands for %s (no active leases)", tostring(interestType))
-					state._interestWarnings[interestType] = true
-				end
-			else
-				return nil
 			end
-		end
 
 		local runtimeStatus = runtime and runtime.status_get and runtime:status_get() or nil
 		state._interestPolicyState = state._interestPolicyState or {}

@@ -266,15 +266,15 @@ Implementation note: where patching matters (callbacks, handlers), WorldObserver
 
 ### Hydration (live game objects on demand)
 
-Square facts include stable fields (`x/y/z`, flags, timestamps) and may also carry a best-effort cached `IsoSquare`.
+Square facts include stable fields (`x/y/z`, flags, timestamps) and may also carry a best-effort cached `IsoGridSquare`.
 If you need to *ensure* a live vanilla square object is present, use the stream helper:
 
 ```lua
-local stream = WorldObserver.observations.squares():squareHasIsoSquare()
+local stream = WorldObserver.observations.squares():squareHasIsoGridSquare()
 stream:subscribe(function(obs)
-	-- Here, obs.square.IsoSquare is guaranteed non-nil.
-	local iso = obs.square.IsoSquare
+	-- Here, obs.square.IsoGridSquare is guaranteed non-nil.
+	local iso = obs.square.IsoGridSquare
 end)
 ```
 
-Contract: `squareHasIsoSquare()` filters out observations when hydration fails (square unloaded or hydration globals unavailable, e.g. headless/tests).
+Contract: `squareHasIsoGridSquare()` filters out observations when hydration fails (square unloaded or hydration globals unavailable, e.g. headless/tests).

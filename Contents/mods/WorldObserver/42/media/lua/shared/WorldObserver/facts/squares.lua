@@ -6,6 +6,10 @@ local Geometry = require("WorldObserver/facts/squares/geometry")
 local Probe = require("WorldObserver/facts/squares/probe")
 local OnLoad = require("WorldObserver/facts/squares/on_load")
 
+local INTEREST_TYPE_NEAR = "squares.nearPlayer"
+local INTEREST_TYPE_VISION = "squares.vision"
+local INTEREST_TYPE_ONLOAD = "squares.onLoad"
+
 local moduleName = ...
 local Squares = {}
 if type(moduleName) == "string" then
@@ -26,6 +30,14 @@ Squares._defaults.interest = Squares._defaults.interest or {
 }
 
 local SQUARES_TICK_HOOK_ID = "facts.squares.tick"
+
+local function hasActiveLease(interestRegistry, interestType)
+	if not (interestRegistry and type(interestRegistry.effective) == "function") then
+		return false
+	end
+	local ok, merged = pcall(interestRegistry.effective, interestRegistry, interestType)
+	return ok and merged ~= nil
+end
 
 -- Default square record builder.
 -- Intentionally exposed via Squares.makeSquareRecord so other mods can patch/override it.
@@ -122,11 +134,12 @@ Squares._internal.registerTickHook = registerTickHook
 			assert(type(config.facts.squares) == "table", "SquaresFacts.register expects config.facts.squares table")
 			local squaresCfg = config.facts.squares
 			local headless = squaresCfg.headless == true
-			local probeCfg = squaresCfg.probe or {}
-			local probeEnabled = probeCfg.enabled ~= false
-			local listenerCfg = squaresCfg.listener or {}
+				local probeCfg = squaresCfg.probe or {}
+				local probeEnabled = probeCfg.enabled ~= false
+				local listenerCfg = squaresCfg.listener or {}
+				local listenerEnabled = listenerCfg.enabled ~= false
 
-		registry:register("squares", {
+			registry:register("squares", {
 			ingest = {
 				mode = "latestByKey",
 				ordering = "fifo",
@@ -158,15 +171,22 @@ Squares._internal.registerTickHook = registerTickHook
 					listenerCfg = listenerCfg,
 				})
 
-				if not headless then
-					Log:info(
-						"Squares fact plan started (probe=%s, onLoad=interest-controlled, tickHook=%s)",
-						tostring(probeEnabled),
-						tostring(tickHookRegistered)
-					)
-				end
+					if not headless then
+						local hasOnLoadInterest = hasActiveLease(interestRegistry, INTEREST_TYPE_ONLOAD)
+						local hasNearInterest = hasActiveLease(interestRegistry, INTEREST_TYPE_NEAR)
+						local hasVisionInterest = hasActiveLease(interestRegistry, INTEREST_TYPE_VISION)
+						Log:info(
+							"Squares facts started (tickHook=%s cfgProbe=%s cfgListener=%s interestOnLoad=%s interestNear=%s interestVision=%s)",
+							tostring(tickHookRegistered),
+							tostring(probeEnabled),
+							tostring(listenerEnabled),
+							tostring(hasOnLoadInterest),
+							tostring(hasNearInterest),
+							tostring(hasVisionInterest)
+						)
+					end
 
-				ctx.emit = originalEmit
+					ctx.emit = originalEmit
 				ctx.ingest = originalEmit
 			end,
 			stop = function(entry)

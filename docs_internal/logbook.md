@@ -31,8 +31,8 @@
   - WorldObserver owns “fact plans” (event + probe strategies) per element type, with strategy selection as an advanced config knob, and never implicitly de‑duplicates observations.
 
 - Sketched and refined concrete use cases in API terms:
-  - Squares with blood near the player:
-    - `WorldObserver.observations.squares():distinct("square", 10):nearIsoObject(playerIsoObject, 20):squareHasBloodSplat():subscribe(...)`
+  - Squares with corpses near the player:
+    - `WorldObserver.observations.squares():distinct("square", 10):nearIsoObject(playerIsoObject, 20):squareHasCorpse():subscribe(...)`
     - Shows helpers as reducers only, explicit “once per square within N seconds” via a dimension‑aware `distinct`, and spatial filtering on a live `IsoObject`.
   - Chef zombie in a kitchen with ambient sound:
     - `WorldObserver.observations.roomZombies():roomIsKitchen():zombieHasChefOutfit():subscribe(...)`
@@ -63,7 +63,7 @@
   - Clarified in `api_proposal.md` that core schemas (e.g. `SquareObservation`) are structured and documented, while custom schemas are “opaque but honest” and only constrained where they opt into helper sets or debug tooling.
 
 - Defined `SquareObservation` and time handling:
-  - Specified the `SquareObservation` schema, including `squareId`, `square` (IsoSquare reference), flags like `hasBloodSplat`/`hasTrashItems`, and `observedAtTimeMS` (from `timeCalendar:getTimeInMillis()`).
+  - Specified the `SquareObservation` schema, including `squareId`, a best-effort `IsoGridSquare` reference, flags like `hasBloodSplat`/`hasTrashItems`, and `observedAtTimeMS` (from `timeCalendar:getTimeInMillis()`).
   - Decided that `squareId` represents the semi-stable identity of the square (e.g. from `IsoGridSquare` ID), while `RxMeta.id` is a per-observation identifier.
   - For MVP, left content heuristics for `hasBloodSplat`/`hasTrashItems` as stubs, with richer detection explicitly deferred.
 
@@ -185,8 +185,8 @@
   - Added a dedicated `tests/unit/patching_spec.lua` to exercise patch seams and ensure patches affect long-lived handlers.
 
 - Refined square helper strategy around “stable payload + optional live object”:
-  - Implemented square hydration as a **stream helper** (`squareHasIsoSquare`) instead of record decoration, aligning with the existing helper attachment mechanism.
-  - Implemented `SquareHelpers.record.getIsoSquare` with `validateIsoSquare` + `hydrateIsoSquare` as patchable seams, using `getWorld():getCell():getGridSquare(x,y,z)` (and `getCell()` fallback) guarded by `pcall`.
+  - Implemented square hydration as a **stream helper** (`squareHasIsoGridSquare`) instead of record decoration, aligning with the existing helper attachment mechanism.
+  - Implemented `SquareHelpers.record.getIsoGridSquare` with `validateIsoGridSquare` + `hydrateIsoGridSquare` as patchable seams, using `getWorld():getCell():getGridSquare(x,y,z)` (and `getCell()` fallback) guarded by `pcall`.
 
 - Restored and clarified corpse detection:
   - Re-introduced `SquareObservation.hasCorpse` as a materialized boolean and populated it primarily via `IsoGridSquare:getDeadBody()` at record creation time (fallback to `hasCorpse` when needed).

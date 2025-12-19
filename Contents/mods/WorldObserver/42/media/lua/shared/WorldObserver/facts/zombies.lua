@@ -3,6 +3,8 @@ local Log = require("LQR/util/log").withTag("WO.FACTS.zombies")
 
 local Probe = require("WorldObserver/facts/zombies/probe")
 
+local INTEREST_TYPE_NEAR = "zombies.nearPlayer"
+
 local moduleName = ...
 local Zombies = {}
 if type(moduleName) == "string" then
@@ -24,6 +26,14 @@ Zombies._defaults.interest = Zombies._defaults.interest or {
 }
 
 local ZOMBIES_TICK_HOOK_ID = Probe._internal.PROBE_TICK_HOOK_ID or "facts.zombies.tick"
+
+local function hasActiveLease(interestRegistry, interestType)
+	if not (interestRegistry and type(interestRegistry.effective) == "function") then
+		return false
+	end
+	local ok, merged = pcall(interestRegistry.effective, interestRegistry, interestType)
+	return ok and merged ~= nil
+end
 
 local function tickZombies(ctx)
 	ctx = ctx or {}
@@ -107,17 +117,19 @@ Zombies._internal.registerTickHook = registerTickHook
 						interestRegistry = interestRegistry,
 						probeCfg = probeCfg,
 					})
-				end
+					end
 
-				if not headless then
-					Log:info(
-						"Zombies fact plan started (probe=%s, tickHook=%s)",
-						tostring(probeEnabled),
-						tostring(tickHookRegistered)
-					)
-				end
+					if not headless then
+						local hasNearInterest = hasActiveLease(interestRegistry, INTEREST_TYPE_NEAR)
+						Log:info(
+							"Zombies facts started (tickHook=%s cfgProbe=%s interestNear=%s)",
+							tostring(tickHookRegistered),
+							tostring(probeEnabled),
+							tostring(hasNearInterest)
+						)
+					end
 
-				ctx.emit = originalEmit
+					ctx.emit = originalEmit
 				ctx.ingest = originalEmit
 			end,
 			stop = function(entry)

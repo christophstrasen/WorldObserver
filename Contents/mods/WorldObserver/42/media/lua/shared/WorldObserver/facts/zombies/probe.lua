@@ -188,12 +188,11 @@ if Probe.tick == nil then
 		local effective = nil
 		local meta = nil
 		local signals = state.lastLagSignals
-		effective, meta = InterestEffective.ensure(state, ctx.interestRegistry, ctx.runtime, INTEREST_TYPE_NEAR, {
-			label = "zombies.nearPlayer",
-			allowDefault = true,
-			defaultInterest = ctx.defaultInterest,
-			signals = signals,
-		})
+			effective, meta = InterestEffective.ensure(state, ctx.interestRegistry, ctx.runtime, INTEREST_TYPE_NEAR, {
+				label = "zombies.nearPlayer",
+				allowDefault = false,
+				signals = signals,
+			})
 		if not effective then
 			return
 		end

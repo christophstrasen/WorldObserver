@@ -8,10 +8,11 @@ package.path = table.concat({
 	package.path,
 }, ";")
 
-_G.WORLDOBSERVER_HEADLESS = true
-_G.LQR_HEADLESS = true
+	_G.WORLDOBSERVER_HEADLESS = true
+	_G.LQR_HEADLESS = true
 
-local SquaresFacts = require("WorldObserver/facts/squares")
+	local SquaresFacts = require("WorldObserver/facts/squares")
+	local InterestRegistry = require("WorldObserver/interest/registry")
 
 describe("squares probe cursor", function()
 	it("buildRingOffsets returns a dense, unique Chebyshev sweep", function()
@@ -39,36 +40,42 @@ describe("squares probe cursor", function()
 		assert.equals(0, offsets[1][2])
 	end)
 
-	it("probeTick resolves near interest (no forward-ref bug)", function()
-		local savedGetPlayer = _G.getPlayer
-		local savedGetNumPlayers = _G.getNumActivePlayers
-		local savedGetSpecificPlayer = _G.getSpecificPlayer
-		_G.getPlayer = nil
-		_G.getNumActivePlayers = nil
-		_G.getSpecificPlayer = nil
+		it("probeTick resolves near interest (no forward-ref bug)", function()
+			local savedGetPlayer = _G.getPlayer
+			local savedGetNumPlayers = _G.getNumActivePlayers
+			local savedGetSpecificPlayer = _G.getSpecificPlayer
+			_G.getPlayer = nil
+			_G.getNumActivePlayers = nil
+			_G.getSpecificPlayer = nil
 
-		local state = {}
-		SquaresFacts._internal.probeTick(state, function() end, true, nil, nil, {})
-		assert.is_table(state._interestPolicyState)
-		assert.is_table(state._interestPolicyState["squares.nearPlayer"])
+			local interestRegistry = InterestRegistry.new({ ttlMs = 1000000 })
+			interestRegistry:declare("test", "near", { type = "squares.nearPlayer" })
 
-		_G.getPlayer = savedGetPlayer
+			local state = {}
+			SquaresFacts._internal.probeTick(state, function() end, true, nil, interestRegistry, {})
+			assert.is_table(state._interestPolicyState)
+			assert.is_table(state._interestPolicyState["squares.nearPlayer"])
+
+			_G.getPlayer = savedGetPlayer
 		_G.getNumActivePlayers = savedGetNumPlayers
 		_G.getSpecificPlayer = savedGetSpecificPlayer
 	end)
 
-	it("probe lag degrades the interest ladder", function()
-		local savedGetPlayer = _G.getPlayer
-		local savedGetNumPlayers = _G.getNumActivePlayers
-		local savedGetSpecificPlayer = _G.getSpecificPlayer
-		_G.getPlayer = nil
-		_G.getNumActivePlayers = nil
-		_G.getSpecificPlayer = nil
+		it("probe lag degrades the interest ladder", function()
+			local savedGetPlayer = _G.getPlayer
+			local savedGetNumPlayers = _G.getNumActivePlayers
+			local savedGetSpecificPlayer = _G.getSpecificPlayer
+			_G.getPlayer = nil
+			_G.getNumActivePlayers = nil
+			_G.getSpecificPlayer = nil
 
-		local nowMs = 0
-		local runtime = {
-			nowWall = function()
-				return nowMs
+			local interestRegistry = InterestRegistry.new({ ttlMs = 1000000 })
+			interestRegistry:declare("test", "near", { type = "squares.nearPlayer" })
+
+			local nowMs = 0
+			local runtime = {
+				nowWall = function()
+					return nowMs
 			end,
 			status_get = function()
 				return {
@@ -83,19 +90,19 @@ describe("squares probe cursor", function()
 			end,
 		}
 
-		local state = {}
-		local emitFn = function() end
-		SquaresFacts._internal.probeTick(state, emitFn, true, runtime, nil, {})
+			local state = {}
+			local emitFn = function() end
+			SquaresFacts._internal.probeTick(state, emitFn, true, runtime, interestRegistry, {})
 
 		assert.is_table(state._probeCursors)
 		local cursor = state._probeCursors.near
 		assert.is_table(cursor)
 		cursor.sweepStartedMs = 0
 
-		nowMs = 20000
-		for _ = 1, 10 do
-			SquaresFacts._internal.probeTick(state, emitFn, true, runtime, nil, {})
-		end
+			nowMs = 20000
+			for _ = 1, 10 do
+				SquaresFacts._internal.probeTick(state, emitFn, true, runtime, interestRegistry, {})
+			end
 
 		assert.is_table(state._interestPolicyState)
 		assert.equals(2, state._interestPolicyState["squares.nearPlayer"].qualityIndex)

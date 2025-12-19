@@ -13,8 +13,8 @@ _G.LQR_HEADLESS = true
 
 local SquaresFacts = require("WorldObserver/facts/squares")
 
-describe("WorldObserver patch seams", function()
-		describe("facts/squares.makeSquareRecord", function()
+	describe("WorldObserver patch seams", function()
+			describe("facts/squares.makeSquareRecord", function()
 			local savedEvents
 			local originalMake
 
@@ -93,28 +93,28 @@ describe("WorldObserver patch seams", function()
 			assert.is_true(emitted[1].patched)
 			assert.is_equal("event", emitted[1].source)
 		end)
-	end)
-
-	describe("squareRecord:getIsoSquare()", function()
-		local savedGetWorld
-
-		before_each(function()
-			savedGetWorld = _G.getWorld
 		end)
+
+		describe("squareRecord:getIsoGridSquare()", function()
+			local savedGetWorld
+
+			before_each(function()
+				savedGetWorld = _G.getWorld
+			end)
 
 		after_each(function()
 			_G.getWorld = savedGetWorld
 		end)
 
-		it("rehydrates via SquareHelpers.record.getIsoSquare when hydration globals are available", function()
-			local SquareHelpers = require("WorldObserver/helpers/square")
+			it("rehydrates via SquareHelpers.record.getIsoGridSquare when hydration globals are available", function()
+				local SquareHelpers = require("WorldObserver/helpers/square")
 
-			local record = {
-				x = 1,
-				y = 2,
-				z = 0,
-				IsoSquare = nil,
-			}
+				local record = {
+					x = 1,
+					y = 2,
+					z = 0,
+					IsoGridSquare = nil,
+				}
 
 			local hydrated = {
 				getX = function()
@@ -142,13 +142,13 @@ describe("WorldObserver patch seams", function()
 					getCell = function()
 						return cell
 					end,
-				}
-			end
+					}
+				end
 
-			local iso = SquareHelpers.record.getIsoSquare(record)
-			assert.is_equal(hydrated, iso)
-			assert.is_equal(hydrated, record.IsoSquare)
-		end)
+				local iso = SquareHelpers.record.getIsoGridSquare(record)
+				assert.is_equal(hydrated, iso)
+				assert.is_equal(hydrated, record.IsoGridSquare)
+			end)
 
 		it("populates hasCorpse via getDeadBody when present", function()
 			local corpseObj = {}
@@ -172,6 +172,91 @@ describe("WorldObserver patch seams", function()
 
 			local record = SquaresFacts.makeSquareRecord(fakeIsoSquare, "event")
 			assert.is_true(record.hasCorpse)
+			end)
+		end)
+
+		describe("facts/squares.on_load highlight", function()
+			it("highlights the square floor when the onLoad lease has highlight=true", function()
+				local savedEvents = _G.Events
+				local savedHighlight = package.loaded["WorldObserver/helpers/highlight"]
+				local savedOnLoad = package.loaded["WorldObserver/facts/squares/on_load"]
+
+				local called = {
+					count = 0,
+					target = nil,
+					opts = nil,
+				}
+				package.loaded["WorldObserver/helpers/highlight"] = {
+					highlightTarget = function(target, opts)
+						called.count = called.count + 1
+						called.target = target
+						called.opts = opts
+						return { stop = function() end }
+					end,
+				}
+				package.loaded["WorldObserver/facts/squares/on_load"] = nil
+				local OnLoad = require("WorldObserver/facts/squares/on_load")
+
+				local storedHandler = nil
+				_G.Events = {
+					LoadGridsquare = {
+						Add = function(fn)
+							storedHandler = fn
+						end,
+						Remove = function()
+							return true
+						end,
+					},
+				}
+
+				local InterestRegistry = require("WorldObserver/interest/registry")
+				local interestRegistry = InterestRegistry.new({ ttlMs = 1000000 })
+				interestRegistry:declare("test", "onLoad", {
+					type = "squares.onLoad",
+					cooldown = { desired = 1, tolerable = 1 },
+					highlight = true,
+				})
+
+				local floor = {}
+				local square = {
+					getFloor = function()
+						return floor
+					end,
+				}
+
+				local state = {}
+				OnLoad.ensure({
+					state = state,
+					squares = {
+						makeSquareRecord = function(sq, source)
+							return {
+								squareId = 1,
+								x = 1,
+								y = 2,
+								z = 0,
+								IsoGridSquare = sq,
+								source = source,
+							}
+						end,
+					},
+					emitFn = function() end,
+					headless = false,
+					runtime = nil,
+					interestRegistry = interestRegistry,
+					listenerCfg = { enabled = true },
+				})
+
+				assert.is_function(storedHandler)
+				storedHandler(square)
+
+				assert.equals(1, called.count)
+				assert.equals(floor, called.target)
+				assert.is_table(called.opts)
+				assert.is_number(called.opts.durationMs)
+
+				_G.Events = savedEvents
+				package.loaded["WorldObserver/helpers/highlight"] = savedHighlight
+				package.loaded["WorldObserver/facts/squares/on_load"] = savedOnLoad
+			end)
 		end)
 	end)
-end)

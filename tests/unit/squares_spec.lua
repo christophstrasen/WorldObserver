@@ -85,41 +85,10 @@ describe("WorldObserver observations.squares()", function()
 		assert.is_equal(1, #received)
 	end)
 
-	it("square helpers filter expected observations", function()
-		local hasBlood = {}
-		local stream = WorldObserver.observations.squares():squareHasBloodSplat()
-		stream:subscribe(function(row)
-			hasBlood[#hasBlood + 1] = row
-		end)
-
-		WorldObserver._internal.facts:emit("squares", {
-			squareId = 1,
-			square = {},
-			x = 0,
-			y = 0,
-			z = 0,
-			observedAtTimeMS = 50,
-			sourceTime = 50,
-		})
-		WorldObserver._internal.facts:emit("squares", {
-			squareId = 2,
-			square = {},
-			hasBloodSplat = true,
-			x = 1,
-			y = 1,
-			z = 0,
-			observedAtTimeMS = 60,
-			sourceTime = 60,
-		})
-
-		assert.is_equal(1, #hasBlood)
-		assert.is_equal(2, hasBlood[1].square.squareId)
-	end)
-
-	it("squareHasCorpse filters expected observations", function()
-		local withCorpse = {}
-		local stream = WorldObserver.observations.squares():squareHasCorpse()
-		stream:subscribe(function(row)
+		it("squareHasCorpse filters expected observations", function()
+			local withCorpse = {}
+			local stream = WorldObserver.observations.squares():squareHasCorpse()
+			stream:subscribe(function(row)
 			withCorpse[#withCorpse + 1] = row
 		end)
 
@@ -186,11 +155,11 @@ describe("WorldObserver observations.squares()", function()
 		assert.is_equal(2, received[1].square.squareId)
 	end)
 
-	it("squareHasIsoSquare hydrates and filters observations", function()
-		local hydrated = {
-			getX = function()
-				return 1
-			end,
+		it("squareHasIsoGridSquare hydrates and filters observations", function()
+			local hydrated = {
+				getX = function()
+					return 1
+				end,
 			getY = function()
 				return 2
 			end,
@@ -216,25 +185,25 @@ describe("WorldObserver observations.squares()", function()
 			}
 		end
 
-		local received = {}
-		local stream = WorldObserver.observations.squares():squareHasIsoSquare()
-		stream:subscribe(function(row)
-			received[#received + 1] = row
-		end)
+			local received = {}
+			local stream = WorldObserver.observations.squares():squareHasIsoGridSquare()
+			stream:subscribe(function(row)
+				received[#received + 1] = row
+			end)
 
 		WorldObserver._internal.facts:emit("squares", {
-			squareId = 99,
-			x = 1,
-			y = 2,
-			z = 0,
-			IsoSquare = nil,
-			observedAtTimeMS = 1,
-			sourceTime = 1,
-		})
+				squareId = 99,
+				x = 1,
+				y = 2,
+				z = 0,
+				IsoGridSquare = nil,
+				observedAtTimeMS = 1,
+				sourceTime = 1,
+			})
 
-		assert.is_equal(1, #received)
-		assert.is_equal(hydrated, received[1].square.IsoSquare)
-	end)
+			assert.is_equal(1, #received)
+			assert.is_equal(hydrated, received[1].square.IsoGridSquare)
+		end)
 
 	it("tracks fact subscribers when subscribing and unsubscribing", function()
 		local facts = WorldObserver._internal.facts

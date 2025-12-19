@@ -1,6 +1,6 @@
 # Observation: squares
 
-Goal: react to what WorldObserver observes about world squares (tiles).
+Goal: react to what can be observed about world squares (tiles).
 
 Quickstart first (recommended):
 - [Quickstart](../quickstart.md)
@@ -32,13 +32,12 @@ Common fields on the square record:
 - `squareId` (stable id for a square)
 - `x`, `y`, `z`
 - `hasCorpse`
-- `hasBloodSplat`
 - `source` (which producer saw it, e.g. `"probe"`)
 - `sourceTime` (ms, in-game clock)
 - `observedAtTimeMS` (ms, in-game clock)
 
 Best-effort engine object (do not rely on it always existing):
-- `IsoSquare` (live `IsoGridSquare` userdata, may be missing/stale)
+- `IsoGridSquare` (live engine object, may be missing/stale)
 
 ## Built-in stream helpers (recommended)
 
@@ -57,25 +56,23 @@ local SquareHelper = WorldObserver.helpers.square.record
 
 local stream = WorldObserver.observations.squares()
   :whereSquare(function(s)
-    return SquareHelper.squareHasCorpse(s) or SquareHelper.squareHasBloodSplat(s)
+    return SquareHelper.squareHasCorpse(s) and SquareHelper.squareHasIsoGridSquare(s)
   end)
 ```
 
 Available today:
 - `:squareHasCorpse()`
-- `:squareHasBloodSplat()`
-- `:squareHasIsoSquare()` (keeps only records that can resolve a live `IsoGridSquare`)
+- `:squareHasIsoGridSquare()` (keeps only records that can resolve a live `IsoGridSquare`)
 
 Record helpers (use inside `:whereSquare(...)` or inside Rx `:filter(...)` after `:asRx()`):
 - `WorldObserver.helpers.square.record.squareHasCorpse(squareRecord)`
-- `WorldObserver.helpers.square.record.squareHasBloodSplat(squareRecord)`
-- `WorldObserver.helpers.square.record.squareHasIsoSquare(squareRecord, opts)` (may hydrate/cache `squareRecord.IsoSquare`)
+- `WorldObserver.helpers.square.record.squareHasIsoGridSquare(squareRecord, opts)` (may hydrate/cache `squareRecord.IsoGridSquare`)
 
-## About `IsoSquare` (important)
+## About `IsoGridSquare` (important)
 
 WorldObserver streams are “observations, not entities”.
 
 That means:
-- You should not store `IsoSquare` and use it later.
+- You should not store `IsoGridSquare` and use it later.
 - Prefer `squareId` and `x/y/z` as your stable handle.
-- If you need a live `IsoGridSquare` right now, first filter with `:squareHasIsoSquare()` and then use `record.IsoSquare`.
+- If you need a live `IsoGridSquare` right now, first filter with `:squareHasIsoGridSquare()` and then use `record.IsoGridSquare`.

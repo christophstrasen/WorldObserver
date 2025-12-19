@@ -569,11 +569,11 @@ local function resolveProbeLoggingCfg(probeCfg)
 	return infoEveryMs, logEachSweep
 end
 
-local function processProbeSquare(ctx, cursor, square, playerIndex, nowMs)
-	local squares = ctx.squares
-	if not (squares and type(squares.makeSquareRecord) == "function") then
-		return false
-	end
+	local function processProbeSquare(ctx, cursor, square, playerIndex, nowMs)
+		local squares = ctx.squares
+		if not (squares and type(squares.makeSquareRecord) == "function") then
+			return false
+		end
 
 	local record = squares.makeSquareRecord(square, cursor.source)
 	if not (type(record) == "table" and record.squareId ~= nil) then
@@ -583,19 +583,16 @@ local function processProbeSquare(ctx, cursor, square, playerIndex, nowMs)
 	local state = ctx.state or {}
 	state.lastEmittedMs = state.lastEmittedMs or {}
 	local cooldownMs = math.max(0, ((ctx.cooldownSeconds or 0) * 1000))
-	if not Cooldown.shouldEmit(state.lastEmittedMs, record.squareId, nowMs, cooldownMs) then
-		return false
-	end
+		if not Cooldown.shouldEmit(state.lastEmittedMs, record.squareId, nowMs, cooldownMs) then
+			return false
+		end
 
-	local highlightMs = tonumber(ctx.highlightMs)
-	if highlightMs == nil then
-		highlightMs = highlightDurationMsFromCadenceSeconds(ctx.stalenessSeconds, ctx.cooldownSeconds)
-	end
-	if not ctx.headless and highlightMs > 0 then
-		local okFloor, floor = pcall(square.getFloor, square)
-		if okFloor and floor then
-			Highlight.highlightTarget(floor, {
-				durationMs = highlightMs,
+		local highlightMs = tonumber(ctx.highlightMs) or 0
+		if not ctx.headless and highlightMs > 0 then
+			local okFloor, floor = pcall(square.getFloor, square)
+			if okFloor and floor then
+				Highlight.highlightTarget(floor, {
+					durationMs = highlightMs,
 				color = cursor.color,
 				alpha = cursor.alpha,
 			})
@@ -648,24 +645,48 @@ if Probe.tick == nil then
 		nearCursor.lastLagSignals = signalsNear
 		visionCursor.lastLagSignals = signalsVision
 
-		local defaultInterest = ctx.defaultInterest
-		local effectiveNear, metaNear = InterestEffective.ensure(state, ctx.interestRegistry, ctx.runtime, INTEREST_TYPE_NEAR, {
-			label = "near",
-			allowDefault = true,
-			defaultInterest = defaultInterest,
-			signals = signalsNear,
-		})
-		local effectiveVision, metaVision =
-			InterestEffective.ensure(state, ctx.interestRegistry, ctx.runtime, INTEREST_TYPE_VISION, {
-			label = "vision",
-			allowDefault = false,
-			signals = signalsVision,
-		})
+			local defaultInterest = ctx.defaultInterest
+			local effectiveNear, metaNear = InterestEffective.ensure(state, ctx.interestRegistry, ctx.runtime, INTEREST_TYPE_NEAR, {
+				label = "near",
+				allowDefault = false,
+				signals = signalsNear,
+			})
+			local effectiveVision, metaVision =
+				InterestEffective.ensure(state, ctx.interestRegistry, ctx.runtime, INTEREST_TYPE_VISION, {
+				label = "vision",
+				allowDefault = false,
+				signals = signalsVision,
+			})
 
-		local players = nearbyPlayers()
-		local playerCount = #players
-		if playerCount <= 0 then
-			return
+			-- Interest policy returns numeric effective knobs for the core ladder (staleness/radius/cooldown).
+			-- `highlight` is an additional knob that bypasses the ladder and comes from the merged lease.
+			if ctx.interestRegistry and ctx.interestRegistry.effective then
+				local mergedNear = nil
+				local mergedVision = nil
+				local okNear, resNear = pcall(function()
+					return ctx.interestRegistry:effective(INTEREST_TYPE_NEAR)
+				end)
+				if okNear then
+					mergedNear = resNear
+				end
+				local okVision, resVision = pcall(function()
+					return ctx.interestRegistry:effective(INTEREST_TYPE_VISION)
+				end)
+				if okVision then
+					mergedVision = resVision
+				end
+				if effectiveNear and type(mergedNear) == "table" then
+					effectiveNear.highlight = mergedNear.highlight
+				end
+				if effectiveVision and type(mergedVision) == "table" then
+					effectiveVision.highlight = mergedVision.highlight
+				end
+			end
+
+			local players = nearbyPlayers()
+			local playerCount = #players
+			if playerCount <= 0 then
+				return
 		end
 
 		local active = {}
@@ -768,15 +789,30 @@ if Probe.tick == nil then
 			processed = processed + 1
 			cursor.tickScanned = (cursor.tickScanned or 0) + 1
 
-			local stalenessSeconds = tonumber(effective.staleness) or 0
-			local cooldownSeconds = tonumber(effective.cooldown) or 0
-			local square, playerIndex = cursorNextSquare(cursor, players, nowMs, tickSeq)
-			if square then
-				cursor.tickVisited = (cursor.tickVisited or 0) + 1
-				local emitted = false
-				if cursor.isVision then
-					if isSquareVisible(square, playerIndex) then
-						cursor.tickVisible = (cursor.tickVisible or 0) + 1
+				local stalenessSeconds = tonumber(effective.staleness) or 0
+				local cooldownSeconds = tonumber(effective.cooldown) or 0
+				local highlightMs = 0
+				if effective.highlight == true then
+					highlightMs = highlightDurationMsFromCadenceSeconds(stalenessSeconds, cooldownSeconds)
+				end
+				local square, playerIndex = cursorNextSquare(cursor, players, nowMs, tickSeq)
+				if square then
+					cursor.tickVisited = (cursor.tickVisited or 0) + 1
+					local emitted = false
+					if cursor.isVision then
+						if isSquareVisible(square, playerIndex) then
+							cursor.tickVisible = (cursor.tickVisible or 0) + 1
+						emitted = processProbeSquare({
+							state = state,
+							squares = ctx.squares,
+							emitFn = ctx.emitFn,
+							headless = ctx.headless,
+							stalenessSeconds = stalenessSeconds,
+							cooldownSeconds = cooldownSeconds,
+							highlightMs = highlightMs,
+						}, cursor, square, playerIndex, nowMs)
+					end
+				else
 					emitted = processProbeSquare({
 						state = state,
 						squares = ctx.squares,
@@ -784,22 +820,11 @@ if Probe.tick == nil then
 						headless = ctx.headless,
 						stalenessSeconds = stalenessSeconds,
 						cooldownSeconds = cooldownSeconds,
-						highlightMs = highlightDurationMsFromCadenceSeconds(stalenessSeconds, cooldownSeconds),
+						highlightMs = highlightMs,
 					}, cursor, square, playerIndex, nowMs)
 				end
-			else
-				emitted = processProbeSquare({
-					state = state,
-					squares = ctx.squares,
-					emitFn = ctx.emitFn,
-					headless = ctx.headless,
-					stalenessSeconds = stalenessSeconds,
-					cooldownSeconds = cooldownSeconds,
-					highlightMs = highlightDurationMsFromCadenceSeconds(stalenessSeconds, cooldownSeconds),
-				}, cursor, square, playerIndex, nowMs)
-			end
-				if emitted then
-					cursor.tickEmitted = (cursor.tickEmitted or 0) + 1
+					if emitted then
+						cursor.tickEmitted = (cursor.tickEmitted or 0) + 1
 				end
 			end
 		end

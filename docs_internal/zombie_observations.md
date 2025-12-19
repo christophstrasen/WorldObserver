@@ -155,9 +155,9 @@ We DONT need to provide helpers over simple fields. No need "pass through". Help
 
 Proposed “rehydration / convenience” helpers under `WorldObserver.helpers.zombie`:
 - `getIsoZombie(zombieRecord)` (see 3.3)
-- `getIsoSquare(zombieRecord)` (uses `x/y/z` and the active cell; mirrors the square helper pattern)
+- `getIsoGridSquare(zombieRecord)` (uses `x/y/z` and the active cell; mirrors the square helper pattern)
 - `getTarget(zombieRecord)` (best effort: rehydrate the target object when we have `targetId` and a loaded object matches it)
-- ensure it works similar to `WorldObserver.helpers.square.getIsoSquare`
+- ensure it works similar to `WorldObserver.helpers.square.record.getIsoGridSquare`
 
 ---
 

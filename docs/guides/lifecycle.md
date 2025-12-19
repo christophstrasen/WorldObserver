@@ -36,6 +36,7 @@ you should do two things:
 ### 2.1 Renew the lease
 
 Interest declarations are leases and can expire. If they expire, WO may reduce or stop probing and your observation stream may go quiet.
+No lease usually means WO does no probing/listening work for that area/type, so streams can be silent even if you subscribed.
 
 Default lease time is **10 minutes**.
 

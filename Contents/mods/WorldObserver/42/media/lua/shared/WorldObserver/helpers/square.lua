@@ -10,14 +10,14 @@ if type(moduleName) == "string" then
 	else
 		package.loaded[moduleName] = SquareHelpers
 	end
-end
-SquareHelpers.record = SquareHelpers.record or {}
-SquareHelpers.stream = SquareHelpers.stream or {}
+	end
+	SquareHelpers.record = SquareHelpers.record or {}
+	SquareHelpers.stream = SquareHelpers.stream or {}
 
-local function squareField(observation, fieldName)
-	-- Helpers should be forgiving if a stream remaps the square field.
-	local square = observation[fieldName]
-	if square == nil then
+	local function squareField(observation, fieldName)
+		-- Helpers should be forgiving if a stream remaps the square field.
+		local square = observation[fieldName]
+		if square == nil then
 		Log:warn("square helper called without field '%s' on observation", tostring(fieldName))
 		return nil
 	end
@@ -31,44 +31,37 @@ local function squareHasCorpse(squareRecord)
 		return false
 	end
 
-	-- Preferred: fact already materialized the boolean.
-	if squareRecord.hasCorpse ~= nil then
-		return squareRecord.hasCorpse == true
-	end
+		-- Preferred: fact already materialized the boolean.
+		if squareRecord.hasCorpse ~= nil then
+			return squareRecord.hasCorpse == true
+		end
 
-	local isoSquare = squareRecord.IsoSquare
-	if isoSquare == nil and SquareHelpers.record and SquareHelpers.record.getIsoSquare then
-		isoSquare = SquareHelpers.record.getIsoSquare(squareRecord)
-	end
-	if isoSquare == nil then
+		local isoGridSquare = squareRecord.IsoGridSquare
+		if isoGridSquare == nil and SquareHelpers.record and SquareHelpers.record.getIsoGridSquare then
+			isoGridSquare = SquareHelpers.record.getIsoGridSquare(squareRecord)
+		end
+		if isoGridSquare == nil then
+			return false
+		end
+
+		-- Prefer the direct boolean getter when available (matches how facts compute hasCorpse).
+		if type(isoGridSquare.hasCorpse) == "function" then
+			local ok, value = pcall(isoGridSquare.hasCorpse, isoGridSquare)
+			return ok and value == true
+		end
+
+		-- Fallback: IsoGridSquare:getDeadBody() returns one body (or nil), getDeadBodys() returns a List.
+		if type(isoGridSquare.getDeadBody) == "function" then
+			local ok, body = pcall(isoGridSquare.getDeadBody, isoGridSquare)
+			return ok and body ~= nil
+		end
+
 		return false
 	end
 
-	-- Prefer the direct boolean getter when available (matches how facts compute hasCorpse).
-	if type(isoSquare.hasCorpse) == "function" then
-		local ok, value = pcall(isoSquare.hasCorpse, isoSquare)
-		return ok and value == true
-	end
-
-	-- Fallback: IsoGridSquare:getDeadBody() returns one body (or nil), getDeadBodys() returns a List.
-	if type(isoSquare.getDeadBody) == "function" then
-		local ok, body = pcall(isoSquare.getDeadBody, isoSquare)
-		return ok and body ~= nil
-	end
-
-	return false
-end
-
-local function squareHasBloodSplat(squareRecord)
-	if type(squareRecord) ~= "table" then
-		return false
-	end
-	return squareRecord.hasBloodSplat == true
-end
-
--- Stream sugar: apply a predicate to the square record directly.
--- This avoids leaking LQR schema names (e.g. "SquareObservation") into mod code.
-if SquareHelpers.whereSquare == nil then
+	-- Stream sugar: apply a predicate to the square record directly.
+	-- This avoids leaking LQR schema names (e.g. "SquareObservation") into mod code.
+	if SquareHelpers.whereSquare == nil then
 	function SquareHelpers.whereSquare(stream, fieldName, predicate)
 		assert(type(predicate) == "function", "whereSquare predicate must be a function")
 		local target = fieldName or "square"
@@ -88,46 +81,28 @@ end
 -- We only define exported helper functions when the field is nil, so other mods can patch by reassigning
 -- `SquareHelpers.<name>` (or `SquareHelpers.record.<name>`) and so module reloads (tests/console via `package.loaded`)
 -- don't clobber an existing patch.
-if SquareHelpers.record.squareHasCorpse == nil then
-	SquareHelpers.record.squareHasCorpse = squareHasCorpse
-end
-if SquareHelpers.record.squareHasBloodSplat == nil then
-	SquareHelpers.record.squareHasBloodSplat = squareHasBloodSplat
-end
+	if SquareHelpers.record.squareHasCorpse == nil then
+		SquareHelpers.record.squareHasCorpse = squareHasCorpse
+	end
 
-if SquareHelpers.squareHasCorpse == nil then
-	function SquareHelpers.squareHasCorpse(stream, fieldName)
-		local target = fieldName or "square"
+	if SquareHelpers.squareHasCorpse == nil then
+		function SquareHelpers.squareHasCorpse(stream, fieldName)
+			local target = fieldName or "square"
 		return stream:filter(function(observation)
 			local square = squareField(observation, target)
 			return SquareHelpers.record.squareHasCorpse(square)
 		end)
 	end
 end
-if SquareHelpers.stream.squareHasCorpse == nil then
-	function SquareHelpers.stream.squareHasCorpse(stream, fieldName, ...)
-		return SquareHelpers.squareHasCorpse(stream, fieldName, ...)
+	if SquareHelpers.stream.squareHasCorpse == nil then
+		function SquareHelpers.stream.squareHasCorpse(stream, fieldName, ...)
+			return SquareHelpers.squareHasCorpse(stream, fieldName, ...)
+		end
 	end
-end
 
-if SquareHelpers.squareHasBloodSplat == nil then
-	function SquareHelpers.squareHasBloodSplat(stream, fieldName)
-		local target = fieldName or "square"
-		return stream:filter(function(observation)
-			local square = squareField(observation, target)
-			return SquareHelpers.record.squareHasBloodSplat(square)
-		end)
-	end
-end
-if SquareHelpers.stream.squareHasBloodSplat == nil then
-	function SquareHelpers.stream.squareHasBloodSplat(stream, fieldName, ...)
-		return SquareHelpers.squareHasBloodSplat(stream, fieldName, ...)
-	end
-end
+	local GRASS_PREFIX = "blends_natural"
 
-local GRASS_PREFIX = "blends_natural"
-
-local KNOWN_HEDGE_SPRITES = {
+	local KNOWN_HEDGE_SPRITES = {
 	-- Tall Hedge sprites. (Keep this list small and curated.)
 	vegetation_ornamental_01_0 = true,
 	vegetation_ornamental_01_1 = true,
@@ -143,31 +118,31 @@ local KNOWN_HEDGE_SPRITES = {
 	vegetation_ornamental_01_13 = true,
 }
 
-local function validateIsoSquare(squareRecord, isoSquare)
-	if type(squareRecord) ~= "table" then
-		return nil
-	end
-	if isoSquare == nil then
-		return nil
-	end
-
-	if type(isoSquare.getX) ~= "function" or type(isoSquare.getY) ~= "function" then
-		return nil
-	end
-
-	local okX, x = pcall(isoSquare.getX, isoSquare)
-	local okY, y = pcall(isoSquare.getY, isoSquare)
-	if not okX or not okY then
-		return nil
-	end
-
-	local z = nil
-	if type(isoSquare.getZ) == "function" then
-		local okZ, value = pcall(isoSquare.getZ, isoSquare)
-		if not okZ then
+	local function validateIsoGridSquare(squareRecord, isoGridSquare)
+		if type(squareRecord) ~= "table" then
 			return nil
 		end
-		z = value
+		if isoGridSquare == nil then
+			return nil
+		end
+
+		if type(isoGridSquare.getX) ~= "function" or type(isoGridSquare.getY) ~= "function" then
+			return nil
+		end
+
+		local okX, x = pcall(isoGridSquare.getX, isoGridSquare)
+		local okY, y = pcall(isoGridSquare.getY, isoGridSquare)
+		if not okX or not okY then
+			return nil
+		end
+
+		local z = nil
+		if type(isoGridSquare.getZ) == "function" then
+			local okZ, value = pcall(isoGridSquare.getZ, isoGridSquare)
+			if not okZ then
+				return nil
+			end
+			z = value
 	end
 
 	if x ~= squareRecord.x or y ~= squareRecord.y then
@@ -175,17 +150,17 @@ local function validateIsoSquare(squareRecord, isoSquare)
 	end
 	local rz = squareRecord.z or 0
 	if z ~= nil and z ~= rz then
-		return nil
+			return nil
+		end
+
+		return isoGridSquare
 	end
 
-	return isoSquare
-end
-
-local function hydrateIsoSquare(squareRecord, opts)
-	if type(squareRecord) ~= "table" then
-		return nil
-	end
-	local x, y, z = squareRecord.x, squareRecord.y, squareRecord.z or 0
+	local function hydrateIsoGridSquare(squareRecord, opts)
+		if type(squareRecord) ~= "table" then
+			return nil
+		end
+		local x, y, z = squareRecord.x, squareRecord.y, squareRecord.z or 0
 	if type(x) ~= "number" or type(y) ~= "number" or type(z) ~= "number" then
 		return nil
 	end
@@ -223,89 +198,89 @@ local function hydrateIsoSquare(squareRecord, opts)
 	if okSquare and isoSquare ~= nil then
 		return isoSquare
 	end
-	return nil
-end
-
--- Patch seam: only assign defaults when nil, to preserve mod overrides across reloads.
-SquareHelpers.record.validateIsoSquare = SquareHelpers.record.validateIsoSquare or validateIsoSquare
-SquareHelpers.record.hydrateIsoSquare = SquareHelpers.record.hydrateIsoSquare or hydrateIsoSquare
-
--- Best-effort access to a live IsoGridSquare based on a square record (x/y/z + optional cached IsoSquare).
--- Contract: returns IsoGridSquare when available, otherwise nil; never throws.
-if SquareHelpers.record.getIsoSquare == nil then
-	function SquareHelpers.record.getIsoSquare(squareRecord, opts)
-		if type(squareRecord) ~= "table" then
-			return nil
-		end
-
-		local iso = SquareHelpers.record.validateIsoSquare(squareRecord, squareRecord.IsoSquare)
-		if iso then
-			return iso
-		end
-
-		local hydrated = SquareHelpers.record.hydrateIsoSquare(squareRecord, opts)
-		iso = SquareHelpers.record.validateIsoSquare(squareRecord, hydrated)
-		if iso then
-			squareRecord.IsoSquare = iso
-			return iso
-		end
-
-		squareRecord.IsoSquare = nil
 		return nil
 	end
-end
 
-local function squareHasIsoSquare(squareRecord, opts)
-	if type(squareRecord) ~= "table" then
-		return false
+	-- Patch seam: only assign defaults when nil, to preserve mod overrides across reloads.
+	SquareHelpers.record.validateIsoGridSquare = SquareHelpers.record.validateIsoGridSquare or validateIsoGridSquare
+	SquareHelpers.record.hydrateIsoGridSquare = SquareHelpers.record.hydrateIsoGridSquare or hydrateIsoGridSquare
+
+	-- Best-effort access to a live IsoGridSquare based on a square record (x/y/z + optional cached IsoGridSquare).
+	-- Contract: returns IsoGridSquare when available, otherwise nil; never throws.
+	if SquareHelpers.record.getIsoGridSquare == nil then
+		function SquareHelpers.record.getIsoGridSquare(squareRecord, opts)
+			if type(squareRecord) ~= "table" then
+				return nil
+			end
+
+			local iso = SquareHelpers.record.validateIsoGridSquare(squareRecord, squareRecord.IsoGridSquare)
+			if iso then
+				return iso
+			end
+
+			local hydrated = SquareHelpers.record.hydrateIsoGridSquare(squareRecord, opts)
+			iso = SquareHelpers.record.validateIsoGridSquare(squareRecord, hydrated)
+			if iso then
+				squareRecord.IsoGridSquare = iso
+				return iso
+			end
+
+			squareRecord.IsoGridSquare = nil
+			return nil
+		end
 	end
-	return SquareHelpers.record.getIsoSquare(squareRecord, opts) ~= nil
-end
 
-if SquareHelpers.record.squareHasIsoSquare == nil then
-	SquareHelpers.record.squareHasIsoSquare = squareHasIsoSquare
-end
-
--- Stream helper: keeps only observations whose square record resolves to a live IsoGridSquare.
--- Side-effect: when resolution succeeds, caches it on the record as `square.IsoSquare`.
-if SquareHelpers.squareHasIsoSquare == nil then
-	function SquareHelpers.squareHasIsoSquare(stream, fieldName, opts)
-		local target = fieldName or "square"
-		return stream:filter(function(observation)
-			local square = squareField(observation, target)
-			return SquareHelpers.record.squareHasIsoSquare(square, opts)
-		end)
+	local function squareHasIsoGridSquare(squareRecord, opts)
+		if type(squareRecord) ~= "table" then
+			return false
+		end
+		return SquareHelpers.record.getIsoGridSquare(squareRecord, opts) ~= nil
 	end
-end
-if SquareHelpers.stream.squareHasIsoSquare == nil then
-	function SquareHelpers.stream.squareHasIsoSquare(stream, fieldName, ...)
-		return SquareHelpers.squareHasIsoSquare(stream, fieldName, ...)
-	end
-end
 
--- Highlight a square's floor for a duration with a fading alpha.
-if SquareHelpers.highlight == nil then
+	if SquareHelpers.record.squareHasIsoGridSquare == nil then
+		SquareHelpers.record.squareHasIsoGridSquare = squareHasIsoGridSquare
+	end
+
+	-- Stream helper: keeps only observations whose square record resolves to a live IsoGridSquare.
+	-- Side-effect: when resolution succeeds, caches it on the record as `square.IsoGridSquare`.
+	if SquareHelpers.squareHasIsoGridSquare == nil then
+		function SquareHelpers.squareHasIsoGridSquare(stream, fieldName, opts)
+			local target = fieldName or "square"
+			return stream:filter(function(observation)
+				local square = squareField(observation, target)
+				return SquareHelpers.record.squareHasIsoGridSquare(square, opts)
+			end)
+		end
+	end
+	if SquareHelpers.stream.squareHasIsoGridSquare == nil then
+		function SquareHelpers.stream.squareHasIsoGridSquare(stream, fieldName, ...)
+			return SquareHelpers.squareHasIsoGridSquare(stream, fieldName, ...)
+		end
+	end
+
+	-- Highlight a square's floor for a duration with a fading alpha.
+	if SquareHelpers.highlight == nil then
 	function SquareHelpers.highlight(squareOrRecord, durationMs, opts)
 		opts = opts or {}
 		if type(durationMs) == "number" and opts.durationMs == nil then
 			opts.durationMs = durationMs
 		end
 
-		local isoSquare = nil
-		local t = type(squareOrRecord)
-		if (t == "table" or t == "userdata") and type(squareOrRecord.getFloor) == "function" then
-			isoSquare = squareOrRecord
-		elseif t == "table" then
-			isoSquare = SquareHelpers.record.getIsoSquare(squareOrRecord)
-		end
-		if isoSquare == nil then
-			return nil, "noIsoSquare"
-		end
+			local isoGridSquare = nil
+			local t = type(squareOrRecord)
+			if (t == "table" or t == "userdata") and type(squareOrRecord.getFloor) == "function" then
+				isoGridSquare = squareOrRecord
+			elseif t == "table" then
+				isoGridSquare = SquareHelpers.record.getIsoGridSquare(squareOrRecord)
+			end
+			if isoGridSquare == nil then
+				return nil, "noIsoGridSquare"
+			end
 
-		local okFloor, floor = pcall(isoSquare.getFloor, isoSquare)
-		if not okFloor or floor == nil then
-			return nil, "noFloor"
-		end
+			local okFloor, floor = pcall(isoGridSquare.getFloor, isoGridSquare)
+			if not okFloor or floor == nil then
+				return nil, "noFloor"
+			end
 
 		return Highlight.highlightTarget(floor, opts)
 	end

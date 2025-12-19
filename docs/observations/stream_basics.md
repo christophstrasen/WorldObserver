@@ -69,7 +69,7 @@ local SquareHelper = WorldObserver.helpers.square.record
 
 local stream = WorldObserver.observations.squares()
   :whereSquare(function(squareRecord)
-    return SquareHelper.squareHasCorpse(squareRecord) or SquareHelper.squareHasBloodSplat(squareRecord)
+    return SquareHelper.squareHasCorpse(squareRecord) and SquareHelper.squareHasIsoGridSquare(squareRecord)
   end)
 ```
 

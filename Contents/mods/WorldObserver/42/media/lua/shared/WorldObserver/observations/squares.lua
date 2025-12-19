@@ -34,14 +34,14 @@ if SquaresObservation.register == nil then
 					keyField = "squareId",
 				},
 			},
-			build = function()
-				local facts = factRegistry:getObservable("squares")
-				-- Stamp facts with a per-observation id and sourceTime before feeding LQR, then expose as observation.square.
-					-- Helpers we enabled (squareHasBloodSplat/squareHasCorpse) assume this schema and id.
-				local wrapped = Schema.wrap("SquareObservation", facts, {
-					idSelector = nextObservationId,
-					sourceTimeField = "sourceTime",
-				})
+				build = function()
+					local facts = factRegistry:getObservable("squares")
+					-- Stamp facts with a per-observation id and sourceTime before feeding LQR, then expose as observation.square.
+					-- Helpers we enabled (example: squareHasCorpse) assume this schema and id.
+					local wrapped = Schema.wrap("SquareObservation", facts, {
+						idSelector = nextObservationId,
+						sourceTimeField = "sourceTime",
+					})
 
 				local builder = Query.selectFrom(wrapped, "SquareObservation")
 					:selectSchemas({ SquareObservation = "square" })

@@ -107,15 +107,15 @@ if Record.makeSquareRecord == nil then
 			y = y,
 			z = z,
 			hasBloodSplat = detectFlag(square, square.hasBlood),
-			hasCorpse = detectCorpse(square),
-			hasTrashItems = false, -- placeholder until we wire real trash detection
-			observedAtTimeMS = ts,
-			sourceTime = ts,
-			IsoSquare = square,
-			source = source,
-		}
+				hasCorpse = detectCorpse(square),
+				hasTrashItems = false, -- placeholder until we wire real trash detection
+				observedAtTimeMS = ts,
+				sourceTime = ts,
+				IsoGridSquare = square,
+				source = source,
+			}
+		end
 	end
-end
 
 Record._internal.coordOf = coordOf
 Record._internal.deriveSquareId = deriveSquareId

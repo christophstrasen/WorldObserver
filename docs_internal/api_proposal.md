@@ -271,7 +271,7 @@ so existing streams keep calling the patched logic via their delegators.
 
 ## 5. Use cases
 
-### 5.1 Find squares with blood around the player
+### 5.1 Find squares with corpses around the player
 
 Traditional approach (from `vision.md` “Before” section):
 
@@ -285,17 +285,17 @@ WorldObserver‑style API sketch:
 ```lua
 local WorldObserver = require("WorldObserver")
 
--- Build an ObservationStream of squares with blood around any player.
-local bloodSquares = WorldObserver.observations
+-- Build an ObservationStream of squares with corpses around any player.
+local corpseSquares = WorldObserver.observations
   .squares()
   -- decorated with helpers specific to square observations
   :distinct("square", 10)             -- only the first observation per square within 10s
   :nearIsoObject(playerIsoObject, 20) -- compare the live position of the IsoObject against the observation
-  :squareHasBloodSplat()              -- tiny helper to keep only squares with blood
+  :squareHasCorpse()                  -- tiny helper to keep only squares with corpses
 
 -- Act on each matching observation as it is discovered.
-local subscription = bloodSquares:subscribe(function(observation)
-  handleBloodSquare(observation.square)  -- user-defined action using the square instance
+local subscription = corpseSquares:subscribe(function(observation)
+  handleCorpseSquare(observation.square)  -- user-defined action using the square instance
 end)
 
 -- Later, if this Situation is no longer relevant, cancel the subscription.
@@ -306,7 +306,7 @@ subscription:unsubscribe()
 Notes:
 
 - `squares()` exposes a base ObservationStream; `:nearIsoObject(...)` and
-  `:squareHasBloodSplat()` are helper‑based refinements attached to that stream.
+  `:squareHasCorpse()` are helper‑based refinements attached to that stream.
 - `:distinct("square", seconds)` is the opt‑in helper to only see the first
   matching observation per square within a given time window.
 - Unsubscribing from the stream (via `subscription:unsubscribe()`) is the
@@ -426,7 +426,7 @@ Notes:
 Traditional intent:
 
 - Identify squares that “need cleaning” because they contain visible mess,
-  such as blood splats, corpses, or trash items, and react whenever such
+  such as corpses or trash items, and react whenever such
   squares are observed.
 
 WorldObserver‑style usage (mod-facing API):
@@ -435,14 +435,13 @@ WorldObserver‑style usage (mod-facing API):
 local WorldObserver = require("WorldObserver")
 local Square = WorldObserver.helpers.square
 
-local dirtySquares = WorldObserver.observations
-  .squares()
-  :filter(function(observation)
-    local squareRecord = observation.square
-    return Square.record.squareHasCorpse(squareRecord)
-      or Square.record.squareHasBloodSplat(squareRecord)
-      or squareRecord.hasTrashItems == true -- example: your own field/predicate
-  end)
+	local dirtySquares = WorldObserver.observations
+	  .squares()
+	  :filter(function(observation)
+	    local squareRecord = observation.square
+	    return Square.record.squareHasCorpse(squareRecord)
+	      or squareRecord.hasTrashItems == true -- example: your own field/predicate
+	  end)
 
 dirtySquares:subscribe(function(observation)
   -- observation.square carries the square instance
@@ -462,7 +461,6 @@ local SquareHelpers = require("WorldObserver/helpers/square")
 
 SquareHelpers.record.squareIsDirty = SquareHelpers.record.squareIsDirty or function(squareRecord)
 	return SquareHelpers.record.squareHasCorpse(squareRecord)
-		or SquareHelpers.record.squareHasBloodSplat(squareRecord)
 		or (type(squareRecord) == "table" and squareRecord.hasTrashItems == true)
 end
 

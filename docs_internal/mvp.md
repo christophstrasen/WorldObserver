@@ -32,8 +32,7 @@ then grow outwards.
   - A minimal **square helper set**, wired via `enabled_helpers`, that is
     actually implemented in MVP (for example):
     - `:squareHasCorpse()`
-    - `:squareHasBloodSplat()`
-    - `:squareHasIsoSquare()`
+    - `:squareHasIsoGridSquare()`
   - Core stream methods:
     - `:subscribe(function(observation) ...)`
     - `:distinct(dimensionName, seconds)`
@@ -81,7 +80,7 @@ WorldObserver/
     squares.lua                    -- registration for observations.squares()
 
   helpers/
-    square.lua                     -- square helper set (squareHasBloodSplat, etc.)
+    square.lua                     -- square helper set (squareHasCorpse, etc.)
 
   debug.lua                        -- domain-level debug helpers (describeFacts/describeStream) built on LQR logging
 ```
@@ -131,7 +130,7 @@ least the following:
 ```lua
 ---@class SquareObservation
 ---@field squareId integer          -- semi-stable ID for the square (may be derived, may not survive a game reload)
----@field square IsoSquare          -- reference to the IsoSquare object. No guarantees that it remains loaded and accessible
+---@field IsoGridSquare any?        -- best-effort live IsoGridSquare (may be missing/stale)
 ---@field x integer                 -- world X coordinate
 ---@field y integer                 -- world Y coordinate
 ---@field z integer                 -- world Z level
@@ -308,7 +307,7 @@ MVP and later versions, and we explicitly avoid shims/backward-compatibility.
 ```lua
 ---@class SquareObservation
 ---@field squareId integer
----@field square IsoSquare
+---@field IsoGridSquare any?
 ---@field x integer
 ---@field y integer
 ---@field z integer
@@ -385,13 +384,10 @@ but are surfaced as methods on streams with `enabled_helpers.square`:
 
 ```lua
 ---@return ObservationStream
-function ObservationStream:squareHasBloodSplat() end
-
----@return ObservationStream
 function ObservationStream:squareHasCorpse() end
 
 ---@return ObservationStream
-function ObservationStream:squareHasIsoSquare() end
+function ObservationStream:squareHasIsoGridSquare() end
 ```
 
 These helpers are part of the MVP but are not yet “hard stable”; they may be
@@ -420,8 +416,8 @@ LQR and lua-reactivex, plus stubs for game objects and events.
     - Emits `Observation` tables with `observation.square` shaped as per
       schema.
     - Plays well with `:distinct("square", seconds)` semantics.
-  - Square helpers:
-    - `:squareHasCorpse()` / `:squareHasBloodSplat()` / `:squareHasIsoSquare()`
+- Square helpers:
+    - `:squareHasCorpse()` / `:squareHasIsoGridSquare()`
       filter emissions correctly for stubbed observations.
 
 ### 6.2 Engine-coupled tests (deferred)
