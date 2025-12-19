@@ -1,5 +1,6 @@
 -- facts/squares/probe.lua -- interest-driven, time-sliced square probing (near + vision).
 local Log = require("LQR/util/log").withTag("WO.FACTS.squares")
+local Config = require("WorldObserver/config")
 local Time = require("WorldObserver/helpers/time")
 local Highlight = require("WorldObserver/helpers/highlight")
 local Cooldown = require("WorldObserver/facts/cooldown")
@@ -552,18 +553,13 @@ local function resolveProbeLoggingCfg(probeCfg)
 	-- Live debug overrides: in-game the WorldObserver module is typically loaded long before a user runs
 	-- console snippets, so relying on module-load config overrides is unreliable. For probe logging knobs,
 	-- read `_G.WORLDOBSERVER_CONFIG_OVERRIDES` at runtime so smoke scripts can toggle verbosity without reloads.
-	local overrides = _G.WORLDOBSERVER_CONFIG_OVERRIDES
-	if type(overrides) == "table" then
-		local facts = type(overrides.facts) == "table" and overrides.facts or nil
-		local squares = type(facts) == "table" and facts.squares or nil
-		local probe = type(squares) == "table" and squares.probe or nil
-		if type(probe) == "table" then
-			if probe.infoLogEveryMs ~= nil then
-				infoEveryMs = tonumber(probe.infoLogEveryMs)
-			end
-			if probe.logEachSweep ~= nil then
-				logEachSweep = probe.logEachSweep == true
-			end
+	local probeOverrides = Config.readNested(Config.getOverrides(), { "facts", "squares", "probe" })
+	if type(probeOverrides) == "table" then
+		if probeOverrides.infoLogEveryMs ~= nil then
+			infoEveryMs = tonumber(probeOverrides.infoLogEveryMs)
+		end
+		if probeOverrides.logEachSweep ~= nil then
+			logEachSweep = probeOverrides.logEachSweep == true
 		end
 	end
 

@@ -100,6 +100,7 @@ if Record.makeSquareRecord == nil then
 			return nil
 		end
 
+		local ts = nowMillis()
 		return {
 			squareId = deriveSquareId(square, x, y, z),
 			x = x,
@@ -108,7 +109,8 @@ if Record.makeSquareRecord == nil then
 			hasBloodSplat = detectFlag(square, square.hasBlood),
 			hasCorpse = detectCorpse(square),
 			hasTrashItems = false, -- placeholder until we wire real trash detection
-			observedAtTimeMS = nowMillis(),
+			observedAtTimeMS = ts,
+			sourceTime = ts,
 			IsoSquare = square,
 			source = source,
 		}

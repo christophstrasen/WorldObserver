@@ -2,6 +2,15 @@
 
 -- Bootstrap LQR early to expand package.path for util.log/reactivex and friends.
 local _LQRBootstrap = require("LQR")
+do
+	-- WorldObserver stamps RxMeta.sourceTime in milliseconds; configure LQR's default window clock to match.
+	-- This keeps time/interval windows ergonomic (no need to pass currentFn everywhere) while remaining overridable
+	-- via LQR.Query.setDefaultCurrentFn.
+	local okTime, Time = pcall(require, "WorldObserver/helpers/time")
+	if okTime and _LQRBootstrap and _LQRBootstrap.Query and type(_LQRBootstrap.Query.setDefaultCurrentFn) == "function" then
+		_LQRBootstrap.Query.setDefaultCurrentFn(Time.gameMillis)
+	end
+end
 
 local okLuaEvent, LuaEventOrError = pcall(require, "Starlit/LuaEvent")
 if okLuaEvent and _G.Events and _G.Events.setLuaEvent then
@@ -34,19 +43,8 @@ local Runtime = require("WorldObserver/runtime")
 
 local WorldObserver
 
-local config = Config.load(_G.WORLDOBSERVER_CONFIG_OVERRIDES)
-local runtimeOpts = {}
-do
-	local cfg = config.runtime and config.runtime.controller or {}
-	for k, v in pairs(cfg) do
-		runtimeOpts[k] = v
-	end
-	local base = config.ingest and config.ingest.scheduler and config.ingest.scheduler.maxItemsPerTick
-	if type(base) == "number" and base > 0 then
-		runtimeOpts.baseDrainMaxItems = base
-	end
-end
-local runtime = Runtime.new(runtimeOpts)
+local config = Config.loadFromGlobals()
+local runtime = Runtime.new(Config.runtimeOpts(config))
 local runtimeDiagnosticsHandle = nil
 local debugApi = nil
 local interestRegistry = InterestRegistry.new({})
@@ -114,50 +112,50 @@ local observationRegistry = ObservationsCore.new({
 SquaresObservations.register(observationRegistry, factRegistry, ObservationsCore.nextObservationId)
 ZombiesObservations.register(observationRegistry, factRegistry, ObservationsCore.nextObservationId)
 
-		WorldObserver = {
-			config = config,
-			observations = observationRegistry:api(),
-			factInterest = {
-				declare = function(_, modId, key, spec, opts)
-					return interestRegistry:declare(modId, key, spec, opts)
-				end,
-				revoke = function(_, modId, key)
-					return interestRegistry:revoke(modId, key)
-				end,
-				effective = function(_, factType)
-					return interestRegistry:effective(factType)
-				end,
-			},
-			helpers = {
-				square = SquareHelpers,
-				zombie = ZombieHelpers,
-			},
-			highlight = SquareHelpers.highlight,
-			debug = nil,
-			nextObservationId = ObservationsCore.nextObservationId,
-			runtime = runtime,
-			_internal = {
-				-- Expose internals for tests and advanced users until a fuller API exists.
-				runtime = runtime,
-				facts = factRegistry,
-				observationRegistry = observationRegistry,
-				factInterest = interestRegistry,
-				runtimeDiagnosticsHandle = nil,
-			},
-		}
+WorldObserver = {
+	config = config,
+	observations = observationRegistry:api(),
+	factInterest = {
+		declare = function(_, modId, key, spec, opts)
+			return interestRegistry:declare(modId, key, spec, opts)
+		end,
+		revoke = function(_, modId, key)
+			return interestRegistry:revoke(modId, key)
+		end,
+		effective = function(_, factType)
+			return interestRegistry:effective(factType)
+		end,
+	},
+	helpers = {
+		square = SquareHelpers,
+		zombie = ZombieHelpers,
+	},
+	highlight = SquareHelpers.highlight,
+	debug = nil,
+	nextObservationId = ObservationsCore.nextObservationId,
+	runtime = runtime,
+	_internal = {
+		-- Expose internals for tests and advanced users until a fuller API exists.
+		runtime = runtime,
+		facts = factRegistry,
+		observationRegistry = observationRegistry,
+		factInterest = interestRegistry,
+		runtimeDiagnosticsHandle = nil,
+	},
+}
 
-	debugApi = Debug.new(factRegistry, observationRegistry)
-		WorldObserver.debug = debugApi
+debugApi = Debug.new(factRegistry, observationRegistry)
+WorldObserver.debug = debugApi
 
 	-- Register runtime controller LuaEvents and attach default diagnostics (engine-only).
 	do
-			local headless = config and config.facts and config.facts.squares and config.facts.squares.headless == true
-			if not headless then
-				if _G.LuaEventManager and type(_G.LuaEventManager.AddEvent) == "function" then
-					pcall(_G.LuaEventManager.AddEvent, "WorldObserverRuntimeStatusChanged")
-					pcall(_G.LuaEventManager.AddEvent, "WorldObserverRuntimeStatusReport")
-				end
+		local headless = config and config.facts and config.facts.squares and config.facts.squares.headless == true
+		if not headless then
+			if _G.LuaEventManager and type(_G.LuaEventManager.AddEvent) == "function" then
+				pcall(_G.LuaEventManager.AddEvent, "WorldObserverRuntimeStatusChanged")
+				pcall(_G.LuaEventManager.AddEvent, "WorldObserverRuntimeStatusReport")
 			end
 		end
+	end
 
 return WorldObserver

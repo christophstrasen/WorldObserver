@@ -133,6 +133,7 @@ describe("zombies interest and records", function()
 		assert.equals(99, record.targetId)
 		assert.equals(654, record.targetSquareId)
 		assert.equals(123, record.observedAtTimeMS)
+		assert.equals(123, record.sourceTime)
 	end)
 
 	it("rehydrates a zombie by id from the cell list", function()

@@ -43,6 +43,7 @@ describe("WorldObserver observations.squares()", function()
 			y = 2,
 			z = 0,
 			observedAtTimeMS = 123,
+			sourceTime = 123,
 			source = "event",
 		})
 
@@ -52,6 +53,7 @@ describe("WorldObserver observations.squares()", function()
 		assert.is_equal(10, obs.square.squareId)
 		assert.is_number(obs.square.RxMeta.id)
 		assert.is_equal(123, obs.square.RxMeta.sourceTime)
+		assert.is_equal(123, obs.square.sourceTime)
 	end)
 
 	it("distinct once per square suppresses duplicates", function()
@@ -68,6 +70,7 @@ describe("WorldObserver observations.squares()", function()
 			y = 6,
 			z = 0,
 			observedAtTimeMS = 1000,
+			sourceTime = 1000,
 		})
 		WorldObserver._internal.facts:emit("squares", {
 			squareId = 42,
@@ -76,6 +79,7 @@ describe("WorldObserver observations.squares()", function()
 			y = 6,
 			z = 0,
 			observedAtTimeMS = 1001,
+			sourceTime = 1001,
 		})
 
 		assert.is_equal(1, #received)
@@ -95,6 +99,7 @@ describe("WorldObserver observations.squares()", function()
 			y = 0,
 			z = 0,
 			observedAtTimeMS = 50,
+			sourceTime = 50,
 		})
 		WorldObserver._internal.facts:emit("squares", {
 			squareId = 2,
@@ -104,6 +109,7 @@ describe("WorldObserver observations.squares()", function()
 			y = 1,
 			z = 0,
 			observedAtTimeMS = 60,
+			sourceTime = 60,
 		})
 
 		assert.is_equal(1, #hasBlood)
@@ -153,6 +159,7 @@ describe("WorldObserver observations.squares()", function()
 			z = 0,
 			IsoSquare = nil,
 			observedAtTimeMS = 1,
+			sourceTime = 1,
 		})
 
 		assert.is_equal(1, #received)

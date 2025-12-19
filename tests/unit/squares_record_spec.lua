@@ -1,0 +1,40 @@
+package.path = table.concat({
+	"Contents/mods/WorldObserver/42/media/lua/shared/?.lua",
+	"Contents/mods/WorldObserver/42/media/lua/shared/?/init.lua",
+	"external/LQR/?.lua",
+	"external/LQR/?/init.lua",
+	"external/lua-reactivex/?.lua",
+	"external/lua-reactivex/?/init.lua",
+	package.path,
+}, ";")
+
+local Record = require("WorldObserver/facts/squares/record")
+
+describe("squares records", function()
+	it("stamps sourceTime and observedAtTimeMS consistently", function()
+		local square = {
+			getX = function()
+				return 1
+			end,
+			getY = function()
+				return 2
+			end,
+			getZ = function()
+				return 0
+			end,
+			getID = function()
+				return 1234
+			end,
+			hasBlood = function()
+				return false
+			end,
+		}
+
+		local record = Record.makeSquareRecord(square, "probe")
+		assert.is_table(record)
+		assert.is_number(record.observedAtTimeMS)
+		assert.is_number(record.sourceTime)
+		assert.equals(record.observedAtTimeMS, record.sourceTime)
+	end)
+end)
+

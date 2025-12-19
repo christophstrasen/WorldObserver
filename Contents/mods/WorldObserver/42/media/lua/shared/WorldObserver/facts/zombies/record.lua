@@ -104,6 +104,7 @@ if Record.makeZombieRecord == nil then
 			return nil
 		end
 		opts = opts or {}
+		local ts = opts.nowMs or nowMillis()
 
 		local x = safeCall(zombie, "getX")
 	local y = safeCall(zombie, "getY")
@@ -166,7 +167,8 @@ if Record.makeZombieRecord == nil then
 					safeCall(targetSquare, "getZ")
 				)
 			or nil,
-			observedAtTimeMS = opts.nowMs or nowMillis(),
+			observedAtTimeMS = ts,
+			sourceTime = ts,
 			source = source,
 		}
 

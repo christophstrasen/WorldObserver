@@ -297,3 +297,26 @@
 - Add a small “probe metrics” surface (beyond logs) so modders can inspect: sweep progress, lag ratio, and current effective interest per probe type.
 - Consider a future “drive-by discovery” hook at square-scan time (e.g. “while scanning squares, also sample zombies/items if there’s declared interest”) without introducing new world sweeps.
 - Decide whether non-ladder knobs like `zRange` should become first-class in the policy ladder (with direction-aware degrade semantics).
+
+## day11 – Time semantics, `sourceTime` standardization, and config hygiene
+
+### Highlights
+- Standardized per-record `sourceTime` (ms) on fact records and aligned it with `observedAtTimeMS`:
+  - Squares and zombies facts now emit `sourceTime` alongside `observedAtTimeMS`.
+  - Observation schema wrapping stamps `RxMeta.sourceTime` from `sourceTime` (not from ad-hoc field names).
+- Reduced per-query verbosity for time windows by adding a default clock override in LQR and injecting it from WorldObserver:
+  - WorldObserver sets LQR’s default window `currentFn` to the same `Time.gameMillis` source used for `sourceTime` stamping.
+  - LQR remains consumer-agnostic; the override is optional and re-settable.
+- Did a code-quality sweep of “global config knobs”:
+  - Refactored `WorldObserver/config.lua` to be more DRY (explicit override allowlist + generic nested read/merge helpers).
+  - Simplified `WorldObserver.lua` bootstrap to read globals via config helpers instead of inline wiring.
+  - Reused config helpers for “live debug override” reads (probe logging knobs) without changing the override shape.
+  - Added targeted unit coverage for defaults cloning, override semantics, and runtime option derivation.
+
+### Lessons
+- A “good default” for time windows is not just `field = "sourceTime"` but also a **clock** that matches the host’s stamped units; mismatches silently produce broken windows.
+- Keeping global overrides on an explicit allowlist makes the supported surface self-documenting and reduces “mystery knobs” while still enabling smoke/debug workflows.
+
+### Next steps
+- Consider a tiny WorldObserver helper for time windows (e.g. “last N seconds”) to standardize `{ time, field, currentFn }` shapes across distinct/join/group usage.
+- Document the supported override paths + shallow-merge semantics in one place so smoke scripts and modders don’t rely on accidental config shape.

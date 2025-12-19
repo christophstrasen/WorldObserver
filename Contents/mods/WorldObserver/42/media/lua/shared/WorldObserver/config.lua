@@ -30,10 +30,11 @@ if Config.detectHeadlessFlag == nil then
 end
 
 local function defaultBuildDefaults()
+	local headless = Config.detectHeadlessFlag()
 	return {
 		facts = {
 			squares = {
-				headless = Config.detectHeadlessFlag(),
+				headless = headless,
 				listener = {
 					enabled = true,
 				},
@@ -60,7 +61,7 @@ local function defaultBuildDefaults()
 				},
 			},
 			zombies = {
-				headless = Config.detectHeadlessFlag(),
+				headless = headless,
 				ingest = {
 					enabled = true,
 					mode = "latestByKey",
@@ -90,33 +91,33 @@ local function defaultBuildDefaults()
 				maxMillisPerTick = nil, -- optional ms budget (requires wall-clock); when nil, only item budget is used
 			},
 		},
-			runtime = {
-					controller = {
-						-- Target tick budgets (ms, CPU-time-ish) for WorldObserver work.
-						tickBudgetMs = 4, -- soft budget for WO drain+probes per tick
-						tickSpikeBudgetMs = 8, -- spike detector threshold
-						spikeMinCount = 2, -- require at least N consecutive spikes in a window to enter degraded on spikes
-						windowTicks = 60, -- how many ticks per controller window (~1s at 60fps)
-						reportEveryWindows = 10, -- how often to emit status events (in windows)
-					-- Legacy clamp (kept for compatibility; newer drainAuto can override above/below this).
-					degradedMaxItemsPerTick = 5,
-					-- Drain auto-tuning: choose an effective maxItemsPerTick dynamically to burn backlog when
-					-- we have headroom, and back off when WO work approaches/exceeds its ms budget.
-					drainAuto = {
-						enabled = true,
-						stepFactor = 1.5, -- multiply/divide by this per window step
-						minItems = 1, -- floor for effective drain budget
-						maxItems = 200, -- ceiling for effective drain budget
-						headroomUtil = 0.6, -- if avgTickMs/budgetMs <= this, we can step up when under pressure
-					},
-					-- Backlog heuristics: avoid degrading on tiny fluctuations; require a "material" backlog.
-					backlogMinPending = 100, -- avg pending items per window
-					backlogFillThreshold = 0.25, -- avg pending/capacity per window
-					backlogMinIngestRate15 = 5, -- items/sec guard for rate-based trigger
-					backlogRateRatio = 1.1, -- ingestRate15 must exceed throughput15 by this factor
-					diagnostics = {
-						enabled = true, -- when Log level is info, print periodic runtime+ingest diagnostics via WO.DIAG
-					},
+		runtime = {
+			controller = {
+				-- Target tick budgets (ms, CPU-time-ish) for WorldObserver work.
+				tickBudgetMs = 4, -- soft budget for WO drain+probes per tick
+				tickSpikeBudgetMs = 8, -- spike detector threshold
+				spikeMinCount = 2, -- require at least N consecutive spikes in a window to enter degraded on spikes
+				windowTicks = 60, -- how many ticks per controller window (~1s at 60fps)
+				reportEveryWindows = 10, -- how often to emit status events (in windows)
+				-- Legacy clamp (kept for compatibility; newer drainAuto can override above/below this).
+				degradedMaxItemsPerTick = 5,
+				-- Drain auto-tuning: choose an effective maxItemsPerTick dynamically to burn backlog when
+				-- we have headroom, and back off when WO work approaches/exceeds its ms budget.
+				drainAuto = {
+					enabled = true,
+					stepFactor = 1.5, -- multiply/divide by this per window step
+					minItems = 1, -- floor for effective drain budget
+					maxItems = 200, -- ceiling for effective drain budget
+					headroomUtil = 0.6, -- if avgTickMs/budgetMs <= this, we can step up when under pressure
+				},
+				-- Backlog heuristics: avoid degrading on tiny fluctuations; require a "material" backlog.
+				backlogMinPending = 100, -- avg pending items per window
+				backlogFillThreshold = 0.25, -- avg pending/capacity per window
+				backlogMinIngestRate15 = 5, -- items/sec guard for rate-based trigger
+				backlogRateRatio = 1.1, -- ingestRate15 must exceed throughput15 by this factor
+				diagnostics = {
+					enabled = true, -- when Log level is info, print periodic runtime+ingest diagnostics via WO.DIAG
+				},
 			},
 		},
 	}
@@ -137,52 +138,99 @@ local function defaultClone(tbl)
 	return out
 end
 
-local function defaultApplyOverrides(target, overrides)
-	if type(overrides) ~= "table" then
+local function readNested(tbl, path)
+	if type(tbl) ~= "table" then
+		return nil
+	end
+	local current = tbl
+	for i = 1, #path do
+		if type(current) ~= "table" then
+			return nil
+		end
+		current = current[path[i]]
+		if current == nil then
+			return nil
+		end
+	end
+	return current
+end
+
+local function ensureNestedTable(tbl, path)
+	if type(tbl) ~= "table" then
+		return nil
+	end
+	local current = tbl
+	for i = 1, #path do
+		local key = path[i]
+		local nextNode = current[key]
+		if type(nextNode) ~= "table" then
+			nextNode = {}
+			current[key] = nextNode
+		end
+		current = nextNode
+	end
+	return current
+end
+
+local function setNestedValue(tbl, path, value)
+	if type(tbl) ~= "table" then
 		return
 	end
-	local facts = overrides.facts
-	local squares = type(facts) == "table" and facts.squares or nil
-	if type(squares) == "table" and type(squares.headless) == "boolean" then
-		target.facts.squares.headless = squares.headless
+	if type(path) ~= "table" or #path == 0 then
+		return
 	end
-	if type(squares) == "table" and type(squares.listener) == "table" then
-		for k, v in pairs(squares.listener) do
-			target.facts.squares.listener[k] = v
+	local parentPath = {}
+	for i = 1, #path - 1 do
+		parentPath[i] = path[i]
+	end
+	local parent = ensureNestedTable(tbl, parentPath)
+	if not parent then
+		return
+	end
+	parent[path[#path]] = value
+end
+
+local function shallowMergeInto(target, patch)
+	if type(target) ~= "table" or type(patch) ~= "table" then
+		return
+	end
+	for k, v in pairs(patch) do
+		target[k] = v
+	end
+end
+
+local OVERRIDE_BOOL_PATHS = {
+	{ "facts", "squares", "headless" },
+	{ "facts", "zombies", "headless" },
+}
+
+local OVERRIDE_TABLE_PATHS = {
+	{ "facts", "squares", "listener" },
+	{ "facts", "squares", "ingest" },
+	{ "facts", "squares", "probe" },
+	{ "facts", "zombies", "ingest" },
+	{ "facts", "zombies", "probe" },
+	{ "ingest", "scheduler" },
+	{ "runtime", "controller" },
+}
+
+local function defaultApplyOverrides(target, overrides)
+	if type(target) ~= "table" or type(overrides) ~= "table" then
+		return
+	end
+
+	for _, path in ipairs(OVERRIDE_BOOL_PATHS) do
+		local value = readNested(overrides, path)
+		if type(value) == "boolean" then
+			setNestedValue(target, path, value)
 		end
 	end
-	if type(squares) == "table" and type(squares.ingest) == "table" then
-		for k, v in pairs(squares.ingest) do
-			target.facts.squares.ingest[k] = v
-		end
-	end
-	if type(squares) == "table" and type(squares.probe) == "table" then
-		for k, v in pairs(squares.probe) do
-			target.facts.squares.probe[k] = v
-		end
-	end
-	if type(overrides.ingest) == "table" and type(overrides.ingest.scheduler) == "table" then
-		for k, v in pairs(overrides.ingest.scheduler) do
-			target.ingest.scheduler[k] = v
-		end
-	end
-	local zombies = type(facts) == "table" and facts.zombies or nil
-	if type(zombies) == "table" and type(zombies.headless) == "boolean" then
-		target.facts.zombies.headless = zombies.headless
-	end
-	if type(zombies) == "table" and type(zombies.ingest) == "table" then
-		for k, v in pairs(zombies.ingest) do
-			target.facts.zombies.ingest[k] = v
-		end
-	end
-	if type(zombies) == "table" and type(zombies.probe) == "table" then
-		for k, v in pairs(zombies.probe) do
-			target.facts.zombies.probe[k] = v
-		end
-	end
-	if type(overrides.runtime) == "table" and type(overrides.runtime.controller) == "table" then
-		for k, v in pairs(overrides.runtime.controller) do
-			target.runtime.controller[k] = v
+
+	for _, path in ipairs(OVERRIDE_TABLE_PATHS) do
+		local patch = readNested(overrides, path)
+		if type(patch) == "table" then
+			local dest = ensureNestedTable(target, path)
+			shallowMergeInto(dest, patch)
 		end
 	end
 end
@@ -194,6 +242,10 @@ Config._internal.buildDefaults = defaultBuildDefaults
 Config._internal.clone = defaultClone
 Config._internal.applyOverrides = defaultApplyOverrides
 Config._internal.validate = defaultValidate
+Config._internal.readNested = readNested
+Config._internal.ensureNestedTable = ensureNestedTable
+Config._internal.setNestedValue = setNestedValue
+Config._internal.shallowMergeInto = shallowMergeInto
 
 ---Creates a copy of the default config.
 ---@return table
@@ -218,6 +270,58 @@ if Config.load == nil then
 		end
 		Config._internal.validate(cfg)
 		return cfg
+	end
+end
+
+local function defaultRuntimeOpts(cfg)
+	cfg = cfg or {}
+	local opts = {}
+	local controller = cfg.runtime and cfg.runtime.controller or {}
+	if type(controller) == "table" then
+		for k, v in pairs(controller) do
+			opts[k] = v
+		end
+	end
+	local base = cfg.ingest and cfg.ingest.scheduler and cfg.ingest.scheduler.maxItemsPerTick
+	if type(base) == "number" and base > 0 then
+		opts.baseDrainMaxItems = base
+	end
+	return opts
+end
+Config._internal.runtimeOpts = defaultRuntimeOpts
+
+---Builds runtime controller options from the loaded config.
+---@param cfg table
+---@return table
+if Config.runtimeOpts == nil then
+	function Config.runtimeOpts(cfg)
+		return Config._internal.runtimeOpts(cfg)
+	end
+end
+
+---Reads the global config override table when present.
+---@return table|nil
+if Config.getOverrides == nil then
+	function Config.getOverrides()
+		return _G.WORLDOBSERVER_CONFIG_OVERRIDES
+	end
+end
+
+---Safely reads a nested value from a config or override table.
+---@param tbl table|nil
+---@param path string[]
+---@return any
+if Config.readNested == nil then
+	function Config.readNested(tbl, path)
+		return Config._internal.readNested(tbl, path)
+	end
+end
+
+---Loads config defaults merged with global overrides.
+---@return table
+if Config.loadFromGlobals == nil then
+	function Config.loadFromGlobals()
+		return Config.load(Config.getOverrides())
 	end
 end
 

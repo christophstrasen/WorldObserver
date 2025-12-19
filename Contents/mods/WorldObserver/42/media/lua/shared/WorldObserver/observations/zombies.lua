@@ -31,7 +31,7 @@ if ZombiesObservation.register == nil then
 				local facts = factRegistry:getObservable("zombies")
 				local wrapped = Schema.wrap("ZombieObservation", facts, {
 					idSelector = nextObservationId,
-					sourceTimeField = "observedAtTimeMS",
+					sourceTimeField = "sourceTime",
 				})
 
 				local builder = Query.selectFrom(wrapped, "ZombieObservation")

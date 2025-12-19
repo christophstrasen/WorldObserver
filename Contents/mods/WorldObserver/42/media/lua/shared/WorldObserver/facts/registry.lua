@@ -8,18 +8,8 @@ local Time = require("WorldObserver/helpers/time")
 local FactRegistry = {}
 FactRegistry.__index = FactRegistry -- registry instances resolve methods from this table via metatable lookup
 
-local resolvedNowMillis = nil
-local function resolveNowMillis()
-	resolvedNowMillis = function()
-		return Time.gameMillis()
-	end
-end
-
 local function nowMillis()
-	if not resolvedNowMillis then
-		resolveNowMillis()
-	end
-	return resolvedNowMillis()
+	return Time.gameMillis()
 end
 
 local function defaultContext(self, entry)
@@ -41,24 +31,49 @@ local function defaultContext(self, entry)
 	}
 end
 
-	function FactRegistry.new(config, runtime, hooks)
-		-- Registry uses a metatable for method lookup; e.g. self:register(...) resolves to FactRegistry.register.
-		-- The payload is a plain table with config/state.
-		local factsConfig = (type(config) == "table" and type(config.facts) == "table") and config.facts or config or {}
-		local ingestConfig = (type(config) == "table" and type(config.ingest) == "table") and config.ingest or (config and config.ingest) or {}
-		hooks = hooks or {}
-		local self = setmetatable({
-			_factsConfig = factsConfig or {},
-			_ingestConfig = ingestConfig or {},
-			_runtime = runtime,
-			_controllerCfg = (type(config) == "table" and type(config.runtime) == "table" and config.runtime.controller) or {},
-			_hooks = hooks,
-			_globalSubscribers = 0,
-				_types = {},
-				_scheduler = nil,
-				_drainHookRegistered = false,
-				_tickHooks = {},
-				_ingestDiag = {
+local function resolveFactsConfig(cfg)
+	if type(cfg) == "table" and type(cfg.facts) == "table" then
+		return cfg.facts
+	end
+	if type(cfg) == "table" then
+		return cfg
+	end
+	return {}
+end
+
+local function resolveIngestConfig(cfg)
+	if type(cfg) == "table" and type(cfg.ingest) == "table" then
+		return cfg.ingest
+	end
+	return {}
+end
+
+local function resolveControllerCfg(cfg)
+	if type(cfg) == "table" and type(cfg.runtime) == "table" and type(cfg.runtime.controller) == "table" then
+		return cfg.runtime.controller
+	end
+	return {}
+end
+
+function FactRegistry.new(config, runtime, hooks)
+	-- Registry uses a metatable for method lookup; e.g. self:register(...) resolves to FactRegistry.register.
+	-- The payload is a plain table with config/state.
+	local factsConfig = resolveFactsConfig(config)
+	local ingestConfig = resolveIngestConfig(config)
+	local controllerCfg = resolveControllerCfg(config)
+	hooks = hooks or {}
+	local self = setmetatable({
+		_factsConfig = factsConfig,
+		_ingestConfig = ingestConfig,
+		_runtime = runtime,
+		_controllerCfg = controllerCfg,
+		_hooks = hooks,
+		_globalSubscribers = 0,
+		_types = {},
+		_scheduler = nil,
+		_drainHookRegistered = false,
+		_tickHooks = {},
+		_ingestDiag = {
 			ticks = 0,
 			reportEveryTicks = 300, -- ~5s at 60fps; intentionally coarse to avoid spam.
 			windowTicks = 0,

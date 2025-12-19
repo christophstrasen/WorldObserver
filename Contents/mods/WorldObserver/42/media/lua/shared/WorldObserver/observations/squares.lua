@@ -40,7 +40,7 @@ if SquaresObservation.register == nil then
 				-- Heloers we enabled (squareHasBloodSplat/whereSquareNeedsCleaning) assume this schema and id.
 				local wrapped = Schema.wrap("SquareObservation", facts, {
 					idSelector = nextObservationId,
-					sourceTimeField = "observedAtTimeMS",
+					sourceTimeField = "sourceTime",
 				})
 
 				local builder = Query.selectFrom(wrapped, "SquareObservation")
