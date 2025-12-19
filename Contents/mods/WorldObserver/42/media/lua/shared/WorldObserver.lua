@@ -28,10 +28,10 @@ elseif _G.Events and _G.Events.setLuaEvent then
 	end
 end
 
-local Config = require("WorldObserver/config")
-local FactRegistry = require("WorldObserver/facts/registry")
-local SquaresFacts = require("WorldObserver/facts/squares")
-local ZombiesFacts = require("WorldObserver/facts/zombies")
+	local Config = require("WorldObserver/config")
+	local FactRegistry = require("WorldObserver/facts/registry")
+	local SquaresFacts = require("WorldObserver/facts/squares")
+	local ZombiesFacts = require("WorldObserver/facts/zombies")
 local ObservationsCore = require("WorldObserver/observations/core")
 local SquaresObservations = require("WorldObserver/observations/squares")
 local ZombiesObservations = require("WorldObserver/observations/zombies")
@@ -41,27 +41,32 @@ local InterestRegistry = require("WorldObserver/interest/registry")
 local Debug = require("WorldObserver/debug")
 local Runtime = require("WorldObserver/runtime")
 
-local WorldObserver
-
-local config = Config.loadFromGlobals()
-local runtime = Runtime.new(Config.runtimeOpts(config))
-local runtimeDiagnosticsHandle = nil
-local debugApi = nil
-local interestRegistry = InterestRegistry.new({})
-local function setRuntimeDiagnosticsActive(active)
-	local headless = config and config.facts and config.facts.squares and config.facts.squares.headless == true
-	if headless then
-		return
-	end
-	if not debugApi or not debugApi.attachRuntimeDiagnostics then
-		return
-	end
-	local diagCfg = config and config.runtime and config.runtime.controller and config.runtime.controller.diagnostics
-	if not (diagCfg and diagCfg.enabled) then
-		return
-	end
-	if active then
-		if not runtimeDiagnosticsHandle then
+	local WorldObserver
+	
+	local config = Config.loadFromGlobals()
+	assert(type(config) == "table", "WorldObserver config must be a table")
+	assert(type(config.facts) == "table", "WorldObserver config must include facts")
+	assert(type(config.facts.squares) == "table", "WorldObserver config must include facts.squares")
+	assert(type(config.runtime) == "table", "WorldObserver config must include runtime")
+	assert(type(config.runtime.controller) == "table", "WorldObserver config must include runtime.controller")
+	local runtime = Runtime.new(Config.runtimeOpts(config))
+	local runtimeDiagnosticsHandle = nil
+	local debugApi = nil
+	local interestRegistry = InterestRegistry.new({})
+	local headless = config.facts.squares.headless == true
+	local function setRuntimeDiagnosticsActive(active)
+		if headless then
+			return
+		end
+		if not debugApi or type(debugApi.attachRuntimeDiagnostics) ~= "function" then
+			return
+		end
+		local diagCfg = config.runtime.controller.diagnostics
+		if diagCfg == nil or diagCfg.enabled ~= true then
+			return
+		end
+		if active then
+			if not runtimeDiagnosticsHandle then
 			runtimeDiagnosticsHandle = debugApi.attachRuntimeDiagnostics({})
 			if WorldObserver and WorldObserver._internal then
 				WorldObserver._internal.runtimeDiagnosticsHandle = runtimeDiagnosticsHandle
@@ -144,16 +149,15 @@ WorldObserver = {
 	},
 }
 
-debugApi = Debug.new(factRegistry, observationRegistry)
-WorldObserver.debug = debugApi
-
-	-- Register runtime controller LuaEvents and attach default diagnostics (engine-only).
-	do
-		local headless = config and config.facts and config.facts.squares and config.facts.squares.headless == true
-		if not headless then
-			if _G.LuaEventManager and type(_G.LuaEventManager.AddEvent) == "function" then
-				pcall(_G.LuaEventManager.AddEvent, "WorldObserverRuntimeStatusChanged")
-				pcall(_G.LuaEventManager.AddEvent, "WorldObserverRuntimeStatusReport")
+	debugApi = Debug.new(factRegistry, observationRegistry)
+	WorldObserver.debug = debugApi
+	
+		-- Register runtime controller LuaEvents and attach default diagnostics (engine-only).
+		do
+			if not headless then
+				if _G.LuaEventManager and type(_G.LuaEventManager.AddEvent) == "function" then
+					pcall(_G.LuaEventManager.AddEvent, "WorldObserverRuntimeStatusChanged")
+					pcall(_G.LuaEventManager.AddEvent, "WorldObserverRuntimeStatusReport")
 			end
 		end
 	end

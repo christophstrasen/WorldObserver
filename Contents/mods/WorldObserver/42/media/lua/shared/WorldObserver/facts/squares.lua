@@ -114,14 +114,17 @@ end
 Squares._internal.registerTickHook = registerTickHook
 
 -- Patch seam: define only when nil so mods can override by reassigning `Squares.register` and so reloads
--- (tests/console via `package.loaded`) don't clobber an existing patch.
-if Squares.register == nil then
-	function Squares.register(registry, config, interestRegistry)
-		local squaresCfg = config and config.facts and config.facts.squares or {}
-		local headless = squaresCfg.headless == true
-		local probeCfg = squaresCfg.probe or {}
-		local probeEnabled = probeCfg.enabled ~= false
-		local listenerCfg = squaresCfg.listener or {}
+	-- (tests/console via `package.loaded`) don't clobber an existing patch.
+	if Squares.register == nil then
+		function Squares.register(registry, config, interestRegistry)
+			assert(type(config) == "table", "SquaresFacts.register expects config table")
+			assert(type(config.facts) == "table", "SquaresFacts.register expects config.facts table")
+			assert(type(config.facts.squares) == "table", "SquaresFacts.register expects config.facts.squares table")
+			local squaresCfg = config.facts.squares
+			local headless = squaresCfg.headless == true
+			local probeCfg = squaresCfg.probe or {}
+			local probeEnabled = probeCfg.enabled ~= false
+			local listenerCfg = squaresCfg.listener or {}
 
 		registry:register("squares", {
 			ingest = {

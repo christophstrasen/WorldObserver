@@ -116,6 +116,38 @@ describe("WorldObserver observations.squares()", function()
 		assert.is_equal(2, hasBlood[1].square.squareId)
 	end)
 
+	it("squareHasCorpse filters expected observations", function()
+		local withCorpse = {}
+		local stream = WorldObserver.observations.squares():squareHasCorpse()
+		stream:subscribe(function(row)
+			withCorpse[#withCorpse + 1] = row
+		end)
+
+		WorldObserver._internal.facts:emit("squares", {
+			squareId = 1,
+			square = {},
+			hasCorpse = false,
+			x = 0,
+			y = 0,
+			z = 0,
+			observedAtTimeMS = 50,
+			sourceTime = 50,
+		})
+		WorldObserver._internal.facts:emit("squares", {
+			squareId = 2,
+			square = {},
+			hasCorpse = true,
+			x = 1,
+			y = 1,
+			z = 0,
+			observedAtTimeMS = 60,
+			sourceTime = 60,
+		})
+
+		assert.is_equal(1, #withCorpse)
+		assert.is_equal(2, withCorpse[1].square.squareId)
+	end)
+
 	it("whereSquareHasIsoSquare hydrates and filters observations", function()
 		local hydrated = {
 			getX = function()

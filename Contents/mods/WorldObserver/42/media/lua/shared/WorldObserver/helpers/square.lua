@@ -62,13 +62,25 @@ end
 -- We only define exported helper functions when the field is nil, so other mods can patch by reassigning
 -- `SquareHelpers.<name>` (or `SquareHelpers.record.<name>`) and so module reloads (tests/console via `package.loaded`)
 -- don't clobber an existing patch.
-if SquareHelpers.record.squareHasCorpse == nil then
-	SquareHelpers.record.squareHasCorpse = squareHasCorpse
-end
-if SquareHelpers.squareHasBloodSplat == nil then
-	function SquareHelpers.squareHasBloodSplat(stream, fieldName)
-		local target = fieldName or "square"
-		return stream:filter(function(observation)
+	if SquareHelpers.record.squareHasCorpse == nil then
+		SquareHelpers.record.squareHasCorpse = squareHasCorpse
+	end
+	if SquareHelpers.squareHasCorpse == nil then
+		function SquareHelpers.squareHasCorpse(stream, fieldName)
+			local target = fieldName or "square"
+			return stream:filter(function(observation)
+				local square = squareField(observation, target)
+				if type(square) ~= "table" then
+					return false
+				end
+				return SquareHelpers.record.squareHasCorpse(square)
+			end)
+		end
+	end
+	if SquareHelpers.squareHasBloodSplat == nil then
+		function SquareHelpers.squareHasBloodSplat(stream, fieldName)
+			local target = fieldName or "square"
+			return stream:filter(function(observation)
 			local square = squareField(observation, target)
 			if square == nil then
 				return false

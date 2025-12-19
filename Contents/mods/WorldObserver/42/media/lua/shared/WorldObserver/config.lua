@@ -12,6 +12,56 @@ if type(moduleName) == "string" then
 end
 Config._internal = Config._internal or {}
 
+local function resolveWarnFn()
+	local okLog, Log = pcall(require, "LQR/util/log")
+	if okLog and type(Log) == "table" and type(Log.withTag) == "function" then
+		local tagged = Log.withTag("WO.CONFIG")
+		if tagged and type(tagged.warn) == "function" then
+			return function(fmt, ...)
+				tagged:warn(fmt, ...)
+			end
+		end
+	end
+	return function(fmt, ...)
+		if type(_G) == "table" and type(_G.print) == "function" then
+			_G.print(string.format("[WO.CONFIG] " .. fmt, ...))
+		end
+	end
+end
+
+local warnf = resolveWarnFn()
+
+local function pathToString(path)
+	if type(path) ~= "table" then
+		return tostring(path)
+	end
+	return table.concat(path, ".")
+end
+
+local function pathEquals(a, b)
+	if #a ~= #b then
+		return false
+	end
+	for i = 1, #a do
+		if a[i] ~= b[i] then
+			return false
+		end
+	end
+	return true
+end
+
+local function pathStartsWith(path, prefix)
+	if #path < #prefix then
+		return false
+	end
+	for i = 1, #prefix do
+		if path[i] ~= prefix[i] then
+			return false
+		end
+	end
+	return true
+end
+
 local function defaultDetectHeadlessFlag()
 	if _G.WORLDOBSERVER_HEADLESS == true then
 		return true
@@ -214,6 +264,86 @@ local OVERRIDE_TABLE_PATHS = {
 	{ "runtime", "controller" },
 }
 
+local function validateOverrides(overrides)
+	if type(overrides) ~= "table" then
+		return
+	end
+
+	local function isAllowedBoolPath(path)
+		for _, allowed in ipairs(OVERRIDE_BOOL_PATHS) do
+			if pathEquals(path, allowed) then
+				return true
+			end
+		end
+		return false
+	end
+
+	local function isAllowedTablePath(path)
+		for _, allowed in ipairs(OVERRIDE_TABLE_PATHS) do
+			if pathEquals(path, allowed) then
+				return true
+			end
+		end
+		return false
+	end
+
+	local function isPrefixOfAllowed(path)
+		for _, allowed in ipairs(OVERRIDE_BOOL_PATHS) do
+			if pathStartsWith(allowed, path) then
+				return true
+			end
+		end
+		for _, allowed in ipairs(OVERRIDE_TABLE_PATHS) do
+			if pathStartsWith(allowed, path) then
+				return true
+			end
+		end
+		return false
+	end
+
+	local function isWithinAllowedTablePath(path)
+		for _, allowed in ipairs(OVERRIDE_TABLE_PATHS) do
+			if pathStartsWith(path, allowed) then
+				return true
+			end
+		end
+		return false
+	end
+
+	local function walk(node, path)
+		if type(node) ~= "table" then
+			return
+		end
+		for key, value in pairs(node) do
+			if type(key) == "string" then
+				path[#path + 1] = key
+				if isAllowedBoolPath(path) then
+					if value ~= nil and type(value) ~= "boolean" then
+						warnf("Config override %s ignored (expected boolean, got %s)", pathToString(path), type(value))
+					end
+				elseif isAllowedTablePath(path) then
+					if value ~= nil and type(value) ~= "table" then
+						warnf("Config override %s ignored (expected table, got %s)", pathToString(path), type(value))
+					end
+				elseif isWithinAllowedTablePath(path) then
+					-- Descendants of table patches are allowed (shallow merge); do not warn here.
+				elseif isPrefixOfAllowed(path) then
+					if type(value) == "table" then
+						walk(value, path)
+					elseif value ~= nil then
+						warnf("Config override %s ignored (expected table)", pathToString(path))
+					end
+				else
+					warnf("Config override %s ignored (unknown key)", pathToString(path))
+				end
+				path[#path] = nil
+			end
+		end
+	end
+
+	walk(overrides, {})
+end
+
 local function defaultApplyOverrides(target, overrides)
 	if type(target) ~= "table" or type(overrides) ~= "table" then
 		return
@@ -236,11 +366,117 @@ local function defaultApplyOverrides(target, overrides)
 end
 
 local function defaultValidate(cfg)
+	if type(cfg) ~= "table" then
+		error("Config.validate expects a table")
+	end
+
+	local defaults = Config._internal and Config._internal.buildDefaults and Config._internal.buildDefaults() or {}
+	local headless = Config.detectHeadlessFlag and Config.detectHeadlessFlag() == true
+
+	local function report(message)
+		if headless then
+			error(message)
+		end
+		warnf("%s", message)
+	end
+
+	local function resetToDefault(path, message)
+		local defaultValue = readNested(defaults, path)
+		report(("%s: %s (using default=%s)"):format(pathToString(path), message, tostring(defaultValue)))
+		setNestedValue(cfg, path, defaultValue)
+	end
+
+	local function ensureNumber(path, opts)
+		local value = readNested(cfg, path)
+		local asNumber = tonumber(value)
+		if type(asNumber) ~= "number" then
+			resetToDefault(path, ("expected number, got %s"):format(type(value)))
+			return
+		end
+		if opts and opts.integer then
+			asNumber = math.floor(asNumber)
+		end
+		if opts and type(opts.min) == "number" and asNumber < opts.min then
+			report(("%s: expected >= %s, got %s (clamping)"):format(pathToString(path), tostring(opts.min), tostring(asNumber)))
+			asNumber = opts.min
+		end
+		if opts and type(opts.max) == "number" and asNumber > opts.max then
+			report(("%s: expected <= %s, got %s (clamping)"):format(pathToString(path), tostring(opts.max), tostring(asNumber)))
+			asNumber = opts.max
+		end
+		setNestedValue(cfg, path, asNumber)
+	end
+
+	local function ensureOptionalNumber(path, opts)
+		if readNested(cfg, path) == nil then
+			return
+		end
+		ensureNumber(path, opts)
+	end
+
+	local function ensureOptionalBool(path)
+		local value = readNested(cfg, path)
+		if value == nil then
+			return
+		end
+		if type(value) ~= "boolean" then
+			report(("%s: expected boolean, got %s (clearing)"):format(pathToString(path), type(value)))
+			setNestedValue(cfg, path, nil)
+		end
+	end
+
+	-- runtime.controller values are used in arithmetic/comparisons; invalid types can crash at runtime.
+	ensureNumber({ "runtime", "controller", "tickBudgetMs" }, { min = 0 })
+	ensureNumber({ "runtime", "controller", "tickSpikeBudgetMs" }, { min = 0 })
+	ensureNumber({ "runtime", "controller", "spikeMinCount" }, { min = 1, integer = true })
+	ensureNumber({ "runtime", "controller", "windowTicks" }, { min = 1, integer = true })
+	ensureNumber({ "runtime", "controller", "reportEveryWindows" }, { min = 0, integer = true })
+	ensureNumber({ "runtime", "controller", "degradedMaxItemsPerTick" }, { min = 0, integer = true })
+	ensureNumber({ "runtime", "controller", "backlogMinPending" }, { min = 0 })
+	ensureNumber({ "runtime", "controller", "backlogFillThreshold" }, { min = 0 })
+	ensureNumber({ "runtime", "controller", "backlogMinIngestRate15" }, { min = 0 })
+	ensureNumber({ "runtime", "controller", "backlogRateRatio" }, { min = 0 })
+
+	local drainAuto = readNested(cfg, { "runtime", "controller", "drainAuto" })
+	if drainAuto ~= nil and type(drainAuto) ~= "table" then
+		report(("runtime.controller.drainAuto: expected table, got %s (clearing)"):format(type(drainAuto)))
+		setNestedValue(cfg, { "runtime", "controller", "drainAuto" }, nil)
+	end
+	ensureOptionalBool({ "runtime", "controller", "drainAuto", "enabled" })
+	ensureOptionalNumber({ "runtime", "controller", "drainAuto", "stepFactor" }, { min = 1e-9 })
+	ensureOptionalNumber({ "runtime", "controller", "drainAuto", "minItems" }, { min = 0, integer = true })
+	ensureOptionalNumber({ "runtime", "controller", "drainAuto", "maxItems" }, { min = 0, integer = true })
+	ensureOptionalNumber({ "runtime", "controller", "drainAuto", "headroomUtil" }, { min = 0, max = 1 })
+
+	local diagnostics = readNested(cfg, { "runtime", "controller", "diagnostics" })
+	if diagnostics ~= nil and type(diagnostics) ~= "table" then
+		report(("runtime.controller.diagnostics: expected table, got %s (clearing)"):format(type(diagnostics)))
+		setNestedValue(cfg, { "runtime", "controller", "diagnostics" }, nil)
+	end
+	ensureOptionalBool({ "runtime", "controller", "diagnostics", "enabled" })
+
+	-- ingest.scheduler is validated downstream too, but normalize types early so cfg doesn't carry invalid truthy values.
+	ensureNumber({ "ingest", "scheduler", "maxItemsPerTick" }, { min = 0, integer = true })
+	ensureNumber({ "ingest", "scheduler", "quantum" }, { min = 1, integer = true })
+	local maxMillisPath = { "ingest", "scheduler", "maxMillisPerTick" }
+	local maxMillisValue = readNested(cfg, maxMillisPath)
+	if maxMillisValue ~= nil then
+		local asNumber = tonumber(maxMillisValue)
+		if type(asNumber) ~= "number" then
+			resetToDefault(maxMillisPath, ("expected number, got %s"):format(type(maxMillisValue)))
+		elseif asNumber <= 0 then
+			-- Treat <=0 as "disabled" and normalize to nil so downstream code doesn't treat it as a budget.
+			setNestedValue(cfg, maxMillisPath, nil)
+		else
+			setNestedValue(cfg, maxMillisPath, asNumber)
+		end
+	end
 end
 
 Config._internal.buildDefaults = defaultBuildDefaults
 Config._internal.clone = defaultClone
 Config._internal.applyOverrides = defaultApplyOverrides
+Config._internal.validateOverrides = validateOverrides
 Config._internal.validate = defaultValidate
 Config._internal.readNested = readNested
 Config._internal.ensureNestedTable = ensureNestedTable
@@ -262,14 +498,15 @@ end
 ---@return table
 -- Patch seam: define only when nil so mods can override by reassigning `Config.load` and so reloads
 -- (tests/console via `package.loaded`) don't clobber an existing patch.
-if Config.load == nil then
-	function Config.load(overrides)
-		local cfg = Config.defaults()
-		if type(overrides) == "table" then
-			Config._internal.applyOverrides(cfg, overrides)
-		end
-		Config._internal.validate(cfg)
-		return cfg
+	if Config.load == nil then
+		function Config.load(overrides)
+			local cfg = Config.defaults()
+			if type(overrides) == "table" then
+				Config._internal.validateOverrides(overrides)
+				Config._internal.applyOverrides(cfg, overrides)
+			end
+			Config._internal.validate(cfg)
+			return cfg
 	end
 end
 

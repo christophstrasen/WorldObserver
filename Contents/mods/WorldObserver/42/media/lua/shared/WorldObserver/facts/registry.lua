@@ -178,12 +178,26 @@ local function isHeadless()
 	return _G.WORLDOBSERVER_HEADLESS == true
 end
 
-local function buildBuffer(self, name, entry)
-	local cfg = entry.config and entry.config.ingest
-	local ingestOpts = entry.ingestOpts
-	if not cfg or cfg.enabled ~= true or not ingestOpts or type(ingestOpts.key) ~= "function" then
-		return nil
-	end
+	local function buildBuffer(self, name, entry)
+		local cfg = entry.config and entry.config.ingest
+		if not cfg or cfg.enabled ~= true then
+			return nil
+		end
+		local ingestOpts = entry.ingestOpts
+		if type(ingestOpts) ~= "table" then
+			if not isHeadless() then
+				Log:warn("Ingest enabled for fact type '%s' but no ingest opts provided; falling back to direct emit", tostring(name))
+			end
+			return nil
+		end
+		if type(ingestOpts.key) ~= "function" then
+			local msg = ("Ingest enabled for fact type '%s' but ingest.key is missing/invalid; falling back to direct emit"):format(tostring(name))
+			if isHeadless() then
+				error(msg)
+			end
+			Log:warn("%s", msg)
+			return nil
+		end
 
 	local laneFn = ingestOpts.lane or defaultLane
 	local lanePriorityFn = ingestOpts.lanePriority or function(laneName)
@@ -326,18 +340,19 @@ local function ensureDrainHook(self)
 	self._drainHookRegistered = true
 end
 
-function FactRegistry:onSubscribe(name)
-	local entry = ensureEntry(self, name, true)
+	function FactRegistry:onSubscribe(name)
+		local entry = ensureEntry(self, name, true)
 
-	if not entry.started and type(entry.start) == "function" then
-		local ctx = defaultContext(self, entry)
-		-- Enable ingest when configured for this type.
-		if entry.config and entry.config.ingest and entry.config.ingest.enabled and entry.ingestOpts then
-			entry.buffer = entry.buffer or buildBuffer(self, name, entry)
-			if entry.buffer then
-				local scheduler = ensureScheduler(self)
-				ensureDrainHook(self)
-				if scheduler and not entry.bufferAttached then
+		if not entry.started and type(entry.start) == "function" then
+			local ctx = defaultContext(self, entry)
+			-- Enable ingest when configured for this type.
+			local ingestCfg = entry.config and entry.config.ingest
+			if ingestCfg and ingestCfg.enabled == true then
+				entry.buffer = entry.buffer or buildBuffer(self, name, entry)
+				if entry.buffer then
+					local scheduler = ensureScheduler(self)
+					ensureDrainHook(self)
+					if scheduler and not entry.bufferAttached then
 					local priority = (entry.config.ingest and entry.config.ingest.priority) or 1
 					scheduler:addBuffer(entry.buffer, { priority = priority })
 					entry.bufferAttached = true
@@ -353,15 +368,18 @@ function FactRegistry:onSubscribe(name)
 						})
 					end
 				end
+				end
 			end
-		end
 
-		local ok, err = pcall(entry.start, ctx)
-		if not ok then
-			Log:error("Failed to start fact type '%s': %s", tostring(name), tostring(err))
-		else
-			entry.started = true
-		end
+			local ok, err = pcall(entry.start, ctx)
+			if not ok then
+				Log:error("Failed to start fact type '%s': %s", tostring(name), tostring(err))
+				if isHeadless() then
+					error(("Failed to start fact type '%s': %s"):format(tostring(name), tostring(err)))
+				end
+			else
+				entry.started = true
+			end
 
 		-- Producers may register per-tick work (e.g. time-sliced probes). Ensure we have an OnTick hook
 		-- even when ingest is disabled (no scheduler/buffer), otherwise tick hooks would never run.

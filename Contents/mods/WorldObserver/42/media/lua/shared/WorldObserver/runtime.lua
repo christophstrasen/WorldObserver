@@ -22,22 +22,43 @@ local function deepCopy(tbl)
 	return out
 end
 
-local Reasons = {
-	woTickAvgOverBudget = "woTickAvgOverBudget",
-	woTickSpikeOverBudget = "woTickSpikeOverBudget",
-	ingestBacklogRising = "ingestBacklogRising",
+	local Reasons = {
+		woTickAvgOverBudget = "woTickAvgOverBudget",
+		woTickSpikeOverBudget = "woTickSpikeOverBudget",
+		ingestBacklogRising = "ingestBacklogRising",
 	ingestDropsRising = "ingestDropsRising",
 	clockUnavailable = "clockUnavailable",
 	clockNonMonotonic = "clockNonMonotonic",
 	recovered = "recovered",
 	manualOverride = "manualOverride",
-	emergencyResetTriggered = "emergencyResetTriggered",
-}
+		emergencyResetTriggered = "emergencyResetTriggered",
+	}
 
-local function resolveWallClock()
-	return function()
-		return Time.gameMillis()
-	end, "getGameTime.getTimeInMillis"
+	local function newControllerWindow()
+		return {
+			ticks = 0,
+			spikes = 0,
+			spikeStreak = 0,
+			spikeStreakMax = 0,
+			sumMs = 0,
+			maxMs = 0,
+			probeSum = 0,
+			drainSum = 0,
+			otherSum = 0,
+			pendingSum = 0,
+			droppedSum = 0,
+			throughput15Sum = 0,
+			ingestRate15Sum = 0,
+			fillSum = 0,
+			trendRising = false,
+			trendFalling = false,
+		}
+	end
+
+	local function resolveWallClock()
+		return function()
+			return Time.gameMillis()
+		end, "getGameTime.getTimeInMillis"
 end
 
 local function resolveCpuClock()
@@ -109,29 +130,12 @@ function Runtime.new(opts)
 				backlogFillThreshold = opts.backlogFillThreshold,
 				backlogMinIngestRate15 = opts.backlogMinIngestRate15,
 				backlogRateRatio = opts.backlogRateRatio,
-			},
-			window = {
-				ticks = 0,
-				spikes = 0,
-				spikeStreak = 0,
-				spikeStreakMax = 0,
-				sumMs = 0,
-				maxMs = 0,
-				probeSum = 0,
-				drainSum = 0,
-				otherSum = 0,
-				pendingSum = 0,
-				droppedSum = 0,
-				throughput15Sum = 0,
-				ingestRate15Sum = 0,
-				fillSum = 0,
-				trendRising = false,
-				trendFalling = false,
-			},
-			-- Stateful drain budget chosen by the controller (items/tick).
-			drainMaxItems = nil,
-			seq = 0,
-			reportSeq = 0,
+				},
+				window = newControllerWindow(),
+				-- Stateful drain budget chosen by the controller (items/tick).
+				drainMaxItems = nil,
+				seq = 0,
+				reportSeq = 0,
 			windowCount = 0,
 		},
 	}
@@ -222,16 +226,16 @@ function Runtime.new(opts)
 		opts = opts or {}
 		local onReset = opts.onReset
 		local prevStatus = self:status_get()
-		if type(onReset) == "function" then
-			pcall(onReset)
-		end
+			if type(onReset) == "function" then
+				pcall(onReset)
+			end
 
-		-- In emergency mode we keep the scheduler on a conservative item budget if available.
-		local cfg = self._controller and self._controller.cfg or {}
-		local fallback = cfg.degradedMaxItemsPerTick
-		if type(fallback) ~= "number" or fallback <= 0 then
-			local auto = cfg.drainAuto
-			fallback = auto and auto.minItems
+			-- In emergency mode we keep the scheduler on a conservative item budget if available.
+			local cfg = self._controller.cfg
+			local fallback = cfg.degradedMaxItemsPerTick
+			if type(fallback) ~= "number" or fallback <= 0 then
+				local auto = cfg.drainAuto
+				fallback = auto and auto.minItems
 		end
 		if type(fallback) == "number" and fallback > 0 then
 			self._status.budgets.schedulerMaxItemsPerTick = math.floor(fallback)
@@ -239,30 +243,13 @@ function Runtime.new(opts)
 			self._status.budgets.schedulerMaxItemsPerTick = nil
 		end
 
-		-- Reset controller window so next tick starts fresh.
-		self._controller.window = {
-			ticks = 0,
-			spikes = 0,
-			spikeStreak = 0,
-			spikeStreakMax = 0,
-			sumMs = 0,
-			maxMs = 0,
-			probeSum = 0,
-			drainSum = 0,
-			otherSum = 0,
-			pendingSum = 0,
-			droppedSum = 0,
-			throughput15Sum = 0,
-			ingestRate15Sum = 0,
-			fillSum = 0,
-			trendRising = false,
-			trendFalling = false,
-		}
+			-- Reset controller window so next tick starts fresh.
+			self._controller.window = newControllerWindow()
 
-		self:status_transition("emergency", Reasons.emergencyResetTriggered)
-		self._controller.seq = (self._controller.seq or 0) + 1
-		local snapshot = self:status_get()
-		local payload = {
+			self:status_transition("emergency", Reasons.emergencyResetTriggered)
+			self._controller.seq = (self._controller.seq or 0) + 1
+			local snapshot = self:status_get()
+			local payload = {
 			event = Runtime.Events.StatusChanged,
 			seq = self._controller.seq,
 			nowMs = self:nowWall() or snapshot.sinceMs,
@@ -298,15 +285,15 @@ function Runtime.new(opts)
 
 		-- Ingest signals are optional; normalize to numbers for math below.
 		local ingestPending = tonumber(opts.ingestPending) or 0
-		local ingestDropped = tonumber(opts.ingestDropped) or 0
+			local ingestDropped = tonumber(opts.ingestDropped) or 0
 
-		local c = self._controller
-		local cfg = c.cfg or {}
-		local win = c.window or {}
+			local c = self._controller
+			local cfg = c.cfg
+			local win = c.window
 
-		self._status.tick = self._status.tick or {}
-		self._status.tick.probeLastMs = probeMs
-		self._status.tick.drainLastMs = drainMs
+			self._status.tick = self._status.tick or {}
+			self._status.tick.probeLastMs = probeMs
+			self._status.tick.drainLastMs = drainMs
 		self._status.tick.otherLastMs = otherMs
 
 		win.ticks = (win.ticks or 0) + 1
@@ -335,12 +322,12 @@ function Runtime.new(opts)
 			win.spikeStreakMax = win.spikeStreak
 		end
 
-		local windowSize = cfg.windowTicks or 60
-		local completedWindow = win.ticks >= windowSize
-		if not completedWindow then
-			c.window = win
-			return
-		end
+			local windowSize = cfg.windowTicks
+			local completedWindow = win.ticks >= windowSize
+			if not completedWindow then
+				c.window = win
+				return
+			end
 
 		local avgMs = win.sumMs / win.ticks
 		local avgProbeMs = (win.probeSum or 0) / win.ticks
@@ -534,14 +521,14 @@ function Runtime.new(opts)
 			end
 		end
 
-		-- Periodic report even without a transition. This surfaces window signals for dashboards
-		-- and keeps mode transitions debuggable without polling status_get().
-		c.windowCount = (c.windowCount or 0) + 1
-		local shouldReport = (cfg.reportEveryWindows or 0) > 0 and (c.windowCount % cfg.reportEveryWindows == 0)
-		if shouldReport then
-			local winSnapshot = {
-				avgTickMs = avgMs,
-				tickSpikeMs = win.maxMs,
+			-- Periodic report even without a transition. This surfaces window signals for dashboards
+			-- and keeps mode transitions debuggable without polling status_get().
+			c.windowCount = (c.windowCount or 0) + 1
+			local shouldReport = cfg.reportEveryWindows > 0 and (c.windowCount % cfg.reportEveryWindows == 0)
+			if shouldReport then
+				local winSnapshot = {
+					avgTickMs = avgMs,
+					tickSpikeMs = win.maxMs,
 				ticks = win.ticks,
 				spikes = win.spikes,
 				spikeStreakMax = spikeStreakMax,
@@ -556,30 +543,13 @@ function Runtime.new(opts)
 			self:status_report(winSnapshot)
 		end
 
-		-- Reset window for next round.
-		c.prevAvgPending = avgPending
-		c.window = {
-			ticks = 0,
-			spikes = 0,
-			spikeStreak = 0,
-			spikeStreakMax = 0,
-			sumMs = 0,
-			maxMs = 0,
-			probeSum = 0,
-			drainSum = 0,
-			otherSum = 0,
-			pendingSum = 0,
-			droppedSum = 0,
-			throughput15Sum = 0,
-			ingestRate15Sum = 0,
-			fillSum = 0,
-			trendRising = false,
-			trendFalling = false,
-		}
-	end
+			-- Reset window for next round.
+			c.prevAvgPending = avgPending
+			c.window = newControllerWindow()
+		end
 
-	return self
-end
+		return self
+	end
 
 Runtime.Reasons = Reasons
 

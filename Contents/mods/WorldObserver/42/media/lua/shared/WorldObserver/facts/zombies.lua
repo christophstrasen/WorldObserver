@@ -73,13 +73,16 @@ end
 Zombies._internal.tickZombies = tickZombies
 Zombies._internal.registerTickHook = registerTickHook
 
--- Patch seam: define only when nil so mods can override by reassigning `Zombies.register`.
-if Zombies.register == nil then
-	function Zombies.register(registry, config, interestRegistry)
-		local zombiesCfg = config and config.facts and config.facts.zombies or {}
-		local headless = zombiesCfg.headless == true
-		local probeCfg = zombiesCfg.probe or {}
-		local probeEnabled = probeCfg.enabled ~= false
+	-- Patch seam: define only when nil so mods can override by reassigning `Zombies.register`.
+	if Zombies.register == nil then
+		function Zombies.register(registry, config, interestRegistry)
+			assert(type(config) == "table", "ZombiesFacts.register expects config table")
+			assert(type(config.facts) == "table", "ZombiesFacts.register expects config.facts table")
+			assert(type(config.facts.zombies) == "table", "ZombiesFacts.register expects config.facts.zombies table")
+			local zombiesCfg = config.facts.zombies
+			local headless = zombiesCfg.headless == true
+			local probeCfg = zombiesCfg.probe or {}
+			local probeEnabled = probeCfg.enabled ~= false
 
 		registry:register("zombies", {
 			ingest = {
