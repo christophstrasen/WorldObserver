@@ -21,6 +21,7 @@ local SmokeZombies = {}
 function SmokeZombies.start(opts)
 	opts = opts or {}
 	local WorldObserver = require("WorldObserver")
+	local ZombieHelper = WorldObserver.helpers.zombie.record
 
 	local modId = opts.modId or "examples/smoke_zombies"
 	local interest = WorldObserver.factInterest:declare(modId, "near", {
@@ -36,6 +37,8 @@ function SmokeZombies.start(opts)
 	if opts.distinctSeconds then
 		stream = stream:distinct("zombie", opts.distinctSeconds)
 	end
+	-- For custom boolean logic, prefer `:whereZombie(...)` + local aliases:
+	-- stream = stream:whereZombie(ZombieHelper.zombieHasTarget)
 
 	Log.info(
 		"[smoke] subscribing to zombies (distinctSeconds=%s, radius=%s, zRange=%s)",

@@ -25,6 +25,7 @@ end
 --- @field modId string
 --- @field key string
 --- @field spec table
+--- @field ttlMs number
 --- @field expiresAtMs number
 
 -- Default TTL must be comfortably above how often mods typically refresh their declarations,
@@ -196,16 +197,23 @@ function Registry.new(opts)
 	return self
 end
 
-local function addLease(self, modId, key, spec, nowMs)
+local function addLeaseWithTtl(self, modId, key, spec, nowMs, ttlMs)
+	ttlMs = tonumber(ttlMs) or self._ttlMs
+	assert(ttlMs > 0, "interest lease ttl must be > 0")
 	local lease = {
 		modId = modId,
 		key = key,
 		spec = spec,
-		expiresAtMs = (nowMs or nowMillis()) + self._ttlMs,
+		ttlMs = ttlMs,
+		expiresAtMs = (nowMs or nowMillis()) + ttlMs,
 	}
 	self._leases[modId] = self._leases[modId] or {}
 	self._leases[modId][key] = lease
 	return lease
+end
+
+local function addLease(self, modId, key, spec, nowMs)
+	return addLeaseWithTtl(self, modId, key, spec, nowMs, self._ttlMs)
 end
 
 --- Declare interest for (modId, key) with the given spec (replace semantics).
@@ -218,24 +226,73 @@ function Registry:declare(modId, key, spec, opts)
 	assert(type(modId) == "string" and modId ~= "", "modId must be a non-empty string")
 	assert(type(key) == "string" and key ~= "", "interest key must be a non-empty string")
 	opts = opts or {}
-	local lease = addLease(self, modId, key, spec or {}, opts.nowMs)
+	local ttlMs = opts.ttlMs
+	if ttlMs == nil and opts.ttlSeconds ~= nil then
+		ttlMs = (type(opts.ttlSeconds) == "number") and (opts.ttlSeconds * 1000) or nil
+	end
+	if ttlMs ~= nil then
+		ttlMs = tonumber(ttlMs)
+		assert(type(ttlMs) == "number" and ttlMs > 0, "interest lease ttl must be a number > 0")
+	end
+
+	local lease
+	if ttlMs ~= nil then
+		lease = addLeaseWithTtl(self, modId, key, spec or {}, opts.nowMs, ttlMs)
+	else
+		lease = addLease(self, modId, key, spec or {}, opts.nowMs)
+	end
+
+	local leaseHandle = {}
+
 	local function stop()
 		self:revoke(modId, key)
 	end
-	local function touch(nowMs)
+
+	local function renew(nowMsOrSelf, maybeNowMs)
+		local nowMs = maybeNowMs
+		if nowMsOrSelf == leaseHandle then
+			nowMs = maybeNowMs
+		elseif type(nowMsOrSelf) == "number" and nowMs == nil then
+			nowMs = nowMsOrSelf
+		end
+		if type(nowMs) ~= "number" then
+			nowMs = nil
+		end
 		local l = self._leases[modId] and self._leases[modId][key]
 		if l then
-			l.expiresAtMs = (nowMs or nowMillis()) + self._ttlMs
+			l.expiresAtMs = (nowMs or nowMillis()) + (l.ttlMs or self._ttlMs)
 		end
 	end
-	local function replaceSpec(newSpec, replaceOpts)
-		addLease(self, modId, key, newSpec or spec or {}, replaceOpts and replaceOpts.nowMs)
+
+	local function replaceSpec(selfOrNewSpec, maybeNewSpec, maybeReplaceOpts)
+		local newSpec = selfOrNewSpec
+		local replaceOpts = maybeNewSpec
+		if selfOrNewSpec == leaseHandle then
+			newSpec = maybeNewSpec
+			replaceOpts = maybeReplaceOpts
+		end
+
+		local existing = self._leases[modId] and self._leases[modId][key]
+		local keepTtlMs = existing and existing.ttlMs or nil
+		local replaceTtlMs = replaceOpts and replaceOpts.ttlMs
+		if replaceTtlMs == nil and replaceOpts and replaceOpts.ttlSeconds ~= nil then
+			replaceTtlMs = (type(replaceOpts.ttlSeconds) == "number") and (replaceOpts.ttlSeconds * 1000) or nil
+		end
+		if replaceTtlMs ~= nil then
+			replaceTtlMs = tonumber(replaceTtlMs)
+			assert(type(replaceTtlMs) == "number" and replaceTtlMs > 0, "interest lease ttl must be a number > 0")
+			addLeaseWithTtl(self, modId, key, newSpec or spec or {}, replaceOpts and replaceOpts.nowMs, replaceTtlMs)
+		elseif keepTtlMs ~= nil then
+			addLeaseWithTtl(self, modId, key, newSpec or spec or {}, replaceOpts and replaceOpts.nowMs, keepTtlMs)
+		else
+			addLease(self, modId, key, newSpec or spec or {}, replaceOpts and replaceOpts.nowMs)
+		end
 	end
-	return {
-		stop = stop,
-		touch = touch,
-		declare = replaceSpec,
-	}
+
+	leaseHandle.stop = stop
+	leaseHandle.renew = renew
+	leaseHandle.declare = replaceSpec
+	return leaseHandle
 end
 
 --- Revoke the lease for (modId, key).

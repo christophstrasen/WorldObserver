@@ -38,7 +38,7 @@ local lease = WorldObserver.factInterest:declare(modId, interestKey, spec)
 WorldObserver.factInterest:revoke(modId, interestKey)
 
 -- Lease refresh (if the mod keeps long-lived interest).
-lease:touch() -- or lease:declare(spec) which also refreshes
+lease:renew() -- or lease:declare(spec) which also refreshes
 
 -- Stop the declaration (alias for revoke).
 lease:stop()
@@ -47,6 +47,7 @@ lease:stop()
 Lease behavior:
 - Default TTL (e.g. 10min, must be > probe cadence). If not refreshed, the declaration expires and stops influencing probe plans.
 - Replacing a spec refreshes TTL.
+  - You can override per declaration: `WorldObserver.factInterest:declare(modId, key, spec, { ttlSeconds = 60 })`
 
 Subscriber gating:
 - Declarations influence *how* probes run, but probes should only run while the relevant fact stream has subscribers

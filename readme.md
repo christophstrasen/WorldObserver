@@ -221,11 +221,9 @@ It is an observation system that **uses LQR to make complex observation safe and
 
 ## What to read next
 
-- Architecture overview (diagram)
-- Available observation streams (Alpha surface)
-- Helper catalog
-- Debugging & diagnostics
-- Performance tuning & interest declarations
+- `docs/quickstart.md`
+- `docs/observations/index.md`
+- `docs/guides/lifecycle.md`
 
 ---
 

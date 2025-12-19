@@ -1,0 +1,57 @@
+package.path = table.concat({
+	"Contents/mods/WorldObserver/42/media/lua/shared/?.lua",
+	"Contents/mods/WorldObserver/42/media/lua/shared/?/init.lua",
+	"external/LQR/?.lua",
+	"external/LQR/?/init.lua",
+	"external/lua-reactivex/?.lua",
+	"external/lua-reactivex/?/init.lua",
+	package.path,
+}, ";")
+
+_G.WORLDOBSERVER_HEADLESS = true
+_G.LQR_HEADLESS = true
+
+local function reload(moduleName)
+	package.loaded[moduleName] = nil
+	return require(moduleName)
+end
+
+describe("WorldObserver observations.zombies()", function()
+	local WorldObserver
+
+	before_each(function()
+		WorldObserver = reload("WorldObserver")
+	end)
+
+	it("whereZombie passes the zombie record into the predicate", function()
+		local received = {}
+		local ZombieHelper = WorldObserver.helpers.zombie.record
+
+		local stream = WorldObserver.observations.zombies():whereZombie(function(zombieRecord, observation)
+			assert.is_table(observation)
+			assert.is_table(zombieRecord)
+			assert.equals(zombieRecord, observation.ZombieObservation)
+			return ZombieHelper.zombieHasTarget(zombieRecord)
+		end)
+
+		stream:subscribe(function(row)
+			received[#received + 1] = row
+		end)
+
+		WorldObserver._internal.facts:emit("zombies", {
+			zombieId = 1,
+			hasTarget = false,
+			observedAtTimeMS = 50,
+			sourceTime = 50,
+		})
+		WorldObserver._internal.facts:emit("zombies", {
+			zombieId = 2,
+			hasTarget = true,
+			observedAtTimeMS = 60,
+			sourceTime = 60,
+		})
+
+		assert.is_equal(1, #received)
+		assert.is_equal(2, received[1].zombie.zombieId)
+	end)
+end)

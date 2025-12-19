@@ -50,12 +50,13 @@ function SmokeSquares.start(opts)
 
 	-- Build stream.
 	local stream = WorldObserver.observations.squares()
+	local SquareHelper = WorldObserver.helpers.square.record
 	if opts.distinctSeconds then
 		stream = stream:distinct("square", opts.distinctSeconds)
 	end
 	if opts.withHelpers then
-		-- Example: only keep squares that need cleaning.
-		stream = stream:whereSquareNeedsCleaning()
+		-- Example: only keep squares with a corpse.
+		stream = stream:whereSquare(SquareHelper.squareHasCorpse)
 	end
 
 	Log.info(
@@ -86,10 +87,10 @@ function SmokeSquares.start(opts)
 				handles[handle] = handle
 			end
 		end
-		WorldObserver.debug.printObservation(
-			observation,
-			{ prefix = "[square ] YUK Dirty or dead stuff on the ground!" }
-		)
+			WorldObserver.debug.printObservation(
+				observation,
+				{ prefix = "[square ] corpse present" }
+			)
 	end)
 
 	return {

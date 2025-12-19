@@ -12,6 +12,7 @@ if type(moduleName) == "string" then
 	end
 end
 SquareHelpers.record = SquareHelpers.record or {}
+SquareHelpers.stream = SquareHelpers.stream or {}
 
 local function squareField(observation, fieldName)
 	-- Helpers should be forgiving if a stream remaps the square field.
@@ -58,66 +59,69 @@ local function squareHasCorpse(squareRecord)
 	return false
 end
 
+local function squareHasBloodSplat(squareRecord)
+	if type(squareRecord) ~= "table" then
+		return false
+	end
+	return squareRecord.hasBloodSplat == true
+end
+
+-- Stream sugar: apply a predicate to the square record directly.
+-- This avoids leaking LQR schema names (e.g. "SquareObservation") into mod code.
+if SquareHelpers.whereSquare == nil then
+	function SquareHelpers.whereSquare(stream, fieldName, predicate)
+		assert(type(predicate) == "function", "whereSquare predicate must be a function")
+		local target = fieldName or "square"
+		return stream:filter(function(observation)
+			local square = squareField(observation, target)
+			return predicate(square, observation) == true
+		end)
+	end
+end
+if SquareHelpers.stream.whereSquare == nil then
+	function SquareHelpers.stream.whereSquare(stream, fieldName, ...)
+		return SquareHelpers.whereSquare(stream, fieldName, ...)
+	end
+end
+
 -- Patch seam convention:
 -- We only define exported helper functions when the field is nil, so other mods can patch by reassigning
 -- `SquareHelpers.<name>` (or `SquareHelpers.record.<name>`) and so module reloads (tests/console via `package.loaded`)
 -- don't clobber an existing patch.
-	if SquareHelpers.record.squareHasCorpse == nil then
-		SquareHelpers.record.squareHasCorpse = squareHasCorpse
-	end
-	if SquareHelpers.squareHasCorpse == nil then
-		function SquareHelpers.squareHasCorpse(stream, fieldName)
-			local target = fieldName or "square"
-			return stream:filter(function(observation)
-				local square = squareField(observation, target)
-				if type(square) ~= "table" then
-					return false
-				end
-				return SquareHelpers.record.squareHasCorpse(square)
-			end)
-		end
-	end
-	if SquareHelpers.squareHasBloodSplat == nil then
-		function SquareHelpers.squareHasBloodSplat(stream, fieldName)
-			local target = fieldName or "square"
-			return stream:filter(function(observation)
-			local square = squareField(observation, target)
-			if square == nil then
-				return false
-			end
-
-			-- Preferred: WorldObserver square records already carry a boolean flag.
-			if type(square) == "table" and square.hasBloodSplat ~= nil then
-				return square.hasBloodSplat == true
-			end
-
-			-- Fallback: if a caller streams raw IsoGridSquare objects, we currently have no verified
-			-- vanilla API path for a "has blood splat" boolean. Keep this conservative.
-			return false
-		end)
-	end
+if SquareHelpers.record.squareHasCorpse == nil then
+	SquareHelpers.record.squareHasCorpse = squareHasCorpse
+end
+if SquareHelpers.record.squareHasBloodSplat == nil then
+	SquareHelpers.record.squareHasBloodSplat = squareHasBloodSplat
 end
 
--- Filter-style helper: returns a filtered stream (not a boolean).
-if SquareHelpers.whereSquareNeedsCleaning == nil then
-	function SquareHelpers.whereSquareNeedsCleaning(stream, fieldName)
+if SquareHelpers.squareHasCorpse == nil then
+	function SquareHelpers.squareHasCorpse(stream, fieldName)
 		local target = fieldName or "square"
 		return stream:filter(function(observation)
 			local square = squareField(observation, target)
-			if type(square) ~= "table" then
-				return false
-			end
-
-			-- For WorldObserver square records, these booleans are already materialized at fact time.
-			return SquareHelpers.record.squareHasCorpse(square) or (square.hasBloodSplat == true) or (square.hasTrashItems == true)
+			return SquareHelpers.record.squareHasCorpse(square)
 		end)
 	end
 end
+if SquareHelpers.stream.squareHasCorpse == nil then
+	function SquareHelpers.stream.squareHasCorpse(stream, fieldName, ...)
+		return SquareHelpers.squareHasCorpse(stream, fieldName, ...)
+	end
+end
 
--- Backwards-compat alias kept for older docs/examples.
-if SquareHelpers.squareNeedsCleaning == nil then
-	function SquareHelpers.squareNeedsCleaning(stream, fieldName)
-		return SquareHelpers.whereSquareNeedsCleaning(stream, fieldName)
+if SquareHelpers.squareHasBloodSplat == nil then
+	function SquareHelpers.squareHasBloodSplat(stream, fieldName)
+		local target = fieldName or "square"
+		return stream:filter(function(observation)
+			local square = squareField(observation, target)
+			return SquareHelpers.record.squareHasBloodSplat(square)
+		end)
+	end
+end
+if SquareHelpers.stream.squareHasBloodSplat == nil then
+	function SquareHelpers.stream.squareHasBloodSplat(stream, fieldName, ...)
+		return SquareHelpers.squareHasBloodSplat(stream, fieldName, ...)
 	end
 end
 
@@ -251,18 +255,31 @@ if SquareHelpers.record.getIsoSquare == nil then
 	end
 end
 
+local function squareHasIsoSquare(squareRecord, opts)
+	if type(squareRecord) ~= "table" then
+		return false
+	end
+	return SquareHelpers.record.getIsoSquare(squareRecord, opts) ~= nil
+end
+
+if SquareHelpers.record.squareHasIsoSquare == nil then
+	SquareHelpers.record.squareHasIsoSquare = squareHasIsoSquare
+end
+
 -- Stream helper: keeps only observations whose square record resolves to a live IsoGridSquare.
 -- Side-effect: when resolution succeeds, caches it on the record as `square.IsoSquare`.
-if SquareHelpers.whereSquareHasIsoSquare == nil then
-	function SquareHelpers.whereSquareHasIsoSquare(stream, fieldName, opts)
+if SquareHelpers.squareHasIsoSquare == nil then
+	function SquareHelpers.squareHasIsoSquare(stream, fieldName, opts)
 		local target = fieldName or "square"
 		return stream:filter(function(observation)
 			local square = squareField(observation, target)
-			if type(square) ~= "table" then
-				return false
-			end
-			return SquareHelpers.record.getIsoSquare(square, opts) ~= nil
+			return SquareHelpers.record.squareHasIsoSquare(square, opts)
 		end)
+	end
+end
+if SquareHelpers.stream.squareHasIsoSquare == nil then
+	function SquareHelpers.stream.squareHasIsoSquare(stream, fieldName, ...)
+		return SquareHelpers.squareHasIsoSquare(stream, fieldName, ...)
 	end
 end
 

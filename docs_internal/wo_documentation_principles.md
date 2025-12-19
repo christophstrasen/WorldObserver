@@ -29,6 +29,12 @@ Keep a clear split between user-facing docs and internal design notes:
     - `docs/quickstart.md` — subscribe to an observation, print something, stop/unsubscribe.
     - `docs/observations/` — what’s available (“squares”, “zombies”, …) + what each emits.
     - `docs/guides/` — workflows (declare interest, make a derived observation, debug).
+      - Planned: a guide specifically about **multi-family derived streams** (streams whose observations carry more than one family, e.g. both `observation.square` and `observation.zombie`).
+        - Explain how to read and guard multi-family observations (only use fields you expect; don’t assume every family is present).
+        - Show how to filter with family sugar (`:whereSquare(...)`, `:whereZombie(...)`) when you only care about one family.
+        - Show how to handle “both are present” logic (e.g. “zombie has target and is on a bloody square”) without turning it into a big nil-check mess.
+        - Cover naming conventions for derived fields and how to keep the observation shape readable.
+        - Include one small, copy/paste example and a clear “stop/unsubscribe + stop lease” cleanup pattern.
     - `docs/troubleshooting.md` — common pitfalls (nil Iso objects, too much scanning, missing interest, headless vs game runtime).
     - `docs/reference/` — stable API reference once the surface is truly stable.
 
@@ -128,4 +134,3 @@ Before merging a new or heavily edited WO doc:
 - Does it avoid leaking LQR complexity unless necessary (and link when it does)?
 - Does it mention the relevant safety constraints (interest, budgets, unsubscribing)?
 - Does it belong in `docs/` (user-facing) vs `docs_internal/` (internal)?
-

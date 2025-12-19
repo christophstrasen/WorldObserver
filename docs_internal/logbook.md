@@ -101,7 +101,7 @@
   - `facts/squares.lua` emits `SquareObservation` records from `OnLoadGridsquare` + near-player probe with basic detection stubs and guardrails.
   - `observations/core.lua` defines ObservationStream, helper wiring, fact dependency tracking, and subscription-driven fact lifecycle hooks.
   - `observations/squares.lua` wraps square facts into `observation.square` with schema/id/time stamping.
-  - `helpers/square.lua` provides `squareHasBloodSplat` / `whereSquareNeedsCleaning` (with `squareNeedsCleaning` kept as a compatibility alias) and warnings on misuse.
+  - `helpers/square.lua` provides early square helper filters (at the time including a `whereSquareNeedsCleaning` prototype; later removed in favor of composable record predicates + `stream:filter(...)`).
   - `debug.lua` stubs describeFacts/describeStream logging hooks.
 - Extended LQR’s `Schema.wrap` to honor `sourceTimeField`/`sourceTimeSelector` and `idSelector`, and preserved RxMeta ids through schema renames.
 - Added unit tests:
@@ -185,12 +185,12 @@
   - Added a dedicated `tests/unit/patching_spec.lua` to exercise patch seams and ensure patches affect long-lived handlers.
 
 - Refined square helper strategy around “stable payload + optional live object”:
-  - Implemented square hydration as a **stream helper** (`whereSquareHasIsoSquare`) instead of record decoration, aligning with the existing helper attachment mechanism.
+  - Implemented square hydration as a **stream helper** (`squareHasIsoSquare`) instead of record decoration, aligning with the existing helper attachment mechanism.
   - Implemented `SquareHelpers.record.getIsoSquare` with `validateIsoSquare` + `hydrateIsoSquare` as patchable seams, using `getWorld():getCell():getGridSquare(x,y,z)` (and `getCell()` fallback) guarded by `pcall`.
 
 - Restored and clarified corpse detection:
   - Re-introduced `SquareObservation.hasCorpse` as a materialized boolean and populated it primarily via `IsoGridSquare:getDeadBody()` at record creation time (fallback to `hasCorpse` when needed).
-  - Updated square helpers to treat corpse detection as a patchable record-level predicate (`SquareHelpers.record.squareHasCorpse`) used by `whereSquareNeedsCleaning`.
+  - Updated square helpers to treat corpse detection as a patchable record-level predicate (`SquareHelpers.record.squareHasCorpse`) so it can be reused in stream helpers and in mod-defined predicates.
   - Updated schema docs (`docs_internal/mvp.md`) and added a unit test ensuring `hasCorpse` is set when `getDeadBody()` returns a corpse.
 
 - Tightened “patchable by default” policy in docs:
@@ -200,7 +200,7 @@
   - Added `WorldObserver.debug.printObservation(observation, opts)` for compact, labeled observation printing (including join shapes) and updated `examples/smoke_squares.lua` to use it.
   - Improved `WO.DIAG` log readability by renaming `rate15(in/out /s)` to `rate15(in/out per sec)`.
   - Extended the squares smoke to support floor highlighting for:
-    - squares that pass `whereSquareNeedsCleaning()`; and
+    - squares that match the “dirty square” predicate used at the time; and
     - all squares emitted by the probe lane (`source="probe"`) so the probe’s scan area is visible even when filters suppress output.
   - Added highlight TTL cleanup and an in-engine `OnTick` refresher to keep highlights visible, plus rate-limited stats logs explaining when highlight calls are no-ops (missing `floor`, missing highlight setters, etc.).
 

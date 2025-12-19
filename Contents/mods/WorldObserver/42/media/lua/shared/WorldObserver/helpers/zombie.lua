@@ -13,6 +13,16 @@ if type(moduleName) == "string" then
 end
 
 ZombieHelpers.record = ZombieHelpers.record or {}
+ZombieHelpers.stream = ZombieHelpers.stream or {}
+
+local function zombieField(observation, fieldName)
+	local zombieRecord = observation[fieldName]
+	if zombieRecord == nil then
+		Log:warn("zombie helper called without field '%s' on observation", tostring(fieldName))
+		return nil
+	end
+	return zombieRecord
+end
 
 local function resolveZombieList()
 	local getCell = _G.getCell
@@ -70,6 +80,32 @@ if ZombieHelpers.record.getIsoZombie == nil then
 	end
 end
 
+local function zombieHasTarget(zombieRecord)
+	return type(zombieRecord) == "table" and zombieRecord.hasTarget == true
+end
+
+if ZombieHelpers.record.zombieHasTarget == nil then
+	ZombieHelpers.record.zombieHasTarget = zombieHasTarget
+end
+
+-- Stream sugar: apply a predicate to the zombie record directly.
+-- This avoids leaking LQR schema names (e.g. "ZombieObservation") into mod code.
+if ZombieHelpers.whereZombie == nil then
+	function ZombieHelpers.whereZombie(stream, fieldName, predicate)
+		assert(type(predicate) == "function", "whereZombie predicate must be a function")
+		local target = fieldName or "zombie"
+		return stream:filter(function(observation)
+			local zombieRecord = zombieField(observation, target)
+			return predicate(zombieRecord, observation) == true
+		end)
+	end
+end
+if ZombieHelpers.stream.whereZombie == nil then
+	function ZombieHelpers.stream.whereZombie(stream, fieldName, ...)
+		return ZombieHelpers.whereZombie(stream, fieldName, ...)
+	end
+end
+
 -- Highlight a zombie for a duration using the engine highlight APIs.
 if ZombieHelpers.highlight == nil then
 	function ZombieHelpers.highlight(zombieOrRecord, durationMs, opts)
@@ -79,29 +115,34 @@ if ZombieHelpers.highlight == nil then
 		end
 
 		local target = nil
-	if type(zombieOrRecord) == "userdata" or type(zombieOrRecord) == "table" then
-		if type(zombieOrRecord.getID) == "function" then
-			target = zombieOrRecord
-		elseif type(zombieOrRecord) == "table" then
-			target = ZombieHelpers.record.getIsoZombie(zombieOrRecord)
+		if type(zombieOrRecord) == "userdata" or type(zombieOrRecord) == "table" then
+			if type(zombieOrRecord.getID) == "function" then
+				target = zombieOrRecord
+			elseif type(zombieOrRecord) == "table" then
+				target = ZombieHelpers.record.getIsoZombie(zombieOrRecord)
+			end
 		end
-	end
-	if target == nil then
-		return nil, "noZombie"
-	end
+		if target == nil then
+			return nil, "noZombie"
+		end
 
-	opts.useOutline = true
-	return Highlight.highlightTarget(target, opts)
+		opts.useOutline = true
+		return Highlight.highlightTarget(target, opts)
 	end
 end
 
-if ZombieHelpers.whereZombieHasTarget == nil then
-	function ZombieHelpers.whereZombieHasTarget(stream, fieldName)
+if ZombieHelpers.zombieHasTarget == nil then
+	function ZombieHelpers.zombieHasTarget(stream, fieldName)
 		local target = fieldName or "zombie"
 		return stream:filter(function(observation)
-			local zombieRecord = observation[target]
-			return type(zombieRecord) == "table" and zombieRecord.hasTarget == true
+			local zombieRecord = zombieField(observation, target)
+			return ZombieHelpers.record.zombieHasTarget(zombieRecord)
 		end)
+	end
+end
+if ZombieHelpers.stream.zombieHasTarget == nil then
+	function ZombieHelpers.stream.zombieHasTarget(stream, fieldName, ...)
+		return ZombieHelpers.zombieHasTarget(stream, fieldName, ...)
 	end
 end
 

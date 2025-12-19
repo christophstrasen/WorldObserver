@@ -21,6 +21,10 @@ builders, etc.) is considered implementation detail and may change without notic
   reshape, or de‑duplicate observations, but they never introduce new schemas
   or perform joins/enrichment. Joins live inside ObservationStream `build`
   functions or advanced LQR usage.
+- **Helper “promise”:** helper methods should be easy to reason about:
+  - Most helpers return a new refined stream (filter/dedup/reshape).
+  - Helpers should not have surprising side effects (no global state, no hidden subscriptions).
+  - If a helper performs caching/hydration (best-effort), it must be called out in its docstring or user docs.
 - **Per‑observation naming:** whenever we talk about a single emission from an
   ObservationStream or LQR query, we treat it as **one observation** and name
   the per‑emission table `observation` (singular). Nested fields use singular
@@ -28,10 +32,10 @@ builders, etc.) is considered implementation detail and may change without notic
   `observation.zombie`, `observation.vehicle`).
 - **Helper naming conventions:** keep helper names semantic and consistent:
   - spatial constraints use `near*` (`nearIsoObject(...)`, `nearTilesOf(...)`, …);
-  - stream-returning filters use `where*` / `only*` (so it’s obvious they return a filtered stream), e.g.
-    `whereSquareNeedsCleaning()`, `onlySafeRooms()`;
-  - entity‑specific predicates/filters are prefixed with the entity, e.g.
-    `squareHasBloodSplat()` (legacy name), `whereSquareNeedsCleaning()`, `roomIsSafe()`, `zombieIsFast()`;
+  - stream helpers should read well in a chain and **default to fluent predicate names**:
+    - prefer `squareHasCorpse()`, `zombieHasTarget()`, `roomIsSafe()` over `whereSquareHasCorpse()`-style names;
+    - assume helpers return a refined stream unless clearly stated otherwise.
+  - reserve `where*` only for **rare** helpers where the fluent predicate form would be ambiguous or misleading.
   - `*Is*` is used for simple flags/enums on that entity, `*Has*` for lookups
     into collections/relationships (loot, decals, tags, outfit tags, etc.).
 - **LQR windows are internal:** join/group/distinct windows are tuned inside
@@ -135,10 +139,25 @@ builders, etc.) is considered implementation detail and may change without notic
   - This allows custom or derived streams to reuse existing helper sets even
     when they expose a type under a different per‑observation field name.
 - Stream methods are thin delegators that always dispatch through the helper
-  tables, so helpers remain patch‑able:
-  updating `WorldObserver.helpers.square.whereSquareNeedsCleaning` is enough for
-  all streams with `enabled_helpers.square` to see the new behavior (older
-  `squareNeedsCleaning()` remains as a compatibility alias).
+  tables, so helpers remain patch‑able.
+
+Helper sets are intentionally split into “layers” so it’s clear what is a stream
+method vs what is a record predicate vs what is an effect:
+
+- `WorldObserver.helpers.<type>.stream.*` are **stream helpers** that become
+  methods on ObservationStreams.
+  - Signature: `fn(stream, fieldName, ...) -> ObservationStream`.
+  - They refine streams (filter/dedup/reshape) and should stay reducing-only.
+- `WorldObserver.helpers.<type>.record.*` are **record helpers** that operate on
+  a single record table (one entity snapshot).
+  - Predicates: `fn(record, ...) -> boolean` (meant for `stream:filter(...)`).
+  - Hydration: `getIso*` style helpers return best-effort engine userdata.
+- `WorldObserver.helpers.<type>.*` (top-level) are **utility/effect helpers**
+  (e.g. `highlight(...)`) and are **not** attached as stream methods.
+
+Patch seam: prefer patching the top-level helper function (e.g.
+`WorldObserver.helpers.square.squareHasCorpse = function(stream, fieldName) ... end`),
+so existing streams keep calling the patched logic via their delegators.
 
 ### Shape of `subscribe` callbacks
 
@@ -183,17 +202,17 @@ builders, etc.) is considered implementation detail and may change without notic
 
 ### Predicate-based filtering
 
-- ObservationStreams expose a `filter` method:
-  `stream:filter(function(observation) return ... end)`.
-- This is a thin, advanced escape hatch that behaves like lua‑reactivex
-  `filter` applied to the underlying observable of per‑emission `observation`
-  tables: the predicate runs once per emission and decides whether that
-  observation should be kept or dropped.
-- The predicate receives the same `observation` shape as `subscribe`
-  (`observation.square`, `observation.room`, `observation.zombie`, etc.),
-  making it easy to express custom conditions without introducing new helpers.
-- Use `filter` for bespoke or complex logic; prefer named helpers for common,
-  reusable predicates so that beginners can stay on helper chains.
+- ObservationStreams expose a low-level `filter` method:
+  `stream:filter(function(rowView) return ... end)`.
+- Important: this predicate runs as an LQR `Query.where` predicate, and sees
+  LQR’s internal “row view”. Keys may be schema names (e.g. `"SquareObservation"`)
+  rather than the post-rename fields modders see in `subscribe` callbacks.
+- To keep modder code simple, WorldObserver also provides family sugar methods
+  that hide these schema keys and pass the record directly:
+  - `:whereSquare(function(squareRecord, observation) return ... end)`
+  - `:whereZombie(function(zombieRecord, observation) return ... end)`
+- Use `:whereSquare(...)` / `:whereZombie(...)` for mod-facing predicate
+  composition (AND/OR); reserve raw `filter` for advanced/internal use.
 
 ### Advanced escape hatch: `getLQR`
 
@@ -201,13 +220,28 @@ builders, etc.) is considered implementation detail and may change without notic
   `local lqrStream = stream:getLQR()`.
 - `getLQR()` returns the underlying LQR observable / query pipeline **as built
   so far**, including any WorldObserver helpers you have already chained
-  (`distinct`, `filter`, `whereSquareNeedsCleaning`, etc.).
+  (`distinct`, `filter`, `squareHasCorpse`, etc.).
 - The returned value is still “cold”: no probes or event listeners are
   activated until someone subscribes (either via WorldObserver’s `subscribe`
   or via LQR directly).
 - This is an advanced escape hatch for users who want to continue building
   with raw LQR APIs (joins, grouping, custom windows, and so on) on top of an
   existing ObservationStream.
+
+### ReactiveX bridge: `asRx`
+
+- Every ObservationStream also exposes `asRx()`:
+  `local rxStream = stream:asRx()`.
+- `asRx()` returns a lua-reactivex `Observable` that mirrors the stream:
+  subscriptions still trigger fact activation, and unsubscribing tears down
+  the underlying stream subscription.
+- Use this when you want general Rx operators like `map`, `filter`, `merge`,
+  `scan`, `tap`, `distinctUntilChanged`, `buffer`, etc.
+- Prefer WorldObserver’s dimension-aware `distinct("<dimension>", seconds)`
+  before converting; lua-reactivex `distinct()` is global (no dimension/time
+  awareness).
+- As with `getLQR()`, this is an escape hatch: keep the default stream helpers
+  for common cases and reach for Rx only when needed.
 
 ---
 ## 4. Debugging and logging
@@ -387,7 +421,7 @@ Notes:
 
 ---
 
-### 5.4 Squares that need cleaning (custom helper on a single stream)
+### 5.4 Squares that need cleaning (predicate composition + optional helper)
 
 Traditional intent:
 
@@ -399,10 +433,16 @@ WorldObserver‑style usage (mod-facing API):
 
 ```lua
 local WorldObserver = require("WorldObserver")
+local Square = WorldObserver.helpers.square
 
 local dirtySquares = WorldObserver.observations
   .squares()
-  :whereSquareNeedsCleaning()
+  :filter(function(observation)
+    local squareRecord = observation.square
+    return Square.record.squareHasCorpse(squareRecord)
+      or Square.record.squareHasBloodSplat(squareRecord)
+      or squareRecord.hasTrashItems == true -- example: your own field/predicate
+  end)
 
 dirtySquares:subscribe(function(observation)
   -- observation.square carries the square instance
@@ -410,31 +450,42 @@ dirtySquares:subscribe(function(observation)
 end)
 ```
 
+If you want to reuse this across mods or across multiple call sites, you can
+optionally package it as a named helper.
+
 Custom helper definition (square helper set extension):
 
 ```lua
 -- Somewhere in the square helper set definition:
 
-function SquareHelpers.whereSquareNeedsCleaning(stream)
-  return stream:filter(function(observation)
-    local square = observation.square or {}
+local SquareHelpers = require("WorldObserver/helpers/square")
 
-    local hasBlood   = square.hasBloodSplat == true
-    local hasTrash   = square.hasTrashItems == true
+SquareHelpers.record.squareIsDirty = SquareHelpers.record.squareIsDirty or function(squareRecord)
+	return SquareHelpers.record.squareHasCorpse(squareRecord)
+		or SquareHelpers.record.squareHasBloodSplat(squareRecord)
+		or (type(squareRecord) == "table" and squareRecord.hasTrashItems == true)
+end
 
-    return hasBlood or hasTrash
-  end)
+SquareHelpers.squareIsDirty = SquareHelpers.squareIsDirty or function(stream, fieldName)
+	local target = fieldName or "square"
+	return stream:filter(function(observation)
+		return SquareHelpers.record.squareIsDirty(observation[target])
+	end)
+end
+
+-- Ensure the stream method is attached (streams attach helpers from `.stream`).
+SquareHelpers.stream.squareIsDirty = SquareHelpers.stream.squareIsDirty or function(stream, fieldName, ...)
+	return SquareHelpers.squareIsDirty(stream, fieldName, ...)
 end
 ```
 
 Notes:
 
-- `whereSquareNeedsCleaning()` is a thin, named wrapper around a `filter`
-  predicate that operates on the `observation.square` instance; it does not add
-  new schemas or perform joins.
-- The helper can live in the same square helper set that attaches helpers
-  like `squareHasBloodSplat()`; ObservationStreams that enable the square
-  helpers automatically gain access to `whereSquareNeedsCleaning()`.
+- `squareIsDirty()` is a thin, named wrapper around a `filter` predicate; it
+  does not add new schemas or perform joins.
+- Higher-level helpers like this are a good fit when they express “domain truth”
+  that many mod features want to share, but you don’t want to add every possible
+  combination to the WorldObserver core API.
 - This pattern lets mod authors create and ship their own reusable
   ObservationStream helpers while keeping the core WorldObserver API small
   and focused.

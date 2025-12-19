@@ -31,8 +31,9 @@ then grow outwards.
     observations (`SquareObservation` payload under `observation.square`).
   - A minimal **square helper set**, wired via `enabled_helpers`, that is
     actually implemented in MVP (for example):
+    - `:squareHasCorpse()`
     - `:squareHasBloodSplat()`
-    - `:whereSquareNeedsCleaning()`
+    - `:squareHasIsoSquare()`
   - Core stream methods:
     - `:subscribe(function(observation) ...)`
     - `:distinct(dimensionName, seconds)`
@@ -144,7 +145,8 @@ least the following:
 Notes:
 
 - MVP does not need to fully define “trash items” yet; it is enough that the
-  field is present and used by `whereSquareNeedsCleaning()` (with `squareNeedsCleaning()` kept as a compatibility alias).
+  field is present so mods can build their own “dirty square” predicates via
+  `stream:filter(...)` (see `docs_internal/api_proposal.md` for the recommended pattern).
 - Additional derived fields (e.g. room IDs, zone tags) are deferred until we
   add more world types.
 
@@ -245,8 +247,8 @@ Implementation decisions and deferred work:
   for individual observations.
 - For MVP, `makeSquareRecord` will initially stub out the detection for
   `hasBloodSplat` and `hasTrashItems` (for example, always
-  `false` or `nil`), and helpers such as `whereSquareNeedsCleaning()` should be
-  implemented with that limitation in mind. Richer heuristics for these
+  `false` or `nil`). Any higher-level “dirty/needs cleaning” predicate should
+  be implemented with that limitation in mind. Richer heuristics for these
   fields are explicitly deferred.
 
 ### 4.3 Time stamping and integration with LQR
@@ -386,7 +388,10 @@ but are surfaced as methods on streams with `enabled_helpers.square`:
 function ObservationStream:squareHasBloodSplat() end
 
 ---@return ObservationStream
-function ObservationStream:whereSquareNeedsCleaning() end
+function ObservationStream:squareHasCorpse() end
+
+---@return ObservationStream
+function ObservationStream:squareHasIsoSquare() end
 ```
 
 These helpers are part of the MVP but are not yet “hard stable”; they may be
@@ -416,8 +421,8 @@ LQR and lua-reactivex, plus stubs for game objects and events.
       schema.
     - Plays well with `:distinct("square", seconds)` semantics.
   - Square helpers:
-    - `:squareHasBloodSplat()` and `:whereSquareNeedsCleaning()` filter emissions
-      correctly for stubbed observations.
+    - `:squareHasCorpse()` / `:squareHasBloodSplat()` / `:squareHasIsoSquare()`
+      filter emissions correctly for stubbed observations.
 
 ### 6.2 Engine-coupled tests (deferred)
 

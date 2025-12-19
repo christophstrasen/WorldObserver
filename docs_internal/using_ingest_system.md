@@ -270,11 +270,11 @@ Square facts include stable fields (`x/y/z`, flags, timestamps) and may also car
 If you need to *ensure* a live vanilla square object is present, use the stream helper:
 
 ```lua
-local stream = WorldObserver.observations.squares():whereSquareHasIsoSquare()
+local stream = WorldObserver.observations.squares():squareHasIsoSquare()
 stream:subscribe(function(obs)
 	-- Here, obs.square.IsoSquare is guaranteed non-nil.
 	local iso = obs.square.IsoSquare
 end)
 ```
 
-Contract: `whereSquareHasIsoSquare()` filters out observations when hydration fails (square unloaded or hydration globals unavailable, e.g. headless/tests).
+Contract: `squareHasIsoSquare()` filters out observations when hydration fails (square unloaded or hydration globals unavailable, e.g. headless/tests).

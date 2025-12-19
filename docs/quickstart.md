@@ -22,11 +22,14 @@ local MOD_ID = "YourModId"
 
 -- Declare interest: tell WorldObserver what you want it to look at, and how often.
 -- If you skip this, you may not get any observations at all
+--
+-- Time note: durations like `staleness`/`cooldown` are “seconds” on the in-game clock
+-- (same clock as `getGameTime():getTimeCalendar():getTimeInMillis()`), not real-time seconds.
 local lease = WorldObserver.factInterest:declare(MOD_ID, "quickstart.squares", {
   type = "squares.nearPlayer",
-  radius = { desired = 8 },
-  staleness = { desired = 5 },
-  cooldown = { desired = 2 },
+  radius = { desired = 8 },     -- tiles around the player
+  staleness = { desired = 5 },  -- informs the frequency of probing in seconds
+  cooldown = { desired = 2 },   -- don't re-emit for the same square within the cooldown seconds
 })
 
 local sub = WorldObserver.observations.squares()
@@ -42,7 +45,7 @@ local sub = WorldObserver.observations.squares()
     ))
 
     -- Optional: visual feedback (client-only). Highlights the square floor briefly.
-    WorldObserver.highlight(square, 750, { color = { 1.0, 0.2, 0.2 }, alpha = 0.9 })
+    WorldObserver.highlight(observation.square, 750, { color = { 1.0, 0.2, 0.2 }, alpha = 0.9 })
   end)
 
 -- IMPORTANT: you should stop your subscription and lease when you no longer need them.
@@ -67,16 +70,19 @@ _G.WOQuickstart = {
 
 ### Lease renewal and cleanup
 
-- Interest declarations are leases and can expire if you don’t renew them.
-- For long-running features, periodically call `lease:touch()` (for example once per minute).
+- Interest declarations are leases and will expire if you don’t renew them (TTL uses the same in-game clock as `staleness`/`cooldown`).
+- For long-running features, periodically call `lease:renew()` (for example once per minute).
 - Always call `sub:unsubscribe()` and `lease:stop()` when your feature turns off.
 
-See `docs/guides/lifecycle.md` for the recommended patterns.
+See [Lifecycle](guides/lifecycle.md) for the recommended patterns.
+
+Next:
+- [Observations](observations/index.md)
 
 ## 3. Verify it works
 
 - Load into a save (singleplayer is easiest for first verification).
-- Walk around until you see log lines like `WO quickstart] Corpse observed ...`.
+- Walk around until you see log lines like `[WO quickstart] Corpse observed ...`.
 - If highlighting is available, affected squares should flash briefly.
 
 If you see nothing, the most common causes:
@@ -84,3 +90,15 @@ If you see nothing, the most common causes:
 - Your file isn’t being loaded (ensure it’s under `media/lua/client/` or required from an existing entrypoint).
 - `WorldObserver` isn’t enabled / loads after your mod.
 - You’re in an area with no squares matching the predicate (try removing `:squareHasCorpse()` temporarily).
+
+### Custom conditions (AND/OR)
+
+Once you want custom boolean logic, keep the quickstart chain but switch to `:whereSquare(...)`:
+
+```lua
+local SquareHelper = WorldObserver.helpers.square.record
+local stream = WorldObserver.observations.squares()
+  :whereSquare(function(s)
+    return SquareHelper.squareHasCorpse(s) or SquareHelper.squareHasBloodSplat(s)
+  end)
+```

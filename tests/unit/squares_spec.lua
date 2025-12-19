@@ -148,7 +148,45 @@ describe("WorldObserver observations.squares()", function()
 		assert.is_equal(2, withCorpse[1].square.squareId)
 	end)
 
-	it("whereSquareHasIsoSquare hydrates and filters observations", function()
+	it("whereSquare passes the square record into the predicate", function()
+		local received = {}
+		local SquareHelper = WorldObserver.helpers.square.record
+		local stream = WorldObserver.observations.squares():whereSquare(function(squareRecord, observation)
+			assert.is_table(observation)
+			assert.is_table(squareRecord)
+			assert.equals(squareRecord, observation.SquareObservation)
+			return SquareHelper.squareHasCorpse(squareRecord)
+		end)
+		stream:subscribe(function(row)
+			received[#received + 1] = row
+		end)
+
+		WorldObserver._internal.facts:emit("squares", {
+			squareId = 1,
+			square = {},
+			hasCorpse = false,
+			x = 0,
+			y = 0,
+			z = 0,
+			observedAtTimeMS = 50,
+			sourceTime = 50,
+		})
+		WorldObserver._internal.facts:emit("squares", {
+			squareId = 2,
+			square = {},
+			hasCorpse = true,
+			x = 1,
+			y = 1,
+			z = 0,
+			observedAtTimeMS = 60,
+			sourceTime = 60,
+		})
+
+		assert.is_equal(1, #received)
+		assert.is_equal(2, received[1].square.squareId)
+	end)
+
+	it("squareHasIsoSquare hydrates and filters observations", function()
 		local hydrated = {
 			getX = function()
 				return 1
@@ -179,7 +217,7 @@ describe("WorldObserver observations.squares()", function()
 		end
 
 		local received = {}
-		local stream = WorldObserver.observations.squares():whereSquareHasIsoSquare()
+		local stream = WorldObserver.observations.squares():squareHasIsoSquare()
 		stream:subscribe(function(row)
 			received[#received + 1] = row
 		end)

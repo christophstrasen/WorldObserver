@@ -94,6 +94,31 @@ function BaseMethods:getLQR()
 	return self._builder
 end
 
+function BaseMethods:asRx()
+	local rx = require("reactivex")
+	local Observable = rx and rx.Observable
+	assert(Observable, "reactivex Observable not available")
+	local stream = self
+	return Observable.create(function(observer)
+		local subscription = stream:subscribe(
+			function(value)
+				return observer:onNext(value)
+			end,
+			function(err)
+				return observer:onError(err)
+			end,
+			function()
+				return observer:onCompleted()
+			end
+		)
+		return function()
+			if subscription and subscription.unsubscribe then
+				subscription:unsubscribe()
+			end
+		end
+	end)
+end
+
 function BaseMethods:filter(predicate)
 	local nextBuilder = self._builder:where(predicate)
 	return newObservationStream(nextBuilder, self._helperMethods, self._dimensions, self._factRegistry, self._factDeps)
@@ -154,7 +179,12 @@ local function buildHelperMethods(helperSets, enabledHelpers)
 		if helperSet then
 			-- Helper sets can target alternative field names (enabled_helpers value), defaulting to their own key.
 			local targetField = fieldName == true and helperKey or fieldName
-			for methodName, helperFn in pairs(helperSet) do
+			-- Only attach explicit stream helpers (avoid attaching record predicates, hydration helpers, effects, etc.).
+			local helperSource = helperSet
+			if type(helperSet.stream) == "table" then
+				helperSource = helperSet.stream
+			end
+			for methodName, helperFn in pairs(helperSource) do
 				if type(helperFn) == "function" and methods[methodName] == nil then
 					methods[methodName] = function(stream, ...)
 						return helperFn(stream, targetField, ...)
