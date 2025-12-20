@@ -320,3 +320,32 @@
 ### Next steps
 - Consider a tiny WorldObserver helper for time windows (e.g. “last N seconds”) to standardize `{ time, field, currentFn }` shapes across distinct/join/group usage.
 - Document the supported override paths + shallow-merge semantics in one place so smoke scripts and modders don’t rely on accidental config shape.
+
+## day12 – Helper cleanup, square hydration rename, interest opt-in, and smoke workflow hardening
+
+### Highlights
+- Removed the outdated square helper `squareHasBloodSplat` end-to-end (code, tests, docs, internal docs) to keep the surface aligned with reality.
+- Renamed the square record engine handle from `IsoSquare` to `IsoGridSquare` throughout:
+  - Fact record field is now `square.IsoGridSquare`.
+  - Hydration helper is now `squareHasIsoGridSquare()` (stream + record helper), plus updated examples and docs.
+- Made probes and listeners truly **opt-in**:
+  - Removed default probing behavior for `squares.nearPlayer` and `zombies.nearPlayer` (no more `allowDefault=true`).
+  - Ensured “no lease” clears cached effective interest state so probes don’t accidentally keep running on stale values.
+- Fixed a major “why are squares highlighted?” confusion:
+  - Probe highlighting is now gated by `highlight=true` on the relevant lease (not unconditional).
+  - Added the same `highlight=true` support to `type="squares.onLoad"` (event-driven) and added a unit test for it.
+- Improved runtime/diagnostic clarity:
+  - Updated fact startup logs to reflect both config toggles and whether interest leases are currently present (instead of implying a static “plan” with probe on/off).
+- Hardened the in-game smoke workflow (for real modder usage):
+  - Fixed misleading defaults and commented-out lease blocks that made smoke runs silently declare no interest.
+  - Simplified `examples/smoke_squares.lua` to a readable “what you see is what runs” script: declares `squares.nearPlayer` and `squares.vision` exactly as written, and only takes a couple of small display opts.
+  - Added a short note about why `squares.onLoad` can go quiet (events only) and when to use probe interests for continuous discovery.
+- Updated user-facing docs to match the “interest is required” mental model and to explain `squares.onLoad` vs `squares.nearPlayer` behavior.
+
+### Lessons
+- “No defaults” for probing is the safest principle for modder expectations: if a mod didn’t declare interest, the system should stay idle.
+- Event-driven square observation (`squares.onLoad`) and probe-driven observation (`squares.nearPlayer`/`squares.vision`) have very different “go quiet” semantics; docs and smoke tooling must make that distinction explicit.
+- Smoke scripts should be opinionated and readable; too many toggles makes it easy to accidentally test “nothing”.
+
+### Next steps
+- Consider adding a global rate limiter / backpressure strategy for `squares.onLoad` bursts (unique-key storms during chunk loads) to avoid ingest overload without relying only on cooldown.

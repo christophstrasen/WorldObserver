@@ -68,6 +68,13 @@ Record helpers (use inside `:whereSquare(...)` or inside Rx `:filter(...)` after
 - `WorldObserver.helpers.square.record.squareHasCorpse(squareRecord)`
 - `WorldObserver.helpers.square.record.squareHasIsoGridSquare(squareRecord, opts)` (may hydrate/cache `squareRecord.IsoGridSquare`)
 
+## Choosing an interest type (why streams can go quiet)
+
+WorldObserver can observe squares in different ways depending on what interest you declare.
+
+- `type = "squares.onLoad"`: event-driven. You’ll see bursts when the game loads new squares (entering new chunks). If you walk around inside already-loaded areas, it can go quiet. It also won’t notice “new corpse appeared on an already-loaded square” until that square is loaded again.
+- `type = "squares.nearPlayer"`: probe-driven. WO actively scans around the player on a cadence (controlled by `staleness`/`radius`/`cooldown`), so it can keep producing observations as you move.
+
 ## About `IsoGridSquare` (important)
 
 WorldObserver streams are “observations, not entities”.
