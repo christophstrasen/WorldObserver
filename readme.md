@@ -2,228 +2,109 @@
 
 [![CI](https://github.com/christophstrasen/WorldObserver/actions/workflows/ci.yml/badge.svg)](https://github.com/christophstrasen/WorldObserver/actions/workflows/ci.yml)
 
+*A shared observation layer for **Project Zomboid (Build 42)** mods written in Lua.*
 
-**WorldObserver** is a shared observation layer for **Project Zomboid (Build 42)** mods.
+WorldObserver helps mods **observe what is happening in the world — safely, fairly, and over time** — without each mod re‑implementing fragile scan loops, throttling logic, and ad‑hoc state tracking.
 
-It helps mods **observe what is happening in the world — safely, fairly, and over time** —
-without every mod re-implementing fragile scan loops, throttling logic, or ad-hoc state tracking.
+**30-second overview**
 
-WorldObserver is deliberately focused on **facts and observations**.
+WorldObserver is a cooperative “world sensing engine” for Project Zomboid mods. Instead of hand-rolling `OnTick` scan batches, multiple interweaving event-listeners, and your own cache-invalidation, you **declare interest** (“what should we watch, and how fresh do you need it?”) and then subscribe to ready-made **observation streams**.
 
-> It answers **“what do we know about the world?”**  
-> You decide **“what does this mean?”** and **“what should happen?”**
+This makes “world watching” code feel compact and declarative: you chain readable operations (helpers, `distinct`, joins) and let the engine do the looping, scheduling, and throttling. The result is **signal above noise**: instead of processing raw world state, you subscribe to fewer, more actionable observations can more easily express “what you really care about”.
 
----
+Use it for features like “corpse squares near the player”, “chef zombies in kitchens”, or “cars under attack” — and other more advanced situations.
 
-## Status
+The player-facing payoff is smoother FPS: when several mods would otherwise run heavy scanning in parallel, WorldObserver makes them cooperate by merging overlapping interests, sharing the probing work enforcing budgets and fairness and thus keeping frame time predictable.
 
-- Approaching **Alpha**
-- API surface is stabilizing, naming may still change
-- Focus: correctness, performance safety, and expressive observation
+Start here: [Quickstart](docs/quickstart.md), then follow the [docs index](docs/index.md).
 
 ---
 
-## Before: how mods observe the world today
+## Quickstart (hello observation)
 
-Most Zomboid mods that observe the world end up hand-rolling variations of the same patterns:
+This is the smallest end-to-end usage:
+1) declare an interest lease (so WorldObserver knows what facts to gather)  
+2) subscribe to a base observation stream  
+3) stop cleanly (unsubscribe + stop lease)
 
-- periodic scans of nearby squares or chunks
-- multiple `OnTick` counters and cooldowns
-- partial event subscriptions
-- manual deduplication and state tables
-- defensive throttling to avoid frame drops
-- bespoke logic to remember “what we already saw”
+Full walkthrough:
+- [Quickstart](docs/quickstart.md)
 
-This works — but it scales poorly.
+```lua
+local WorldObserver = require("WorldObserver")
 
-Problems appear when:
-- observation logic becomes complex or stateful
-- multiple mods observe the same areas
-- bursts of world activity happen (chunk loads)
-- you want to reason *over time*, not just per event
+local MOD_ID = "YourModId"
 
-Even worse:  
-**each mod solves these problems in isolation**, often rediscovering the same pitfalls.
+-- NOTE: time knobs use the in-game clock (seconds), not real-time seconds.
+local lease = WorldObserver.factInterest:declare(MOD_ID, "quickstart.squares", {
+  type = "squares",
+  scope = "near",
+  target = { player = { id = 0 } }, -- v0: singleplayer local player
+  radius = { desired = 8 },
+  staleness = { desired = 5 },
+  cooldown = { desired = 2 },
+})
 
----
+local sub = WorldObserver.observations.squares()
+  :squareHasCorpse()          -- try removing this line if you see no output
+  :distinct("square", 10)
+  :subscribe(function(observation)
+    local s = observation.square
+    print(("[WO] squareId=%s x=%s y=%s z=%s source=%s"):format(
+      tostring(s.squareId),
+      tostring(s.x),
+      tostring(s.y),
+      tostring(s.z),
+      tostring(s.source)
+    ))
 
-## What WorldObserver changes
+    -- Optional: brief visual feedback (client-only).
+    WorldObserver.highlight(s, 750, { color = { 1.0, 0.2, 0.2 }, alpha = 0.9 })
+  end)
 
-WorldObserver tackles two things at once:
+_G.WOHello = {
+  stop = function()
+    if sub then sub:unsubscribe(); sub = nil end
+    if lease then lease:stop(); lease = nil end
+  end,
+}
+```
 
-1. **It centralizes observation work**  
-   so that probing, buffering, and throttling are shared and fair.
+## The model (facts → observations → your logic)
 
-2. **It raises the level of expression**  
-   so mods can reason about *patterns*, not just raw events.
+- **Facts** are discovered by WorldObserver (listeners + probes).
+- Your mod declares an **interest** (“what to focus on, and how fresh”), which returns a **lease**.
+- **Observation streams** emit plain Lua tables (“observations”) such as `observation.square` or `observation.zombie`.
+- Your mod turns observations into **situations** and **actions** (WorldObserver intentionally stops at observation).
 
-This is where LQR becomes important.
+Canonical definitions:
+- [Glossary](docs/glossary.md)
 
----
+## What you get (that’s painful to hand-roll)
 
-## Why LQR underneath matters
+- **Shared work and fairness:** when multiple mods declare overlapping interest, WorldObserver merges leases and runs shared probing/listening work.
+- **Safety knobs:** `radius`, `staleness`, `cooldown` let you express quality expectations while WorldObserver stays within budgets.
+- **Signal over noise:** helpers + `distinct` let you compact raw updates into “interesting observations” your mod can act on.
+- **Composability:** build derived streams by combining base streams (joins, windows, distinct). Start here: [Derived streams](docs/guides/derived_streams.md).
 
-WorldObserver builds on **LQR (Lua Query over Reactive streams)** as its observation backbone.
+Under the hood, WorldObserver is powered by LQR + lua-reactivex, but you can ignore that until you need derived streams:
+- https://github.com/christophstrasen/LQR
 
-This unlocks capabilities that are difficult to hand-roll correctly:
+## Status and scope
 
-### Joining observations
-Observe *relationships* instead of isolated facts:
-- zombies near certain squares
-- entities overlapping in space and time
-- correlated signals across streams
+- **Build:** Project Zomboid Build 42 only.
+- **Scope:** v0 is singleplayer-first (player id `0`).
+- **Stability:** approaching alpha; naming and shapes may still change.
+- **Location in this repo:** `Contents/mods/WorldObserver/42/`.
 
-### Grouping & aggregation
-Reason about *sets*, not just individuals:
-- “how many”
-- “how often”
-- “over what window of time”
+## Documentation
 
-### Stateful observation
-Maintain rolling or derived state safely:
-- A picture that gets progressively clearer over time
-- temporal conditions (“still true”, “no longer true”)
-- transitions instead of snapshots
-
-### Declarative intent
-Describe *what you want to observe*, not *how to poll it*:
-- the runtime decides when and how work happens
-- observation stays readable even as complexity grows
-
-Before WorldObserver, these patterns were:
-- rare,
-- fragile,
-- expensive,
-- or simply not attempted.
-
-WorldObserver makes them **normal, safe, and composable**.
-
----
-
-## What WorldObserver is (and is not)
-
-### It *is*
-- A **facts & observations** system
-- A way to observe the world **over time**
-- A shared runtime with **budgets and fairness**
-- A foundation for higher-level mod logic
-
-### It is *not*
-- A gameplay framework
-- A decision engine
-- A story system
-- A replacement for your mod’s logic
-
-WorldObserver intentionally **stops at observation**.
-
----
-
-## The core mental model
-
-WorldObserver is built around a clear pipeline:
-
-1. **Facts**  
-   Raw fact signals from the world (events, scanning probes).
-
-2. **Observations**  
-   Time-aware streams of higher level observations you can subscribe to.
-
-3. **Situations**  
-   *Your* interpretation of observations.  
-   This is the responsibility boundary.
-
-4. **Actions**  
-   What your mod does when a situation matters.
-
-WorldObserver owns **facts and observations**.  
-You own **situations and actions**.
-
----
-
-## How observation works (two equal pillars)
-
-WorldObserver is supported by **two equally important systems**.
-
-### 1. Runtime controller  
-**Safety**
-
-- Buffers incoming facts
-- Regulates ingest vs drain
-- Throttles probes
-- Enforces per-tick budgets
-- Drops work deterministically under pressure
-- Ensures fairness across mods
-
-No matter how expensive observation becomes,  
-**it never bypasses runtime safety**.
-
-### 2. Observation streams & queries  
-**Expressiveness**
-
-- Facts become typed **ObservationStreams**
-- Streams can be refined using **helpers**
-- More complex relationships are expressed using **queries**
-- Query results are exposed as *new streams*
-
-Everything remains subscribable, composable, and time-aware.
-
-
----
-
-## Interest declarations: collaborative probing
-
-Before any mod can successfuly subscribe to obervsations, it needs to **declare interest** in observations via specifying:
-- rough area
-- freshness expectations
-- cadence bands ??
-
-This enables something new:
-
-> **Collaborative probing**
-
-Instead of each mod probing independently:
-- needs are merged
-- probes are shared
-- fairness is enforced
-- degradation is coordinated
-
-This is not an optimization trick —  
-it is a governance mechanism for a shared runtime.
-
----
-
-## When should I use WorldObserver?
-
-WorldObserver shines when your mod:
-- observes continuously
-- reasons over time
-- correlates multiple signals
-- must stay performant alongside other mods
-
-If you only need a single event hook —
-WorldObserver is likely unnecessary.
-
----
-
-## How this relates to LQR
-
-You do **not** need to know LQR to use WorldObserver.
-
-If you do:
-- you can drop down when needed
-- but LQR remains a *means*, to an end
-- @TODO mention reactivex
-
-WorldObserver is **not “LQR with probes”**.  
-It is an observation system that **uses LQR to make complex observation safe and expressive**.
-
----
-
-## What to read next
-
-- `docs/quickstart.md`
-- `docs/observations/index.md`
-- `docs/guides/lifecycle.md`
+Docs:
+- [Docs index](docs/index.md) (start here)
+- [Quickstart](docs/quickstart.md) (copy/paste first working example)
+- [Observations overview](docs/observations/index.md) (what you can subscribe to)
+- [Glossary](docs/glossary.md) (canonical terminology)
+- [Troubleshooting](docs/troubleshooting.md)
 
 ---
 
