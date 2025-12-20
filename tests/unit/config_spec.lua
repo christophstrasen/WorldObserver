@@ -13,17 +13,21 @@ local Config = require("WorldObserver/config")
 ---@diagnostic disable: undefined-global
 describe("WorldObserver config", function()
 	local savedHeadless
+	local savedLqrHeadless
 	local savedOverrides
 
 	before_each(function()
 		savedHeadless = _G.WORLDOBSERVER_HEADLESS
+		savedLqrHeadless = _G.LQR_HEADLESS
 		savedOverrides = _G.WORLDOBSERVER_CONFIG_OVERRIDES
-		_G.WORLDOBSERVER_HEADLESS = false
+		_G.WORLDOBSERVER_HEADLESS = true
+		_G.LQR_HEADLESS = true
 		_G.WORLDOBSERVER_CONFIG_OVERRIDES = nil
 	end)
 
 	after_each(function()
 		_G.WORLDOBSERVER_HEADLESS = savedHeadless
+		_G.LQR_HEADLESS = savedLqrHeadless
 		_G.WORLDOBSERVER_CONFIG_OVERRIDES = savedOverrides
 	end)
 

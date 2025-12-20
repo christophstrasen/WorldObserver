@@ -6,9 +6,9 @@ local Geometry = require("WorldObserver/facts/squares/geometry")
 local Probe = require("WorldObserver/facts/squares/probe")
 local OnLoad = require("WorldObserver/facts/squares/on_load")
 
-local INTEREST_TYPE_NEAR = "squares.nearPlayer"
-local INTEREST_TYPE_VISION = "squares.vision"
-local INTEREST_TYPE_ONLOAD = "squares.onLoad"
+-- `squares` is the canonical squares probe type. We split behavior by scope (near/vision/etc).
+-- It can represent multiple target buckets (for example: player vs static square) under the same fact type.
+local INTEREST_TYPE_SQUARES = "squares"
 
 local moduleName = ...
 local Squares = {}
@@ -32,11 +32,42 @@ Squares._defaults.interest = Squares._defaults.interest or {
 local SQUARES_TICK_HOOK_ID = "facts.squares.tick"
 
 local function hasActiveLease(interestRegistry, interestType)
-	if not (interestRegistry and type(interestRegistry.effective) == "function") then
+	if not interestRegistry then
+		return false
+	end
+	if type(interestRegistry.effectiveBuckets) == "function" then
+		local ok, buckets = pcall(interestRegistry.effectiveBuckets, interestRegistry, interestType)
+		return ok and type(buckets) == "table" and buckets[1] ~= nil
+	end
+	if type(interestRegistry.effective) ~= "function" then
 		return false
 	end
 	local ok, merged = pcall(interestRegistry.effective, interestRegistry, interestType)
 	return ok and merged ~= nil
+end
+
+local function hasSquaresScopeInterest(interestRegistry, scope)
+	if not interestRegistry then
+		return false
+	end
+	if type(interestRegistry.effectiveBuckets) == "function" then
+		local ok, buckets = pcall(interestRegistry.effectiveBuckets, interestRegistry, INTEREST_TYPE_SQUARES)
+		if not ok or type(buckets) ~= "table" then
+			return false
+		end
+		for _, entry in ipairs(buckets) do
+			local merged = entry.merged
+			if type(merged) == "table" and merged.scope == scope then
+				return true
+			end
+		end
+		return false
+	end
+	if type(interestRegistry.effective) == "function" then
+		local ok, merged = pcall(interestRegistry.effective, interestRegistry, INTEREST_TYPE_SQUARES)
+		return ok and type(merged) == "table" and merged.scope == scope
+	end
+	return false
 end
 
 -- Default square record builder.
@@ -172,9 +203,9 @@ Squares._internal.registerTickHook = registerTickHook
 				})
 
 					if not headless then
-						local hasOnLoadInterest = hasActiveLease(interestRegistry, INTEREST_TYPE_ONLOAD)
-						local hasNearInterest = hasActiveLease(interestRegistry, INTEREST_TYPE_NEAR)
-						local hasVisionInterest = hasActiveLease(interestRegistry, INTEREST_TYPE_VISION)
+						local hasOnLoadInterest = hasSquaresScopeInterest(interestRegistry, "onLoad")
+						local hasNearInterest = hasSquaresScopeInterest(interestRegistry, "near")
+						local hasVisionInterest = hasSquaresScopeInterest(interestRegistry, "vision")
 						Log:info(
 							"Squares facts started (tickHook=%s cfgProbe=%s cfgListener=%s interestOnLoad=%s interestNear=%s interestVision=%s)",
 							tostring(tickHookRegistered),

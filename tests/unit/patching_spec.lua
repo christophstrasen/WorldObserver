@@ -52,7 +52,8 @@ local SquaresFacts = require("WorldObserver/facts/squares")
 				local InterestRegistry = require("WorldObserver/interest/registry")
 				local interestRegistry = InterestRegistry.new({ ttlMs = 1000000 })
 				interestRegistry:declare("test", "onLoad", {
-					type = "squares.onLoad",
+					type = "squares",
+					scope = "onLoad",
 					cooldown = { desired = 0, tolerable = 0 },
 				})
 
@@ -212,7 +213,8 @@ local SquaresFacts = require("WorldObserver/facts/squares")
 				local InterestRegistry = require("WorldObserver/interest/registry")
 				local interestRegistry = InterestRegistry.new({ ttlMs = 1000000 })
 				interestRegistry:declare("test", "onLoad", {
-					type = "squares.onLoad",
+					type = "squares",
+					scope = "onLoad",
 					cooldown = { desired = 1, tolerable = 1 },
 					highlight = true,
 				})

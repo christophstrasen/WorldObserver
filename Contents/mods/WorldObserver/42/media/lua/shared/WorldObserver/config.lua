@@ -268,6 +268,14 @@ local function validateOverrides(overrides)
 	if type(overrides) ~= "table" then
 		return
 	end
+	local suppressWarnings = Config.detectHeadlessFlag and Config.detectHeadlessFlag() == true
+
+	local function warnOverride(fmt, ...)
+		if suppressWarnings then
+			return
+		end
+		warnf(fmt, ...)
+	end
 
 	local function isAllowedBoolPath(path)
 		for _, allowed in ipairs(OVERRIDE_BOOL_PATHS) do
@@ -319,11 +327,11 @@ local function validateOverrides(overrides)
 				path[#path + 1] = key
 				if isAllowedBoolPath(path) then
 					if value ~= nil and type(value) ~= "boolean" then
-						warnf("Config override %s ignored (expected boolean, got %s)", pathToString(path), type(value))
+						warnOverride("Config override %s ignored (expected boolean, got %s)", pathToString(path), type(value))
 					end
 				elseif isAllowedTablePath(path) then
 					if value ~= nil and type(value) ~= "table" then
-						warnf("Config override %s ignored (expected table, got %s)", pathToString(path), type(value))
+						warnOverride("Config override %s ignored (expected table, got %s)", pathToString(path), type(value))
 					end
 				elseif isWithinAllowedTablePath(path) then
 					-- Descendants of table patches are allowed (shallow merge); do not warn here.
@@ -331,10 +339,10 @@ local function validateOverrides(overrides)
 					if type(value) == "table" then
 						walk(value, path)
 					elseif value ~= nil then
-						warnf("Config override %s ignored (expected table)", pathToString(path))
+						warnOverride("Config override %s ignored (expected table)", pathToString(path))
 					end
 				else
-					warnf("Config override %s ignored (unknown key)", pathToString(path))
+					warnOverride("Config override %s ignored (unknown key)", pathToString(path))
 				end
 				path[#path] = nil
 			end

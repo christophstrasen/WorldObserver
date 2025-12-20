@@ -3,7 +3,7 @@ local Log = require("LQR/util/log").withTag("WO.FACTS.zombies")
 
 local Probe = require("WorldObserver/facts/zombies/probe")
 
-local INTEREST_TYPE_NEAR = "zombies.nearPlayer"
+local INTEREST_TYPE_ZOMBIES = "zombies"
 
 local moduleName = ...
 local Zombies = {}
@@ -120,12 +120,12 @@ Zombies._internal.registerTickHook = registerTickHook
 					end
 
 					if not headless then
-						local hasNearInterest = hasActiveLease(interestRegistry, INTEREST_TYPE_NEAR)
+						local hasAllLoadedInterest = hasActiveLease(interestRegistry, INTEREST_TYPE_ZOMBIES)
 						Log:info(
-							"Zombies facts started (tickHook=%s cfgProbe=%s interestNear=%s)",
+							"Zombies facts started (tickHook=%s cfgProbe=%s interestAllLoaded=%s)",
 							tostring(tickHookRegistered),
 							tostring(probeEnabled),
-							tostring(hasNearInterest)
+							tostring(hasAllLoadedInterest)
 						)
 					end
 

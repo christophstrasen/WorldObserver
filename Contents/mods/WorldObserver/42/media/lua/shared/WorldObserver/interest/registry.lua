@@ -1,5 +1,16 @@
--- interest/registry.lua -- stores mod interest declarations (leases) and merges them into effective bands per fact type.
+-- interest/registry.lua -- stores mod interest declarations (leases) and merges them into effective interest bands.
+--
+-- Why this exists:
+-- - WorldObserver is a shared runtime. Multiple mods can request the same upstream probing/listening work.
+-- - We need a deterministic way to merge those requests into "one plan" the runtime can try to satisfy fairly.
+--
+-- The important design choice (intent):
+-- - Some interest types are "bucketed" by a target identity (example: squares scope=near for *player 0* vs scope=near for *a static square*).
+-- - We only merge declarations within the same bucket (same target identity).
+--   This is the simplest correctness/fairness model: it avoids "partial overlap" merging (which quickly explodes
+--   into geometry + prioritization problems) and keeps behavior predictable for modders.
 local Time = require("WorldObserver/helpers/time")
+local Log = require("LQR/util/log").withTag("WO.INTEREST")
 
 local moduleName = ...
 local Registry = {}
@@ -33,19 +44,13 @@ end
 local DEFAULT_TTL_MS = 10 * 60 * 1000
 
 local DEFAULTS = {
-	["squares.nearPlayer"] = {
+	["squares"] = {
 		staleness = { desired = 10, tolerable = 20 },
 		radius = { desired = 8, tolerable = 5 },
 		cooldown = { desired = 30, tolerable = 60 },
 		highlight = nil,
 	},
-	["squares.vision"] = {
-		staleness = { desired = 10, tolerable = 20 },
-		radius = { desired = 8, tolerable = 5 },
-		cooldown = { desired = 30, tolerable = 60 },
-		highlight = nil,
-	},
-	["zombies.nearPlayer"] = {
+	["zombies"] = {
 		staleness = { desired = 5, tolerable = 10 },
 		radius = { desired = 20, tolerable = 30 },
 		zRange = { desired = 1, tolerable = 0 },
@@ -106,22 +111,154 @@ local function normalizeBand(value, defaults)
 	return { desired = 0, tolerable = 0 }
 end
 
-local function normalizeSpec(spec, defaults)
+local function normalizeTarget(target)
+	if type(target) ~= "table" then
+		return nil
+	end
+	local kind = target.kind
+	if type(kind) ~= "string" or kind == "" then
+		return nil
+	end
+	if kind == "player" then
+		return { kind = "player", id = tonumber(target.id) or 0 }
+	end
+	if kind == "square" then
+		local x = tonumber(target.x)
+		local y = tonumber(target.y)
+		if x == nil or y == nil then
+			return { kind = "square" }
+		end
+		local z = tonumber(target.z) or 0
+		return {
+			kind = "square",
+			x = math.floor(x),
+			y = math.floor(y),
+			z = math.floor(z),
+		}
+	end
+	return {
+		kind = kind,
+		id = target.id or target.key,
+	}
+end
+
+local function normalizeScope(scope, fallback)
+	if type(scope) == "string" and scope ~= "" then
+		return scope
+	end
+	return fallback
+end
+
+local function isSquaresEventScope(scope)
+	return scope == "onLoad"
+end
+
+local function warnIgnored(interestType, scope, field)
+	if _G.WORLDOBSERVER_HEADLESS == true then
+		return
+	end
+	Log:warn("[interest] ignoring %s for %s scope=%s", tostring(field), tostring(interestType), tostring(scope))
+end
+
+-- Build the merge bucket key for an interest spec.
+--
+-- Intent:
+-- - `player` targets are WO-owned and merge across mods (bucket does NOT include modId).
+-- - `square` targets are mod-owned (x/y/z anchors) and are intentionally NOT merged across mods
+--   (bucket includes modId), because WO cannot validate that two mods mean the same thing by that anchor.
+--   This keeps the "trust surface" small: a mod can't affect another mod's probes by spoofing a shared center.
+local function bucketKeyForTarget(scope, target, modId)
+	scope = normalizeScope(scope, "near")
+	if isSquaresEventScope(scope) then
+		return "onLoad"
+	end
+	local kind = target and target.kind or "player"
+	if kind == "player" then
+		local id = target and target.id or 0
+		return scope .. ":player:" .. tostring(id)
+	end
+	if kind == "square" then
+		local x = target and target.x
+		local y = target and target.y
+		local z = target and target.z or 0
+		if type(x) == "number" and type(y) == "number" then
+			return scope .. ":square:" .. tostring(modId) .. ":" .. tostring(x) .. ":" .. tostring(y) .. ":" .. tostring(z)
+		end
+		return scope .. ":square:" .. tostring(modId)
+	end
+	local id = target and target.id
+	local suffix = id ~= nil and tostring(id) or "unknown"
+	return scope .. ":" .. tostring(kind) .. ":" .. tostring(modId) .. ":" .. suffix
+end
+
+-- Normalize a user-provided interest spec into a canonical shape used by the runtime.
+--
+-- Why normalize here:
+-- - Leases are stored for a long time; we want them to have stable semantics even if callers omit fields.
+-- - Downstream (policy/probes) should not have to handle every historical "shape".
+local function normalizeSpec(spec, defaults, modId)
 	spec = spec or {}
 	local interestType = spec.type
 	if type(interestType) ~= "string" or interestType == "" then
-		-- Default to the common “near player squares” interest so mods can declare without boilerplate.
-		interestType = "squares.nearPlayer"
+		-- Default to the common “near squares” interest so mods can declare without boilerplate.
+		interestType = "squares"
 	end
-	local typeDefaults = defaults[interestType] or {}
-	return {
-		type = interestType,
-		staleness = normalizeBand(spec.staleness, typeDefaults.staleness),
-		radius = normalizeBand(spec.radius, typeDefaults.radius),
+	local canonicalType = interestType
+	local scope = spec.scope
+	local target = nil
+	if interestType == "squares" then
+		scope = normalizeScope(scope, "near")
+		if not isSquaresEventScope(scope) then
+			target = normalizeTarget(spec.target) or { kind = "player", id = 0 }
+		else
+			if spec.target ~= nil then
+				warnIgnored(interestType, scope, "target")
+			end
+			if spec.radius ~= nil then
+				warnIgnored(interestType, scope, "radius")
+			end
+			if spec.staleness ~= nil then
+				warnIgnored(interestType, scope, "staleness")
+			end
+		end
+	elseif interestType == "zombies" then
+		scope = normalizeScope(scope, "allLoaded")
+		if scope ~= "allLoaded" then
+			warnIgnored(interestType, scope, "scope")
+			scope = "allLoaded"
+		end
+		if spec.target ~= nil then
+			warnIgnored(interestType, scope, "target")
+		end
+	end
+	local typeDefaults = defaults[canonicalType] or defaults[interestType] or {}
+	local staleness = nil
+	local radius = nil
+	if interestType == "squares" and isSquaresEventScope(scope) then
+		-- Event scopes ignore probe-only knobs; normalize them to zeroed bands so merges stay stable.
+		staleness = { desired = 0, tolerable = 0 }
+		radius = { desired = 0, tolerable = 0 }
+	else
+		staleness = normalizeBand(spec.staleness, typeDefaults.staleness)
+		radius = normalizeBand(spec.radius, typeDefaults.radius)
+	end
+	local normalized = {
+		type = canonicalType,
+		scope = scope,
+		target = target,
+		staleness = staleness,
+		radius = radius,
 		zRange = normalizeBand(spec.zRange, typeDefaults.zRange),
 		cooldown = normalizeBand(spec.cooldown, typeDefaults.cooldown),
 		highlight = spec.highlight ~= nil and spec.highlight or typeDefaults.highlight,
 	}
+	local bucketKey = "default"
+	if canonicalType == "squares" then
+		bucketKey = bucketKeyForTarget(scope, target, modId or "unknown")
+	elseif canonicalType == "zombies" then
+		bucketKey = scope or "allLoaded"
+	end
+	return normalized, bucketKey
 end
 
 local function bandUnion(bands, knob, incoming)
@@ -142,21 +279,31 @@ local function bandUnion(bands, knob, incoming)
 	end
 end
 
-local function mergeSpecs(specs, defaults)
+local function mergeSpecs(leases)
 	local mergedByType = {}
-	for _, spec in ipairs(specs) do
-		local normalized = normalizeSpec(spec, defaults)
-		local target = mergedByType[normalized.type]
+	for _, lease in ipairs(leases) do
+		local normalized = lease.spec
+		local typeKey = normalized.type
+		local bucketKey = lease.bucketKey or "default"
+		local buckets = mergedByType[typeKey]
+		if not buckets then
+			buckets = {}
+			mergedByType[typeKey] = buckets
+		end
+		local target = buckets[bucketKey]
 		if not target then
 			target = {
 				type = normalized.type,
+				bucketKey = bucketKey,
+				scope = normalized.scope,
+				target = normalized.target,
 				staleness = cloneTable(normalized.staleness),
 				radius = cloneTable(normalized.radius),
 				zRange = cloneTable(normalized.zRange),
 				cooldown = cloneTable(normalized.cooldown),
 				highlight = normalized.highlight,
 			}
-			mergedByType[normalized.type] = target
+			buckets[bucketKey] = target
 		else
 			bandUnion(target, "staleness", normalized.staleness)
 			bandUnion(target, "radius", normalized.radius)
@@ -200,10 +347,12 @@ end
 local function addLeaseWithTtl(self, modId, key, spec, nowMs, ttlMs)
 	ttlMs = tonumber(ttlMs) or self._ttlMs
 	assert(ttlMs > 0, "interest lease ttl must be > 0")
+	local normalizedSpec, bucketKey = normalizeSpec(spec or {}, self._defaults, modId)
 	local lease = {
 		modId = modId,
 		key = key,
-		spec = spec,
+		spec = normalizedSpec,
+		bucketKey = bucketKey,
 		ttlMs = ttlMs,
 		expiresAtMs = (nowMs or nowMillis()) + ttlMs,
 	}
@@ -315,12 +464,12 @@ function Registry:revoke(modId, key)
 end
 
 local function collectValidLeases(self, nowMs)
-	local specs = {}
+	local leases = {}
 	local expired = {}
 	for modId, byKey in pairs(self._leases) do
 		for key, lease in pairs(byKey) do
 			if lease.expiresAtMs and lease.expiresAtMs > nowMs then
-				specs[#specs + 1] = lease.spec
+				leases[#leases + 1] = lease
 			else
 				expired[#expired + 1] = { modId = modId, key = key }
 			end
@@ -330,25 +479,84 @@ local function collectValidLeases(self, nowMs)
 	for _, entry in ipairs(expired) do
 		self:revoke(entry.modId, entry.key)
 	end
-	return specs
+	return leases
+end
+
+local function resolveTypeAndBucket(factType, opts)
+	local bucketKey = opts and opts.bucketKey or nil
+	return factType, bucketKey
 end
 
 --- Merge all active leases for the given fact type.
 --- @param factType string
 --- @param nowMs number|nil
+--- @param opts table|nil Optional, e.g. { bucketKey = "near:player:0" }.
 --- @return table|nil merged
-function Registry:effective(factType, nowMs)
+function Registry:effective(factType, nowMs, opts)
 	nowMs = nowMs or nowMillis()
-	local specs = collectValidLeases(self, nowMs)
-	if #specs == 0 then
+	local leases = collectValidLeases(self, nowMs)
+	if #leases == 0 then
 		return nil
 	end
-	local mergedByType = mergeSpecs(specs, self._defaults)
-	return mergedByType[factType or "squares"]
+	local mergedByType = mergeSpecs(leases)
+	local canonicalType, bucketKey = resolveTypeAndBucket(factType or "squares", opts)
+	local buckets = mergedByType[canonicalType]
+	if not buckets then
+		return nil
+	end
+	if bucketKey ~= nil then
+		return buckets[bucketKey]
+	end
+	-- For bucketed types, returning "the only bucket" is a convenience when exactly one exists.
+	-- If multiple buckets exist, callers should use `effectiveBuckets` to iterate deterministically.
+	local only = nil
+	for _, merged in pairs(buckets) do
+		if only ~= nil then
+			return nil
+		end
+		only = merged
+	end
+	return only
 end
 
 Registry._internal.normalizeBand = normalizeBand
 Registry._internal.normalizeSpec = normalizeSpec
 Registry._internal.mergeSpecs = mergeSpecs
+Registry._internal.bucketKeyForTarget = bucketKeyForTarget
+
+-- Enumerate all merged buckets for a fact type.
+--
+-- This is the primary interface for bucketed interests: probes can scan each bucket independently and
+-- schedule them round-robin under a shared budget.
+function Registry:effectiveBuckets(factType, nowMs, opts)
+	nowMs = nowMs or nowMillis()
+	local leases = collectValidLeases(self, nowMs)
+	if #leases == 0 then
+		return {}
+	end
+	local mergedByType = mergeSpecs(leases)
+	local canonicalType, bucketKey = resolveTypeAndBucket(factType or "squares", opts)
+	local buckets = mergedByType[canonicalType]
+	if not buckets then
+		return {}
+	end
+	if bucketKey ~= nil then
+		local merged = buckets[bucketKey]
+		if not merged then
+			return {}
+		end
+		return { { bucketKey = bucketKey, merged = merged } }
+	end
+	local keys = {}
+	for key in pairs(buckets) do
+		keys[#keys + 1] = key
+	end
+	table.sort(keys)
+	local out = {}
+	for _, key in ipairs(keys) do
+		out[#out + 1] = { bucketKey = key, merged = buckets[key] }
+	end
+	return out
+end
 
 return Registry

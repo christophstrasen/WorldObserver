@@ -14,10 +14,10 @@ local Record = require("WorldObserver/facts/zombies/record")
 describe("zombies interest and records", function()
 	it("merges zRange with radius-style semantics", function()
 		local registry = InterestRegistry.new({ ttlMs = 1000000 })
-		registry:declare("m1", "a", { type = "zombies.nearPlayer", zRange = { desired = 0, tolerable = 0 } })
-		registry:declare("m2", "b", { type = "zombies.nearPlayer", zRange = { desired = 2, tolerable = 3 } })
+		registry:declare("m1", "a", { type = "zombies", scope = "allLoaded", zRange = { desired = 0, tolerable = 0 } })
+		registry:declare("m2", "b", { type = "zombies", scope = "allLoaded", zRange = { desired = 2, tolerable = 3 } })
 
-		local merged = registry:effective("zombies.nearPlayer")
+		local merged = registry:effective("zombies", nil, { bucketKey = "allLoaded" })
 		assert.is_truthy(merged)
 		assert.equals(2, merged.zRange.desired)
 		assert.equals(3, merged.zRange.tolerable)
@@ -25,8 +25,8 @@ describe("zombies interest and records", function()
 
 	it("carries highlight preference through merging", function()
 		local registry = InterestRegistry.new({ ttlMs = 1000000 })
-		registry:declare("m1", "a", { type = "zombies.nearPlayer", highlight = true })
-		local merged = registry:effective("zombies.nearPlayer")
+		registry:declare("m1", "a", { type = "zombies", scope = "allLoaded", highlight = true })
+		local merged = registry:effective("zombies", nil, { bucketKey = "allLoaded" })
 		assert.is_truthy(merged)
 		assert.is_true(merged.highlight)
 	end)
@@ -177,6 +177,13 @@ describe("zombies interest and records", function()
 	end)
 
 	it("highlights zombies via outline APIs when available", function()
+		local savedEvents = _G.Events
+		_G.Events = {
+			OnTick = {
+				Add = function() end,
+				Remove = function() end,
+			},
+		}
 		local calledOn = {}
 		local target = {
 			setOutlineHighlightColor = function(_, r, g, b, a)
@@ -197,5 +204,6 @@ describe("zombies interest and records", function()
 			handle.stop()
 		end
 		assert.is_false(calledOn.enabled)
+		_G.Events = savedEvents
 	end)
 end)

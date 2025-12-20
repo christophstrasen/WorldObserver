@@ -16,8 +16,9 @@ local InterestEffective = require("WorldObserver/facts/interest_effective")
 describe("interest effective meta", function()
 	it("returns demandRatio in meta and caches it per type", function()
 		local interestRegistry = {
-			effective = function(_, interestType)
-				assert.equals("squares.nearPlayer", interestType)
+			effective = function(_, interestType, _, opts)
+				assert.equals("squares", interestType)
+				assert.equals("near:player:0", opts.bucketKey)
 				return {
 					staleness = { desired = 1, tolerable = 2 },
 					radius = { desired = 8, tolerable = 5 },
@@ -37,8 +38,9 @@ describe("interest effective meta", function()
 		}
 
 		local state = {}
-		local effective, meta = InterestEffective.ensure(state, interestRegistry, runtime, "squares.nearPlayer", {
+		local effective, meta = InterestEffective.ensure(state, interestRegistry, runtime, "squares", {
 			label = "near",
+			bucketKey = "near:player:0",
 			signals = { probeLagEstimateMs = 2000, probeLagRatio = 2, probeLagOverdueMs = 1000 },
 		})
 
@@ -49,7 +51,9 @@ describe("interest effective meta", function()
 		assert.equals(2.0, meta.demandRatio)
 
 		assert.is_table(state._effectiveInterestMetaByType)
-		assert.equals(meta, state._effectiveInterestMetaByType["squares.nearPlayer"])
+		local metaByBucket = state._effectiveInterestMetaByType["squares"]
+		assert.is_table(metaByBucket)
+		assert.equals(meta, metaByBucket["near:player:0"])
 	end)
 
 	it("returns demandRatio=0 when no lag estimate is available", function()
@@ -63,11 +67,11 @@ describe("interest effective meta", function()
 			end,
 		}
 		local state = {}
-		local _, meta = InterestEffective.ensure(state, interestRegistry, nil, "squares.nearPlayer", {
+		local _, meta = InterestEffective.ensure(state, interestRegistry, nil, "squares", {
 			label = "near",
+			bucketKey = "near:player:0",
 		})
 		assert.is_table(meta)
 		assert.equals(0, meta.demandRatio)
 	end)
 end)
-

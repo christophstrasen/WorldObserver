@@ -79,7 +79,7 @@
   - Encouraged advanced/custom streams that lack a natural stable ID to reuse `nextObservationId` as `idSelector` when calling `LQR.Schema.wrap`, so they inherit the same per-observation ID guarantees used by WorldObserver’s own facts.
 
 - Clarified fact-layer probe behavior and single-player focus:
-  - Captured the `nearPlayers_closeRing` probe sketch for squares and noted that `ctx.players:nearby()` is future-proofing; in the Build 42 MVP it effectively yields at most one player due to single-player / server-side focus.
+- Captured the `squares_near_closeRing` probe sketch for squares and noted that `ctx.players:nearby()` is future-proofing; in the Build 42 MVP it effectively yields at most one player due to single-player / server-side focus.
 
 - Tightened naming and documentation consistency:
   - Switched consistently to `ObservationStream` (singular) as the type name, with “ObservationStreams” used only in prose.
@@ -266,10 +266,10 @@
 - Added an auto-budget “gas pedal” for probes: when probes lag but the overall WorldObserver tick has headroom, spend more of the 4ms budget on probing (capped against drain/other work).
   - When auto-budget raises `budgetMs`, probes also scale their per-tick iteration cap (up to a hard cap) so budget isn’t left unused due to `maxPerRun`.
 - Improved runtime diagnostics to show probe vs drain vs other vs total cost on one line, including tick spike maxima.
-- Gated `Events.LoadGridsquare` behind explicit interest (`squares.onLoad`) so “smoke probe-only runs” don’t enable event ingestion unless something asked for it.
+- Gated `Events.LoadGridsquare` behind explicit interest (`squares` scope=onLoad) so “smoke probe-only runs” don’t enable event ingestion unless something asked for it.
 - Refactored the large `facts/squares.lua` into smaller modules (record building / geometry / probes / onLoad listener / shared interest resolver) while preserving patch seams and keeping busted tests green.
 - Added the next fact family: **zombies** (`WorldObserver.observations:zombies()` emitting `observation.zombie`) with:
-  - `zombies.nearPlayer` interest (including `zRange` for vertical filtering).
+  - `zombies` scope=allLoaded interest (including `zRange` for vertical filtering).
   - A time-sliced `IsoCell:getZombieList()` cursor probe (budgeted per tick) and stable `ZombieObservation` record shape.
   - A smoke example (`examples/smoke_zombies.lua`) to validate leases + subscribe + filters quickly in-game.
 - Added interest-driven highlighting for fact sources:
@@ -329,23 +329,53 @@
   - Fact record field is now `square.IsoGridSquare`.
   - Hydration helper is now `squareHasIsoGridSquare()` (stream + record helper), plus updated examples and docs.
 - Made probes and listeners truly **opt-in**:
-  - Removed default probing behavior for `squares.nearPlayer` and `zombies.nearPlayer` (no more `allowDefault=true`).
+- Removed default probing behavior for `squares` (scope=near/vision) and `zombies` scope=allLoaded (no more `allowDefault=true`).
   - Ensured “no lease” clears cached effective interest state so probes don’t accidentally keep running on stale values.
 - Fixed a major “why are squares highlighted?” confusion:
   - Probe highlighting is now gated by `highlight=true` on the relevant lease (not unconditional).
-  - Added the same `highlight=true` support to `type="squares.onLoad"` (event-driven) and added a unit test for it.
+- Added the same `highlight=true` support to `type="squares"` scope=onLoad (event-driven) and added a unit test for it.
 - Improved runtime/diagnostic clarity:
   - Updated fact startup logs to reflect both config toggles and whether interest leases are currently present (instead of implying a static “plan” with probe on/off).
 - Hardened the in-game smoke workflow (for real modder usage):
   - Fixed misleading defaults and commented-out lease blocks that made smoke runs silently declare no interest.
-  - Simplified `examples/smoke_squares.lua` to a readable “what you see is what runs” script: declares `squares.nearPlayer` and `squares.vision` exactly as written, and only takes a couple of small display opts.
-  - Added a short note about why `squares.onLoad` can go quiet (events only) and when to use probe interests for continuous discovery.
-- Updated user-facing docs to match the “interest is required” mental model and to explain `squares.onLoad` vs `squares.nearPlayer` behavior.
+- Simplified `examples/smoke_squares.lua` to a readable “what you see is what runs” script: declares `squares` with `scope="near"` and `scope="vision"` exactly as written, and only takes a couple of small display opts.
+- Added a short note about why `squares` scope=onLoad can go quiet (events only) and when to use probe interests for continuous discovery.
+- Updated user-facing docs to match the “interest is required” mental model and to explain `squares` scope=onLoad vs `squares` scope=near behavior.
 
 ### Lessons
 - “No defaults” for probing is the safest principle for modder expectations: if a mod didn’t declare interest, the system should stay idle.
-- Event-driven square observation (`squares.onLoad`) and probe-driven observation (`squares.nearPlayer`/`squares.vision`) have very different “go quiet” semantics; docs and smoke tooling must make that distinction explicit.
+- Event-driven square observation (`squares` scope=onLoad) and probe-driven observation (`squares` scope=near/vision) have very different “go quiet” semantics; docs and smoke tooling must make that distinction explicit.
 - Smoke scripts should be opinionated and readable; too many toggles makes it easy to accidentally test “nothing”.
 
 ### Next steps
-- Consider adding a global rate limiter / backpressure strategy for `squares.onLoad` bursts (unique-key storms during chunk loads) to avoid ingest overload without relying only on cooldown.
+- Consider adding a global rate limiter / backpressure strategy for `squares` scope=onLoad bursts (unique-key storms during chunk loads) to avoid ingest overload without relying only on cooldown.
+
+## day13 – Interest surface consolidation, scope routing, and smoke showcase
+
+### Highlights
+- Consolidated the modder-facing interest surface around a stable `type/scope/target` shape:
+  - Squares are now exclusively `type="squares"` with `scope="near" | "vision" | "onLoad"`.
+  - Zombies are now `type="zombies"` with `scope="allLoaded"` (v1).
+  - Removed remaining legacy type names from docs/tests/examples so the API surface is single-source and unambiguous.
+- Moved “onLoad” from its own interest type into `squares` scope routing under the hood:
+  - Probes still run per scope bucket (near/vision) with independent policy state.
+  - The `Events.LoadGridsquare` listener is now gated by `type="squares"` with `scope="onLoad"` (same registry, different driver).
+- Tightened interest normalization and validation:
+  - `squares` scope=onLoad ignores `target`, `radius`, and `staleness` (warns outside headless).
+  - `zombies` clamps unknown scopes back to `allLoaded` and ignores `target` (warns outside headless).
+- Added an explicit internal contract doc for supported combinations:
+  - `docs_internal/interest_combinations.md` is now the reference for what we support today and what we explicitly do not.
+- Improved smoke workflows and made them more “showcase-ey”:
+  - Simplified `examples/smoke_squares.lua` and `examples/smoke_zombies.lua` to only use allowed config.
+  - Added `examples/smoke_console_showcase.lua` with independent `startSquares/stopSquares` and `startZombies/stopZombies` flows.
+- Kept tests clean and relevant:
+  - Removed headless test noise by suppressing config override warnings in headless and stubbing `Events.OnTick` where highlight fading is exercised.
+
+### Lessons
+- A single “interest shape” can still support multiple acquisition mechanisms as long as `scope` is treated as the semantic switch and we keep driver-specific knobs explicit (and validated).
+- Writing down the supported combination matrix (type/scope/target + knob applicability) pays off immediately: it drives code structure, tests, and doc correctness, and prevents “accidental API growth”.
+- Smoke scripts are part of the public UX: making them minimal, readable, and independently controllable matters as much as the underlying probe/listener mechanics.
+
+### Next steps
+- Decide whether and how to introduce `scope="allLoaded"` for squares (loaded-cell sweep vs event stream) without blurring probe vs event semantics.
+- Consider adding a small interest-validation test suite that asserts all supported combinations from `docs_internal/interest_combinations.md` remain accepted and that forbidden knobs are rejected/ignored deterministically.

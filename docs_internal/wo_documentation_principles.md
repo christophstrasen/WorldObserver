@@ -26,9 +26,12 @@ Keep a clear split between user-facing docs and internal design notes:
 - **`docs/` (user-facing)**
   - Curated, stable, task-oriented.
   - Target structure:
+    - `docs/index.md` — landing page; links into quickstart/observations/guides/troubleshooting.
     - `docs/quickstart.md` — subscribe to an observation, print something, stop/unsubscribe.
     - `docs/observations/` — what’s available (“squares”, “zombies”, …) + what each emits.
     - `docs/guides/` — workflows (declare interest, make a derived observation, debug).
+      - `docs/guides/interest.md` — how to declare interest, pick interest `type`, and tune `radius`/`staleness`/`cooldown` (incl. trade-offs).
+      - `docs/guides/derived_streams.md` — how to make/consume derived streams safely (incl. multi-family observations and cleanup patterns).
       - Planned: a guide specifically about **multi-family derived streams** (streams whose observations carry more than one family, e.g. both `observation.square` and `observation.zombie`).
         - Explain how to read and guard multi-family observations (only use fields you expect; don’t assume every family is present).
         - Show how to filter with family sugar (`:whereSquare(...)`, `:whereZombie(...)`) when you only care about one family.

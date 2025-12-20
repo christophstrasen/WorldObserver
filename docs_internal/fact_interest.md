@@ -13,7 +13,7 @@ Related docs:
 ## 1. Goals (near-term)
 
 - Let mods describe what upstream data they need (“declare interest”), without wiring their own probes.
-- Merge interests across mods into a single **effective** probe plan per fact type.
+- Merge interests across mods into a single **effective** probe plan per fact type (and per target bucket where relevant).
 - Enforce a global budget via the existing ingest scheduler + runtime controller, and **degrade gracefully**.
 - Keep API simple: **declare** interest (replace semantics by key), optional ranges, and **leases** so stale declarations expire.
 - Keep the current lifecycle rule: facts/probes only run while there is at least one subscriber to the related fact stream.
@@ -59,12 +59,14 @@ Subscriber gating:
 
 Initial focus: **squares probes only** (no engine events).
 
-### 4.1 Near-player radius probe
+### 4.1 Near-target radius probe
 
-Key idea: periodically scan squares within a radius of each player.
+Key idea: periodically scan squares within a radius of a declared target.
 
 Spec fields (illustrative):
-- `type = "squares.nearPlayer"`
+- `type = "squares"`
+- `scope = "near"`
+- `target = { kind = "player", id = 0 }` or `target = { kind = "square", x = ..., y = ..., z = ... }`
 - `radius` (tiles) or `radius = { desired = 8, tolerable = 5 }`
 - `staleness` (seconds) or `staleness = { desired = 10, tolerable = 20 }`
 - `cooldown` (seconds) or `cooldown = { desired = 30, tolerable = 60 }`
@@ -79,7 +81,8 @@ Key idea: periodically scan squares that the engine considers “currently seen�
 radius cap.
 
 Spec fields (illustrative):
-- `type = "squares.vision"`
+- `type = "squares"`
+- `scope = "vision"`
 - `radius`
 - `staleness`
 - Engine predicate is explicitly *engine-defined* (not LOS tracing). Confirmed API: `IsoGridSquare:getCanSee(int playerIndex)`.
@@ -87,6 +90,9 @@ Spec fields (illustrative):
 ---
 
 ## 5. Ranges, directionality, and merging math
+
+For bucketed targets (like `squares` with scope+target), merging happens **per target bucket**: only declarations that point at the same
+target identity are merged together. Overlapping but distinct targets are intentionally not merged.
 
 We need to be explicit: some knobs become “gentler” when they go **up**, others when they go **down**.
 

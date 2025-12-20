@@ -1,15 +1,16 @@
 -- smoke_zombies.lua — console-friendly smoke test for WorldObserver zombies.
 -- Usage in PZ console:
 --[[ @AI agent dont change this
-	smoke = require("examples/smoke_zombies")
-	handle = smoke.start({
+	_G.WORLDOBSERVER_CONFIG_OVERRIDES = { facts = { squares = { probe = { infoLogEveryMs = 500, logEachSweep = true } } } }
+	smokez = require("examples/smoke_zombies")
+	handlez = smoke.start({
 		distinctSeconds = 10,
 		staleness = 1,
 		radius = 25,
 		zRange = 1,
 		cooldown = 2,
 	})
-	handle:stop()
+	handlez:stop()
 ]]
 --
 
@@ -21,11 +22,10 @@ local SmokeZombies = {}
 function SmokeZombies.start(opts)
 	opts = opts or {}
 	local WorldObserver = require("WorldObserver")
-	local ZombieHelper = WorldObserver.helpers.zombie.record
 
 	local modId = opts.modId or "examples/smoke_zombies"
-	local interest = WorldObserver.factInterest:declare(modId, "near", {
-		type = "zombies.nearPlayer",
+	local interest = WorldObserver.factInterest:declare(modId, "allLoaded", {
+		type = "zombies",
 		staleness = { desired = opts.staleness or 1, tolerable = (opts.staleness or 1) * 2 },
 		radius = { desired = opts.radius or 25, tolerable = (opts.radius or 25) + 5 },
 		zRange = { desired = opts.zRange or 1, tolerable = (opts.zRange or 1) + 1 },
@@ -37,9 +37,6 @@ function SmokeZombies.start(opts)
 	if opts.distinctSeconds then
 		stream = stream:distinct("zombie", opts.distinctSeconds)
 	end
-	-- For custom boolean logic, prefer `:whereZombie(...)` + local aliases:
-	-- stream = stream:whereZombie(ZombieHelper.zombieHasTarget)
-
 	Log.info(
 		"[smoke] subscribing to zombies (distinctSeconds=%s, radius=%s, zRange=%s)",
 		tostring(opts.distinctSeconds),

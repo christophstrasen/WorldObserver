@@ -49,12 +49,17 @@ describe("squares probe cursor", function()
 			_G.getSpecificPlayer = nil
 
 			local interestRegistry = InterestRegistry.new({ ttlMs = 1000000 })
-			interestRegistry:declare("test", "near", { type = "squares.nearPlayer" })
+			interestRegistry:declare("test", "near", {
+				type = "squares",
+				scope = "near",
+				target = { kind = "player", id = 0 },
+			})
 
 			local state = {}
 			SquaresFacts._internal.probeTick(state, function() end, true, nil, interestRegistry, {})
 			assert.is_table(state._interestPolicyState)
-			assert.is_table(state._interestPolicyState["squares.nearPlayer"])
+			assert.is_table(state._interestPolicyState["squares"])
+			assert.is_table(state._interestPolicyState["squares"]["near:player:0"])
 
 			_G.getPlayer = savedGetPlayer
 		_G.getNumActivePlayers = savedGetNumPlayers
@@ -70,7 +75,11 @@ describe("squares probe cursor", function()
 			_G.getSpecificPlayer = nil
 
 			local interestRegistry = InterestRegistry.new({ ttlMs = 1000000 })
-			interestRegistry:declare("test", "near", { type = "squares.nearPlayer" })
+			interestRegistry:declare("test", "near", {
+				type = "squares",
+				scope = "near",
+				target = { kind = "player", id = 0 },
+			})
 
 			local nowMs = 0
 			local runtime = {
@@ -95,7 +104,7 @@ describe("squares probe cursor", function()
 			SquaresFacts._internal.probeTick(state, emitFn, true, runtime, interestRegistry, {})
 
 		assert.is_table(state._probeCursors)
-		local cursor = state._probeCursors.near
+		local cursor = state._probeCursors["near:player:0"]
 		assert.is_table(cursor)
 		cursor.sweepStartedMs = 0
 
@@ -105,7 +114,9 @@ describe("squares probe cursor", function()
 			end
 
 		assert.is_table(state._interestPolicyState)
-		assert.equals(2, state._interestPolicyState["squares.nearPlayer"].qualityIndex)
+		local policyByBucket = state._interestPolicyState["squares"]
+		assert.is_table(policyByBucket)
+		assert.equals(2, policyByBucket["near:player:0"].qualityIndex)
 
 		_G.getPlayer = savedGetPlayer
 		_G.getNumActivePlayers = savedGetNumPlayers

@@ -2,13 +2,13 @@
 -- Usage in PZ console:
 --[[ @AI agent dont change this
 	_G.WORLDOBSERVER_CONFIG_OVERRIDES = { facts = { squares = { probe = { infoLogEveryMs = 500, logEachSweep = true } } } }
-   smoke = require("examples/smoke_squares")
-   handle = smoke.start({ distinctSeconds = 20, withHelpers = true })
-   handle:stop()
+   smokes = require("examples/smoke_squares")
+   handles = smoke.start({ distinctSeconds = 20, withHelpers = true })
+   handles:stop()
 	]]
 --
 -- Notes:
--- - This smoke test declares two interests (probes): `squares.nearPlayer` and `squares.vision`.
+-- - This smoke test declares two interests (probes): `squares` scope=near and scope=vision.
 -- - It subscribes to the squares observation stream and prints observations (optionally filtered).
 
 local Log = require("LQR/util/log")
@@ -17,7 +17,8 @@ Log.setLevel("info")
 local SmokeSquares = {}
 
 local INTEREST_NEAR = {
-	type = "squares.nearPlayer",
+	type = "squares",
+	scope = "near",
 	staleness = { desired = 1, tolerable = 5 },
 	radius = { desired = 10, tolerable = 4 },
 	cooldown = { desired = 20, tolerable = 40 },
@@ -25,7 +26,8 @@ local INTEREST_NEAR = {
 }
 
 local INTEREST_VISION = {
-	type = "squares.vision",
+	type = "squares",
+	scope = "vision",
 	staleness = { desired = 5, tolerable = 10 },
 	radius = { desired = 35, tolerable = 15 },
 	cooldown = { desired = 40, tolerable = 60 },

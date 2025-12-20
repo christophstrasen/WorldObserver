@@ -223,7 +223,7 @@ Recommendation:
 
 Start with one interest type that matches immediate modder expectations:
 
-### `zombies.nearPlayer` (v1)
+### `zombies` with `scope = "allLoaded"` (v1)
 
 - `staleness` (seconds): how quickly we try to refresh the set
 - `radius` (tiles): only emit zombies within radius of any player
@@ -307,7 +307,7 @@ Confirm with a small console snippet:
 2. Facts:
    - `facts/zombies.lua` registers fact type `"zombies"` with `latestByKey` keyed by `zombieId`.
    - `facts/zombies/probe.lua` implements a time-sliced cursor over the zombie list.
-   - Interest-driven: resolve `zombies.nearPlayer` effective settings via InterestEffective.
+   - Interest-driven: resolve `zombies` (scope `allLoaded`) effective settings via InterestEffective.
 3. Observations:
    - `observations/zombies.lua` registers `"zombies"` stream, wraps schema `ZombieObservation`, exposes `observation.zombie`.
 4. Helpers:

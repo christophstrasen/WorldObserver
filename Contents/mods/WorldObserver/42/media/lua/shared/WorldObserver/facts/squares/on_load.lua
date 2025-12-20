@@ -17,7 +17,8 @@ if type(moduleName) == "string" then
 end
 OnLoad._internal = OnLoad._internal or {}
 
-local INTEREST_TYPE_ONLOAD = "squares.onLoad"
+local INTEREST_TYPE_SQUARES = "squares"
+local INTEREST_SCOPE_ONLOAD = "onLoad"
 
 local ONLOAD_HIGHLIGHT_COLOR = { 0.2, 1.0, 0.2 }
 
@@ -75,7 +76,8 @@ local function registerListener(ctx)
 
 	local fn = function(square)
 		local effectiveByType = state._effectiveInterestByType
-		local effective = effectiveByType and effectiveByType[INTEREST_TYPE_ONLOAD] or nil
+		local effectiveByBucket = effectiveByType and effectiveByType[INTEREST_TYPE_SQUARES] or nil
+		local effective = type(effectiveByBucket) == "table" and effectiveByBucket[INTEREST_SCOPE_ONLOAD] or nil
 		if not effective then
 			return
 		end
@@ -118,14 +120,15 @@ if OnLoad.ensure == nil then
 
 			local effective = nil
 			if listenerEnabled then
-				effective = InterestEffective.ensure(state, ctx.interestRegistry, ctx.runtime, INTEREST_TYPE_ONLOAD, {
+				effective = InterestEffective.ensure(state, ctx.interestRegistry, ctx.runtime, INTEREST_TYPE_SQUARES, {
 					label = "onLoad",
 					allowDefault = false,
 					log = Log,
+					bucketKey = INTEREST_SCOPE_ONLOAD,
 				})
 				if effective and ctx.interestRegistry and ctx.interestRegistry.effective then
 					local okMerged, merged = pcall(function()
-						return ctx.interestRegistry:effective(INTEREST_TYPE_ONLOAD)
+						return ctx.interestRegistry:effective(INTEREST_TYPE_SQUARES, nil, { bucketKey = INTEREST_SCOPE_ONLOAD })
 					end)
 					if okMerged and type(merged) == "table" then
 						effective.highlight = merged.highlight
@@ -133,7 +136,9 @@ if OnLoad.ensure == nil then
 				end
 			else
 				state._effectiveInterestByType = state._effectiveInterestByType or {}
-				state._effectiveInterestByType[INTEREST_TYPE_ONLOAD] = nil
+				if type(state._effectiveInterestByType[INTEREST_TYPE_SQUARES]) == "table" then
+					state._effectiveInterestByType[INTEREST_TYPE_SQUARES][INTEREST_SCOPE_ONLOAD] = nil
+				end
 			end
 
 		local wantsListener = listenerEnabled and effective ~= nil

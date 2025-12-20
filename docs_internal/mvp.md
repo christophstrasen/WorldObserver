@@ -186,7 +186,7 @@ High-level table for the squares plan:
 | Source type | Name                     | Included in MVP | Purpose                                                     |
 |------------|--------------------------|-----------------|-------------------------------------------------------------|
 | Event      | `OnLoadGridsquare`       | Yes             | Capture squares as they load into memory.                  |
-| Probe      | `nearPlayers_interest`   | Yes             | Periodically rescan squares near players; radius/tempo driven by interest. |
+| Probe      | `squares_near`            | Yes             | Periodically rescan squares near players; radius/tempo driven by interest. |
 | Probe      | `vision_interest`        | Yes             | Periodically emit squares currently visible to the player (engine `getCanSee`). |
 
 Sketch of the probes (aligned with `fact_layer.md` but minimal):
@@ -206,7 +206,7 @@ Fact.listener{
 }
 
 Fact.probe{
-  name     = "nearPlayers_closeRing",
+  name     = "squares_near_closeRing",
   schedule = {
     intervalTicks = 1,    -- every tick
     budgetPerTick = 200,  -- max squares per tick
@@ -410,7 +410,7 @@ LQR and lua-reactivex, plus stubs for game objects and events.
   - `facts.squares`:
     - `makeSquareRecord` builds a `SquareObservation` with expected fields and
       semantics when given stub squares.
-    - `nearPlayers_closeRing` honours the `budgetPerTick`, visits squares in
+    - `squares_near_closeRing` honours the `budgetPerTick`, visits squares in
       a plausible pattern, and calls `ctx.emit` with proper records.
   - `observations.squares()`:
     - Emits `Observation` tables with `observation.square` shaped as per

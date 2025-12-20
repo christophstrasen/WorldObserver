@@ -1,0 +1,155 @@
+# Guide: declaring interest
+
+Goal: tell WorldObserver which facts to gather for your mod, where to focus, and how fresh those observations should be.
+
+WorldObserver does **not** probe or listen for fact sources unless at least one mod declares an interest.
+Declaring interest is also how multiple mods share probing fairly: WO merges interest across mods and then chooses an effective probing strategy that fits inside runtime budgets.
+
+If you haven’t run the first working example yet, start here:
+- [Quickstart](../quickstart.md)
+
+## 1. The smallest useful interest declaration
+
+This declaration asks WorldObserver to probe squares near the player:
+
+```lua
+local WorldObserver = require("WorldObserver")
+
+local lease = WorldObserver.factInterest:declare("YourModId", "featureKey", {
+  type = "squares",
+  scope = "near",
+  target = { kind = "player", id = 0 },
+  radius = { desired = 8 },     -- tiles around player
+  staleness = { desired = 5 },  -- target freshness (seconds, in-game clock)
+  cooldown = { desired = 2 },   -- per-square re-emit limit (seconds, in-game clock)
+})
+```
+
+Notes:
+- `modId` + `key` identify your feature. Calling `declare` again for the same pair replaces your spec.
+- The returned `lease` must be managed (renew/stop); see [Lifecycle](lifecycle.md).
+
+## 2. Type, scope, target (what they mean)
+
+- `type`: the fact plan that will run (probe/listener).
+  - Example: `type = "squares"` or `type = "zombies"`.
+- `scope`: a sub-mode within a type (used for grouping and merging).
+  - For `type = "squares"`, the supported scopes today are `near`, `vision`, and `onLoad`.
+  - For `type = "zombies"`, the supported scope today is `allLoaded`.
+- `target`: the anchor identity for the probe plan.
+  - For `squares` probe scopes (`near`, `vision`), valid kinds are `player` and `square`.
+  - `scope = "onLoad"` ignores `target`.
+
+## 3. Interest types available today
+
+Interest `type` selects the “fact plan” behind the scenes (listener vs probe and what it scans).
+
+### Squares
+
+- `type = "squares"` with `scope = "near"`
+  - Probe-driven: scans squares near a target you define.
+  - Required: `target = { kind = "player", id = 0 }` or `target = { kind = "square", x = ..., y = ..., z = ... }`
+  - Knobs: `radius`, `staleness`, `cooldown`, `highlight`.
+- `type = "squares"` with `scope = "vision"`
+  - Probe-driven: like `scope = "near"` with a player target, but only emits squares that are currently visible to the player (line-of-sight / “can see”).
+  - Requires a player target.
+  - Knobs: `radius`, `staleness`, `cooldown`, `highlight`.
+- `type = "squares"` with `scope = "onLoad"`
+  - Event-driven: emits when squares load (chunk streaming).
+  - Knobs: `cooldown`, `highlight` (other knobs are currently not meaningful for this scope).
+  - Ignores `target`, `radius`, and `staleness`.
+
+### Zombies
+
+- `type = "zombies"` with `scope = "allLoaded"`
+  - Probe-driven: scans the game’s zombie list in loaded areas (singleplayer uses the local player).
+  - Knobs: `radius`, `zRange`, `staleness`, `cooldown`, `highlight`.
+
+## 4. The knobs (what they mean)
+
+WorldObserver uses “bands” for most knobs:
+- `desired`: what you *want* when the runtime has headroom.
+- `tolerable`: what you can *accept* when the runtime is under pressure.
+
+Example:
+
+```lua
+staleness = { desired = 5, tolerable = 20 }
+```
+
+If you only provide `desired`, WO derives a `tolerable` value automatically from defaults for that interest type.
+
+### `staleness` (seconds)
+
+How fresh you want observations to be.
+
+- Smaller `staleness` means: probe more often / work harder to keep up.
+- Under load, WO may increase effective staleness (emit older observations) to protect frame time.
+
+### `radius` (tiles)
+
+How far around the player WO should look.
+
+- Larger `radius` means more squares/zombies to consider.
+- Under load, WO may reduce effective radius (scan fewer tiles).
+
+### `cooldown` (seconds)
+
+How often the *same key* is allowed to re-emit.
+
+- For squares, the key is `squareId`.
+- For zombies, the key is `zombieId`.
+- Larger `cooldown` means fewer repeats (lower cost + less spam).
+
+### `zRange` (floors)
+
+Zombie-only: how many Z-levels above/below the player are included.
+
+Example: “same floor only”:
+
+```lua
+zRange = { desired = 0 }
+```
+
+### `highlight` (debug visual)
+
+Optional, best-effort visual feedback. Useful while tuning.
+
+- Squares: `highlight = true` highlights probed squares (near/vision use different colors).
+- Zombies: `highlight = true` highlights the floor under the zombie; you can also pass a color table (example: `{ 1, 0.2, 0.2 }`).
+
+`highlight` is intentionally not part of the “quality ladder” and may not merge deterministically across multiple mods. Treat it as a local debugging aid, not a contract.
+
+## 5. How WO merges multiple mods’ interest (what to expect)
+
+All active leases are merged per interest type.
+
+The merge is designed so that the system can satisfy everyone at once:
+- `radius` / `zRange`: the merged `desired` tends toward the **largest** requested area.
+- `staleness` / `cooldown`: the merged `desired` tends toward the **smallest** requested freshness/emit intervals.
+- For `squares`, merging happens per scope + target identity (same target only). Overlapping but distinct targets are not merged.
+
+Then an adaptive policy picks an effective level based on runtime pressure:
+- Degrade order is: **increase staleness → reduce radius → increase cooldown**.
+- In “emergency” situations, WO may degrade beyond your `tolerable` bounds to protect the frame rate.
+
+## 6. Introspection: “what interest is currently active?”
+
+You can inspect the current merged bands (active leases only):
+
+```lua
+local buckets = WorldObserver.factInterest:effectiveBuckets("squares")
+for _, entry in ipairs(buckets) do
+  print(entry.bucketKey, entry.merged and entry.merged.scope, entry.merged and entry.merged.radius and entry.merged.radius.desired)
+end
+```
+
+This returns the merged bands, not the final runtime-adjusted “effective” values used in probing.
+
+## 7. Cleanup (don’t leak work)
+
+When your feature turns off, stop your lease:
+- `lease:stop()`
+
+Lifecycle patterns (renewal cadence, TTL overrides):
+- [Lifecycle](lifecycle.md)

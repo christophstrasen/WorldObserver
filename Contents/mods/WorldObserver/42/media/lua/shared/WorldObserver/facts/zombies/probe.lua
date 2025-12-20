@@ -1,4 +1,4 @@
--- facts/zombies/probe.lua -- interest-driven zombie probe using a time-sliced cursor over IsoCell:getZombieList().
+-- facts/zombies/probe.lua -- interest-driven zombie probe (scope=allLoaded) using a time-sliced cursor over IsoCell:getZombieList().
 local Log = require("LQR/util/log").withTag("WO.FACTS.zombies")
 local Cooldown = require("WorldObserver/facts/cooldown")
 local InterestEffective = require("WorldObserver/facts/interest_effective")
@@ -6,7 +6,8 @@ local Record = require("WorldObserver/facts/zombies/record")
 local Time = require("WorldObserver/helpers/time")
 local SquareHelpers = require("WorldObserver/helpers/square")
 
-local INTEREST_TYPE_NEAR = "zombies.nearPlayer"
+local INTEREST_TYPE_ZOMBIES = "zombies"
+local INTEREST_SCOPE_ALL = "allLoaded"
 local PROBE_TICK_HOOK_ID = "facts.zombies.tick"
 
 local moduleName = ...
@@ -125,7 +126,7 @@ local function startSweep(state, effective, nowMs)
 	state.sweepBudgetMs = nil
 	if state.logEachSweep then
 		Log:info(
-			"[probe near] sweep started staleness=%ss radius=%s zRange=%s cooldown=%ss",
+			"[probe allLoaded] sweep started staleness=%ss radius=%s zRange=%s cooldown=%ss",
 			tostring(effective and effective.staleness),
 			tostring(effective and effective.radius),
 			tostring(effective and effective.zRange),
@@ -141,7 +142,7 @@ local function finishSweep(state, nowMs, emitted)
 	local duration = nowMs - (state.sweepStartMs or nowMs)
 	if state.logEachSweep then
 		Log:info(
-			"[probe near] sweep finished durationMs=%s overdueMs=%s processed=%s emitted=%s",
+			"[probe allLoaded] sweep finished durationMs=%s overdueMs=%s processed=%s emitted=%s",
 			tostring(duration),
 			tostring(math.max(0, duration - (state.sweepBudgetMs or 0))),
 			tostring(state.sweepProcessed or 0),
@@ -188,10 +189,11 @@ if Probe.tick == nil then
 		local effective = nil
 		local meta = nil
 		local signals = state.lastLagSignals
-			effective, meta = InterestEffective.ensure(state, ctx.interestRegistry, ctx.runtime, INTEREST_TYPE_NEAR, {
-				label = "zombies.nearPlayer",
+			effective, meta = InterestEffective.ensure(state, ctx.interestRegistry, ctx.runtime, INTEREST_TYPE_ZOMBIES, {
+				label = "zombies.allLoaded",
 				allowDefault = false,
 				signals = signals,
+				bucketKey = INTEREST_SCOPE_ALL,
 			})
 		if not effective then
 			return
@@ -213,7 +215,7 @@ if Probe.tick == nil then
 		local merged = nil
 		if ctx.interestRegistry and ctx.interestRegistry.effective then
 			local okMerged, res = pcall(function()
-				return ctx.interestRegistry:effective(INTEREST_TYPE_NEAR)
+				return ctx.interestRegistry:effective(INTEREST_TYPE_ZOMBIES, nil, { bucketKey = INTEREST_SCOPE_ALL })
 			end)
 			if okMerged then
 				merged = res

@@ -29,6 +29,7 @@ NixOS + `zsh`; ignore noisy `gpg-agent` warnings at shell start. No git history 
 - Do not use package.path unless in a conscious compatible way that does not inhibit proper function of requires in the project zomboid runtime
 - Ensure that things work in both project zomboid runtime and in vanilla lua 5.1 on the console
 - never blindly rely on #table for any table that could reasonably "shrink" as engines such as project zomboids don't implement it reliably e.g. it can become 0 once table[1] is nil
+- Add code comments to areas of code that are unusual, complex or of high impact. The comments should describe what is going on but also WHY we need this code and what our intent is.
 
 ## Naming
 - Prefer full names. "observation" instead of "obs" etc.
@@ -67,12 +68,19 @@ If repo guidance conflicts, flag it and ask; don’t guess past ambiguities. Upd
 - **Primary source of truth for game and modding facts**
   https://pzwiki.net/wiki
 
+- **Official LUA API (Build 42)**
+  https://demiurgequantified.github.io/ProjectZomboidLuaDocs/
+  All the fields, methods and classes should be exposed and working in lua!
+  As such it is better explained "subset" of the Java API and most relevant
+  to research reliably what really exists and how it is supposed to work
+
 - **Official Java API (Build 42):**  
   https://demiurgequantified.github.io/ProjectZomboidJavaDocs/
+  It is possible that not all fields, methods and classes are exposed in lua!
 
 ### Sourcing Policy
-1. The PZwiki and ProjectZomboidJavaDocs are always right no matter what other public resources you may have loaded in the past.
-2. If PZWiki vs JavaDocs conflict on API behavior, prefer **JavaDocs for API**, **PZWiki for data files**.
+1. The PZwiki and ProjectZomboidLuaDocs are always right no matter what other public resources you may have loaded in the past.
+2. If PZWiki vs vs LuaDocs vs JavaDocs conflict on API behavior, prefer **LuaDocs for API**, **PZWiki for data files**, **JavaDocs only when we proved the other 2 sources wrong**
 3. As build42 is roughly 1 year in the making, If a source is clearly older than 2 Years, be sceptical.
 4. If anything is uncertain, state the uncertainty and suggest a minimal empirical test.
 

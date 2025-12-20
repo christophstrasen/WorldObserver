@@ -82,7 +82,7 @@ Event listeners:
 
 Current squares behavior:
 - `Events.LoadGridsquare` is **interest-controlled** and only enabled when at least one mod declares
-  `type = "squares.onLoad"` (cooldown-only shape; no radius/staleness).
+  `type = "squares"` with `scope = "onLoad"` (cooldown-only shape; no radius/staleness).
 
 Important design note:
 - We intentionally avoid buffering live game objects.
@@ -130,6 +130,7 @@ Lane priorities are a domain decision and may differ by type.
   - `WorldObserver.config.facts.squares.probe.*` (safety caps)
 - Probe intensity is now shaped by **interest declarations** (`staleness`, `radius`, `cooldown`) merged across mods,
   then passed through the runtime-aware policy (see `WorldObserver/interest/policy.lua`).
+- For bucketed types like `squares` (scoped), the merge happens per scope + target identity (same target only).
   The old `strategy` preset knob has been removed in favor of explicit interest + policy.
 
 ---

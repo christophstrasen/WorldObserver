@@ -1,4 +1,14 @@
 -- facts/squares/probe.lua -- interest-driven, time-sliced square probing (near + vision).
+--
+-- Intent:
+-- - `squares` (scope=near/vision) can represent multiple simultaneous targets ("buckets").
+--   Example: near the local player AND near a static square location.
+-- - We scan each bucket independently and schedule buckets round-robin inside a shared per-tick probe budget.
+--
+-- Why buckets (and why merging "same target only"):
+-- - Merging partially-overlapping areas is complex (geometry union, prioritization, fairness).
+-- - Bucketed merging is a simple contract: if mods want to share probe work, they must point at the same target identity.
+--   Overlapping-but-different targets are allowed but intentionally not merged.
 local Log = require("LQR/util/log").withTag("WO.FACTS.squares")
 local Config = require("WorldObserver/config")
 local Time = require("WorldObserver/helpers/time")
@@ -19,8 +29,7 @@ if type(moduleName) == "string" then
 end
 Probe._internal = Probe._internal or {}
 
-local INTEREST_TYPE_NEAR = "squares.nearPlayer"
-local INTEREST_TYPE_VISION = "squares.vision"
+local INTEREST_TYPE_SQUARES = "squares"
 
 local PROBE_HIGHLIGHT_NEAR_COLOR = { 1.0, 0.6, 0.2 }
 local PROBE_HIGHLIGHT_VISION_COLOR = { 0.3, 0.8, 1.0 }
@@ -242,24 +251,58 @@ local function scaleMaxSquaresPerTick(baseMaxSquaresPerTick, baseBudgetMs, budge
 	return math.min(hardCap, math.max(baseMaxSquaresPerTick, scaled))
 end
 
-local function nearbyPlayers()
-	local players = {}
+local function resolveCell()
+	-- Resolve the engine cell best-effort.
+	-- We do this on-demand instead of caching to avoid holding stale engine objects and to stay compatible with headless tests.
+	local getWorld = _G.getWorld
+	if type(getWorld) == "function" then
+		local okWorld, world = pcall(getWorld)
+		if okWorld and world and type(world.getCell) == "function" then
+			local okCell, cell = pcall(world.getCell, world)
+			if okCell and cell and type(cell.getGridSquare) == "function" then
+				return cell
+			end
+		end
+	end
+	local getCell = _G.getCell
+	if type(getCell) == "function" then
+		local okCell, cell = pcall(getCell)
+		if okCell and cell and type(cell.getGridSquare) == "function" then
+			return cell
+		end
+	end
+	return nil
+end
 
-	-- Prefer the simple single-player API: in most WO use cases we want "the local player"
-	-- as the probe center, not a global iteration. This also avoids environments where
-	-- getNumActivePlayers/getSpecificPlayer aren't available yet.
-	local getPlayer = _G.getPlayer
-	if type(getPlayer) == "function" then
-		local ok, player = pcall(getPlayer)
+local function resolvePlayers(targetId)
+	local players = {}
+	local target = tonumber(targetId)
+
+	local getSpecificPlayer = _G.getSpecificPlayer
+	if type(target) == "number" and type(getSpecificPlayer) == "function" then
+		local ok, player = pcall(getSpecificPlayer, target)
 		if ok and player ~= nil then
 			players[1] = player
 			return players
 		end
 	end
 
+	-- Prefer the simple single-player API: in most WO use cases we want "the local player"
+	-- as the probe center, not a global iteration. This also avoids environments where
+	-- getNumActivePlayers/getSpecificPlayer aren't available yet.
+	if target == nil or target == 0 then
+		local getPlayer = _G.getPlayer
+		if type(getPlayer) == "function" then
+			local ok, player = pcall(getPlayer)
+			if ok and player ~= nil then
+				players[1] = player
+				return players
+			end
+		end
+	end
+
 	-- Fallback for environments that don't expose getPlayer() but do expose indexed players.
 	local getNumPlayers = _G.getNumActivePlayers
-	local getSpecificPlayer = _G.getSpecificPlayer
 	if type(getNumPlayers) ~= "function" or type(getSpecificPlayer) ~= "function" then
 		return players
 	end
@@ -270,12 +313,60 @@ local function nearbyPlayers()
 	end
 
 	for index = 0, math.max(0, count - 1) do
-		local ok, player = pcall(getSpecificPlayer, index)
-		if ok and player ~= nil then
-			players[#players + 1] = player
+		if target == nil or index == target then
+			local ok, player = pcall(getSpecificPlayer, index)
+			if ok and player ~= nil then
+				players[#players + 1] = player
+			end
 		end
 	end
 	return players
+end
+
+local function resolveStaticCenter(target)
+	-- Static targets are anchored by x/y/z integers.
+	-- This is intentionally "mod-owned": WO cannot validate that two mods mean the same static location,
+	-- so we keep these targets unshared by default (bucket keys include the declaring modId).
+	if type(target) ~= "table" then
+		return nil
+	end
+	local x = tonumber(target.x)
+	local y = tonumber(target.y)
+	if x == nil or y == nil then
+		return nil
+	end
+	local z = tonumber(target.z) or 0
+	local cell = resolveCell()
+	if not cell then
+		return nil
+	end
+	return {
+		cell = cell,
+		x = math.floor(x),
+		y = math.floor(y),
+		z = math.floor(z),
+		playerIndex = 0,
+	}
+end
+
+local function resolveCentersForTarget(target)
+	if type(target) ~= "table" then
+		return {}
+	end
+	if target.kind == "player" then
+		return resolvePlayers(target.id)
+	end
+	if target.kind == "square" then
+		local center = resolveStaticCenter(target)
+		if center then
+			return { center }
+		end
+	end
+	return {}
+end
+
+local function nearbyPlayers()
+	return resolvePlayers(nil)
 end
 
 local function ensureProbeCursor(state, name, opts)
@@ -351,6 +442,14 @@ local function ensurePlayerCenter(cursor, player, playerSlot)
 	local cached = cursor.playerCenters and cursor.playerCenters[playerSlot]
 	if cached then
 		return cached
+	end
+	if type(player) == "table" then
+		local cell = player.cell
+		if cell and type(cell.getGridSquare) == "function" and type(player.x) == "number" and type(player.y) == "number" then
+			cursor.playerCenters = cursor.playerCenters or {}
+			cursor.playerCenters[playerSlot] = player
+			return player
+		end
 	end
 	if not player or type(player.getSquare) ~= "function" then
 		return nil
@@ -448,10 +547,10 @@ local function cursorNextSquare(cursor, players, nowMs, tickSeq)
 	return nil
 end
 
-local function updateCursorSweepTargets(cursor, effective, playerCount)
+local function updateCursorSweepTargets(cursor, effective, centerCount)
 	local radius = effective and effective.radius or 0
 	local staleness = tonumber(effective and effective.staleness) or 0
-	local sweepSquares = Geometry.squaresPerRadius(radius) * math.max(1, playerCount)
+	local sweepSquares = Geometry.squaresPerRadius(radius) * math.max(1, centerCount)
 	cursor.totalSquaresPerSweep = sweepSquares
 
 	local rate = 0
@@ -625,89 +724,127 @@ if Probe.tick == nil then
 
 		local nowMs = resolveNowMs(ctx.runtime)
 		local effectiveByType = state._effectiveInterestByType or {}
+		local active = {}
+		local bucketMetas = {}
 
-		local nearCursor = ensureProbeCursor(state, "near", {
-			label = "near",
+		local function previousEffectiveFor(interestType, bucketKey)
+			local byType = effectiveByType[interestType]
+			if type(byType) == "table" then
+				return byType[bucketKey]
+			end
+			if bucketKey == nil then
+				return byType
+			end
+			return nil
+		end
+		local function addBuckets(interestType, scope, label, cursorCfg, requirePlayer)
+			-- Each bucket is one merged target identity (for example: "near:player:0" or "near:square:<mod>:x:y:z").
+			-- We keep a cursor per bucket so:
+			-- - probe lag estimates are per-target (used by the interest policy and autoBudget),
+			-- - degradation/recovery does not bleed across unrelated targets.
+			local buckets = {}
+			if ctx.interestRegistry and ctx.interestRegistry.effectiveBuckets then
+				buckets = ctx.interestRegistry:effectiveBuckets(interestType)
+			elseif ctx.interestRegistry and ctx.interestRegistry.effective then
+				local merged = ctx.interestRegistry:effective(interestType)
+				if merged then
+					buckets = { { bucketKey = merged.bucketKey or "default", merged = merged } }
+				end
+			end
+
+			for _, bucket in ipairs(buckets) do
+				local bucketKey = bucket.bucketKey or "default"
+				local merged = bucket.merged
+				local mergedScope = type(merged) == "table" and merged.scope or nil
+				if mergedScope == nil then
+					mergedScope = scope
+				end
+				if mergedScope == scope then
+					local target = type(merged) == "table" and merged.target or nil
+					local skip = false
+
+					local cursorLabel = tostring(bucketKey or label)
+					if bucketKey == "default" then
+						cursorLabel = label
+					end
+					local cursor = ensureProbeCursor(state, cursorLabel, {
+						label = cursorLabel,
+						source = cursorCfg.source,
+						color = cursorCfg.color,
+						alpha = cursorCfg.alpha,
+						isVision = cursorCfg.isVision,
+					})
+
+					local signals = computeProbeLagSignals(cursor, nowMs, previousEffectiveFor(interestType, bucketKey))
+					cursor.lastLagSignals = signals
+
+					local effective, meta = InterestEffective.ensure(state, ctx.interestRegistry, ctx.runtime, interestType, {
+						label = label,
+						allowDefault = false,
+						signals = signals,
+						bucketKey = bucketKey,
+						merged = merged,
+					})
+					if type(meta) == "table" then
+						bucketMetas[#bucketMetas + 1] = meta
+					end
+					if not effective then
+						skip = true
+					end
+
+					if not skip then
+						effective.highlight = merged and merged.highlight
+						effective.target = target
+						effective.scope = mergedScope
+						effective.bucketKey = bucketKey
+					end
+
+					-- Vision requires a player target, because visibility checks need a player index.
+					if not skip and requirePlayer and (type(target) ~= "table" or target.kind ~= "player") then
+						skip = true
+					end
+
+					-- Resolve centers each tick so moving targets (players) naturally follow the engine state.
+					local centers = {}
+					if not skip then
+						centers = resolveCentersForTarget(target)
+						if #centers <= 0 then
+							skip = true
+						end
+					end
+
+					if not skip then
+						-- totalSquaresPerSweep feeds into probe lag estimation: it helps the policy decide whether
+						-- to spend more budget (autoBudget) or degrade the interest ladder.
+						ensureProbeOffsets(cursor, effective.radius)
+						updateCursorSweepTargets(cursor, effective, #centers)
+
+						active[#active + 1] = {
+							cursor = cursor,
+							effective = effective,
+							stalenessMs = stalenessMsFromSeconds(effective.staleness),
+							centers = centers,
+						}
+					end
+				end
+			end
+		end
+
+		-- Run separate probe passes per scope so near/vision can degrade independently and stay in parallel.
+		addBuckets(INTEREST_TYPE_SQUARES, "near", "near", {
 			source = "probe",
 			color = PROBE_HIGHLIGHT_NEAR_COLOR,
 			alpha = 0.9,
-		})
-		local visionCursor = ensureProbeCursor(state, "vision", {
-			label = "vision",
+			isVision = false,
+		}, false)
+
+		addBuckets(INTEREST_TYPE_SQUARES, "vision", "vision", {
 			source = "probe_vision",
 			color = PROBE_HIGHLIGHT_VISION_COLOR,
 			alpha = 0.75,
 			isVision = true,
-		})
+		}, true)
 
-		local signalsNear = computeProbeLagSignals(nearCursor, nowMs, effectiveByType[INTEREST_TYPE_NEAR])
-		local signalsVision = computeProbeLagSignals(visionCursor, nowMs, effectiveByType[INTEREST_TYPE_VISION])
-		nearCursor.lastLagSignals = signalsNear
-		visionCursor.lastLagSignals = signalsVision
-
-			local defaultInterest = ctx.defaultInterest
-			local effectiveNear, metaNear = InterestEffective.ensure(state, ctx.interestRegistry, ctx.runtime, INTEREST_TYPE_NEAR, {
-				label = "near",
-				allowDefault = false,
-				signals = signalsNear,
-			})
-			local effectiveVision, metaVision =
-				InterestEffective.ensure(state, ctx.interestRegistry, ctx.runtime, INTEREST_TYPE_VISION, {
-				label = "vision",
-				allowDefault = false,
-				signals = signalsVision,
-			})
-
-			-- Interest policy returns numeric effective knobs for the core ladder (staleness/radius/cooldown).
-			-- `highlight` is an additional knob that bypasses the ladder and comes from the merged lease.
-			if ctx.interestRegistry and ctx.interestRegistry.effective then
-				local mergedNear = nil
-				local mergedVision = nil
-				local okNear, resNear = pcall(function()
-					return ctx.interestRegistry:effective(INTEREST_TYPE_NEAR)
-				end)
-				if okNear then
-					mergedNear = resNear
-				end
-				local okVision, resVision = pcall(function()
-					return ctx.interestRegistry:effective(INTEREST_TYPE_VISION)
-				end)
-				if okVision then
-					mergedVision = resVision
-				end
-				if effectiveNear and type(mergedNear) == "table" then
-					effectiveNear.highlight = mergedNear.highlight
-				end
-				if effectiveVision and type(mergedVision) == "table" then
-					effectiveVision.highlight = mergedVision.highlight
-				end
-			end
-
-			local players = nearbyPlayers()
-			local playerCount = #players
-			if playerCount <= 0 then
-				return
-		end
-
-		local active = {}
-		if effectiveNear then
-			ensureProbeOffsets(nearCursor, effectiveNear.radius)
-			updateCursorSweepTargets(nearCursor, effectiveNear, playerCount)
-			active[#active + 1] = {
-				cursor = nearCursor,
-				effective = effectiveNear,
-				stalenessMs = stalenessMsFromSeconds(effectiveNear.staleness),
-			}
-		end
-		if effectiveVision then
-			ensureProbeOffsets(visionCursor, effectiveVision.radius)
-			updateCursorSweepTargets(visionCursor, effectiveVision, playerCount)
-			active[#active + 1] = {
-				cursor = visionCursor,
-				effective = effectiveVision,
-				stalenessMs = stalenessMsFromSeconds(effectiveVision.staleness),
-			}
-		end
 		if #active == 0 then
 			return
 		end
@@ -730,11 +867,8 @@ if Probe.tick == nil then
 			local runtimeStatus = ctx.runtime and ctx.runtime.status_get and ctx.runtime:status_get() or nil
 			local baseBudgetMs = tonumber(probeCfg.maxMillisPerTick or probeCfg.maxMsPerTick) or 0.75
 		local demandRatio = 0
-		if type(metaNear) == "table" then
-			demandRatio = math.max(demandRatio, tonumber(metaNear.demandRatio) or 0)
-		end
-		if type(metaVision) == "table" then
-			demandRatio = math.max(demandRatio, tonumber(metaVision.demandRatio) or 0)
+		for _, meta in ipairs(bucketMetas) do
+			demandRatio = math.max(demandRatio, tonumber(meta.demandRatio) or 0)
 		end
 			local budgetMs, budgetMode = resolveProbeBudgetMs(baseBudgetMs, runtimeStatus, demandRatio, probeCfg)
 			local maxSquaresPerTick =
@@ -795,7 +929,7 @@ if Probe.tick == nil then
 				if effective.highlight == true then
 					highlightMs = highlightDurationMsFromCadenceSeconds(stalenessSeconds, cooldownSeconds)
 				end
-				local square, playerIndex = cursorNextSquare(cursor, players, nowMs, tickSeq)
+				local square, playerIndex = cursorNextSquare(cursor, selected.centers, nowMs, tickSeq)
 				if square then
 					cursor.tickVisited = (cursor.tickVisited or 0) + 1
 					local emitted = false

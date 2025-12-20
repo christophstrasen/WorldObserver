@@ -31,6 +31,10 @@ https://pzwiki.net/wiki/OnPlayerMove
 
 https://pzwiki.net/wiki/OnSeeNewRoom
 
+# CharacterStatObservation
+
+https://demiurgequantified.github.io/ProjectZomboidJavaDocs/zombie/characters/CharacterStat.html
+
 # SleepObservation
 
 https://pzwiki.net/wiki/OnSleepingTick

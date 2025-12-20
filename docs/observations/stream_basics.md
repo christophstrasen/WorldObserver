@@ -17,7 +17,11 @@ local sub = nil
 local function start()
   if sub then return end
 
-  lease = WorldObserver.factInterest:declare(MOD_ID, "featureKey", { type = "squares.nearPlayer" })
+  lease = WorldObserver.factInterest:declare(MOD_ID, "featureKey", {
+    type = "squares",
+    scope = "near",
+    target = { kind = "player", id = 0 },
+  })
 
   sub = WorldObserver.observations.squares()
     :subscribe(function(observation)

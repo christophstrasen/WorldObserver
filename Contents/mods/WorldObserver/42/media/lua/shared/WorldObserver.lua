@@ -127,8 +127,19 @@ WorldObserver = {
 		revoke = function(_, modId, key)
 			return interestRegistry:revoke(modId, key)
 		end,
-		effective = function(_, factType)
-			return interestRegistry:effective(factType)
+		effective = function(_, factType, opts)
+			-- Returns the merged interest bands for a type. For bucketed interest types (like `squares`),
+			-- this returns the single bucket only when exactly one exists; otherwise use `effectiveBuckets`.
+			return interestRegistry:effective(factType, nil, opts)
+		end,
+		effectiveBuckets = function(_, factType, opts)
+			-- Bucketed interests allow multiple independent targets under the same type.
+			-- Example: `squares` can have a near player bucket and one or more static square buckets.
+			-- Probes iterate these buckets deterministically and schedule them under a shared budget.
+			if interestRegistry and interestRegistry.effectiveBuckets then
+				return interestRegistry:effectiveBuckets(factType, nil, opts)
+			end
+			return {}
 		end,
 	},
 	helpers = {

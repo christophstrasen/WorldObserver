@@ -27,7 +27,9 @@ local MOD_ID = "YourModId"
 -- Time note: durations like `staleness`/`cooldown` are “seconds” on the in-game clock
 -- (same clock as `getGameTime():getTimeCalendar():getTimeInMillis()`), not real-time seconds.
 local lease = WorldObserver.factInterest:declare(MOD_ID, "quickstart.squares", {
-  type = "squares.nearPlayer",
+  type = "squares",
+  scope = "near",
+  target = { kind = "player", id = 0 }, -- singleplayer: local player
   radius = { desired = 8 },     -- tiles around the player
   staleness = { desired = 5 },  -- informs the frequency of probing in seconds
   cooldown = { desired = 2 },   -- don't re-emit for the same square within the cooldown seconds
