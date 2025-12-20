@@ -31,7 +31,7 @@ When you call:
 local lease = WorldObserver.factInterest:declare("YourModId", "someKey", {
   type = "squares",
   scope = "near",
-  target = { kind = "player", id = 0 },
+  target = { player = { id = 0 } },
 })
 ```
 
@@ -58,7 +58,7 @@ You can also request a shorter or longer lease when declaring:
 local lease = WorldObserver.factInterest:declare("YourModId", "someKey", {
   type = "squares",
   scope = "near",
-  target = { kind = "player", id = 0 },
+  target = { player = { id = 0 } },
 }, {
   ttlSeconds = 60, -- default is longer; set shorter if you want faster “auto-off”
 })
@@ -70,7 +70,7 @@ You can also specify milliseconds:
 local lease = WorldObserver.factInterest:declare("YourModId", "someKey", {
   type = "squares",
   scope = "near",
-  target = { kind = "player", id = 0 },
+  target = { player = { id = 0 } },
 }, {
   ttlMs = 2 * 60 * 1000, -- 2 minutes
 })
@@ -109,7 +109,7 @@ function handle:start()
   self.lease = WorldObserver.factInterest:declare("YourModId", "featureKey", {
     type = "squares",
     scope = "near",
-    target = { kind = "player", id = 0 },
+    target = { player = { id = 0 } },
   })
   self.sub = WorldObserver.observations.squares():subscribe(function(observation) ... end)
 end

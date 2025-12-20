@@ -6,12 +6,12 @@ Purpose: define the currently supported `type` / `scope` / `target` combinations
 
 ### type = "squares" (probe-driven + event-driven)
 
-| scope   | target.kind | target fields                     | Notes |
-|---------|-------------|-----------------------------------|-------|
-| near    | player      | id (defaults to 0)                | Probe around player. |
-| near    | square      | x, y, z (z defaults to 0)         | Probe around a fixed square. |
-| vision  | player      | id (defaults to 0)                | Probe; only emits squares visible to the player. |
-| onLoad  | n/a         | n/a                               | Event-driven: emits when squares load. Expected a chunked behavior and high volume when the player moves fast or loads for the first time (teleports etc.) |
+| scope   | target key | target shape                                  | Notes |
+|---------|------------|-----------------------------------------------|-------|
+| near    | player     | `target = { player = { id = 0 } }`            | Probe around player. |
+| near    | square     | `target = { square = { x, y, z } }`           | Probe around a fixed square (`z` defaults to 0). |
+| vision  | player     | `target = { player = { id = 0 } }`            | Probe; only emits squares visible to the player. |
+| onLoad  | n/a        | n/a                                           | Event-driven: emits when squares load. Expected a chunked behavior and high volume when the player moves fast or loads for the first time (teleports etc.) |
 
 Knobs:
 - Probe scopes (`near`, `vision`): `radius`, `staleness`, `cooldown`, `highlight`.
@@ -19,15 +19,15 @@ Knobs:
 
 Defaults:
 - If `scope` is missing, it defaults to `"near"`.
-- For probe scopes (`near`, `vision`), missing `target` defaults to `{ kind = "player", id = 0 }`.
+- For probe scopes (`near`, `vision`), missing `target` defaults to `{ player = { id = 0 } }`.
 
 ## Zombies
 
 ### type = "zombies" (probe-driven)
 
-| scope     | target.kind | target fields | Notes |
-|-----------|-------------|---------------|-------|
-| allLoaded | n/a         | n/a           | Scans the zombie list in the cell of the player (singleplayer). |
+| scope     | target key | target shape | Notes |
+|-----------|------------|--------------|-------|
+| allLoaded | n/a        | n/a          | Scans the zombie list in the cell of the player (singleplayer). |
 
 Knobs: `radius`, `zRange`, `staleness`, `cooldown`, `highlight`.
 
@@ -37,6 +37,6 @@ Defaults:
 ## Unsupported (not yet implemented)
 
 - `type = "squares"` with scope `inside`, `outside`, or `allLoaded`.
-- `type = "squares"` with `target.kind = "room"` or `"roomDef"`.
+- `type = "squares"` with `target = { room = { ... } }` or `target = { roomDef = { ... } }`.
 - Any zombie scopes beyond `allLoaded`.
 - Rooms / roomDefs interest types (future).

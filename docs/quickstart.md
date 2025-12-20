@@ -31,7 +31,7 @@ local MOD_ID = "YourModId"
 local lease = WorldObserver.factInterest:declare(MOD_ID, "quickstart.squares", {
   type = "squares",
   scope = "near",
-  target = { kind = "player", id = 0 }, -- v0: singleplayer local player
+  target = { player = { id = 0 } }, -- v0: singleplayer local player
   radius = { desired = 8 },     -- tiles around the player
   staleness = { desired = 5 },  -- informs the frequency of probing in seconds
   cooldown = { desired = 2 },   -- don't re-emit for the same square within the cooldown seconds

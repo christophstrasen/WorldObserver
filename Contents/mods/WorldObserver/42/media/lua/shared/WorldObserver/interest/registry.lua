@@ -111,24 +111,55 @@ local function normalizeBand(value, defaults)
 	return { desired = 0, tolerable = 0 }
 end
 
+local function warnInvalidTarget(message)
+	if _G.WORLDOBSERVER_HEADLESS == true then
+		return
+	end
+	Log:warn("[interest] invalid target: %s", tostring(message))
+end
+
+local function invalidTarget(message)
+	warnInvalidTarget(message)
+	return { kind = "invalid" }
+end
+
 local function normalizeTarget(target)
 	if type(target) ~= "table" then
-		return nil
+		return invalidTarget("target must be a table")
 	end
-	local kind = target.kind
-	if type(kind) ~= "string" or kind == "" then
-		return nil
+	if target.kind ~= nil then
+		return invalidTarget("target.kind is no longer supported; use target = { player = { id = 0 } }")
 	end
+
+	local kind, value
+	local count = 0
+	for k, v in pairs(target) do
+		if type(k) == "string" and k ~= "" then
+			kind = kind or k
+			value = value or v
+			count = count + 1
+		end
+	end
+	if count == 0 then
+		return invalidTarget("target must include exactly one kind key (e.g. { player = { id = 0 } })")
+	end
+	if count > 1 then
+		return invalidTarget("target must include exactly one kind key (got multiple)")
+	end
+	if type(value) ~= "table" then
+		return invalidTarget(("target.%s must be a table"):format(tostring(kind)))
+	end
+
 	if kind == "player" then
-		return { kind = "player", id = tonumber(target.id) or 0 }
+		return { kind = "player", id = tonumber(value.id) or 0 }
 	end
 	if kind == "square" then
-		local x = tonumber(target.x)
-		local y = tonumber(target.y)
+		local x = tonumber(value.x)
+		local y = tonumber(value.y)
 		if x == nil or y == nil then
-			return { kind = "square" }
+			return invalidTarget("target.square requires x and y")
 		end
-		local z = tonumber(target.z) or 0
+		local z = tonumber(value.z) or 0
 		return {
 			kind = "square",
 			x = math.floor(x),
@@ -138,7 +169,7 @@ local function normalizeTarget(target)
 	end
 	return {
 		kind = kind,
-		id = target.id or target.key,
+		id = value.id or value.key,
 	}
 end
 
@@ -209,7 +240,11 @@ local function normalizeSpec(spec, defaults, modId)
 	if interestType == "squares" then
 		scope = normalizeScope(scope, "near")
 		if not isSquaresEventScope(scope) then
-			target = normalizeTarget(spec.target) or { kind = "player", id = 0 }
+			if spec.target == nil then
+				target = { player = { id = 0 } }
+			else
+				target = normalizeTarget(spec.target)
+			end
 		else
 			if spec.target ~= nil then
 				warnIgnored(interestType, scope, "target")

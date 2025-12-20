@@ -18,7 +18,7 @@ local WorldObserver = require("WorldObserver")
 local lease = WorldObserver.factInterest:declare("YourModId", "featureKey", {
   type = "squares",
   scope = "near",
-  target = { kind = "player", id = 0 },
+  target = { player = { id = 0 } },
   radius = { desired = 8 },     -- tiles around player
   staleness = { desired = 5 },  -- target freshness (seconds, in-game clock)
   cooldown = { desired = 2 },   -- per-square re-emit limit (seconds, in-game clock)
@@ -37,7 +37,8 @@ Notes:
   - For `type = "squares"`, the supported scopes today are `near`, `vision`, and `onLoad`.
   - For `type = "zombies"`, the supported scope today is `allLoaded`.
 - `target`: the anchor identity for the probe plan.
-  - For `squares` probe scopes (`near`, `vision`), valid kinds are `player` and `square`.
+  - For `squares` probe scopes (`near`, `vision`), valid target keys are `player` and `square`.
+  - `target` must contain exactly **one** kind key (example: `target = { player = { id = 0 } }`).
   - `scope = "onLoad"` ignores `target`.
   - v0 note: singleplayer assumes the local player is `id = 0`.
 
@@ -50,12 +51,12 @@ Interest `type` selects the “fact plan” behind the scenes (listener vs probe
 - `type = "squares"` with `scope = "near"`
   - Probe-driven: scans squares near a target you define.
   - Target:
-    - defaults to `target = { kind = "player", id = 0 }` if omitted
-    - can also be a static anchor: `target = { kind = "square", x = ..., y = ..., z = ... }` (`z` defaults to 0)
+    - defaults to `target = { player = { id = 0 } }` if omitted
+    - can also be a static anchor: `target = { square = { x = ..., y = ..., z = ... } }` (`z` defaults to 0)
   - Knobs: `radius`, `staleness`, `cooldown`, `highlight`.
 - `type = "squares"` with `scope = "vision"`
   - Probe-driven: like `scope = "near"` with a player target, but only emits squares that are currently visible to the player (line-of-sight / “can see”).
-  - Target must be `kind = "player"` (defaults to `id = 0`).
+  - Target must be `target = { player = ... }` (defaults to `id = 0`).
   - Knobs: `radius`, `staleness`, `cooldown`, `highlight`.
 - `type = "squares"` with `scope = "onLoad"`
   - Event-driven: emits when squares load (chunk streaming).
@@ -132,8 +133,8 @@ The merge is designed so that the system can satisfy everyone at once:
 - `radius` / `zRange`: the merged `desired` tends toward the **largest** requested area.
 - `staleness` / `cooldown`: the merged `desired` tends toward the **smallest** requested freshness/emit intervals.
 - For `squares`, merging happens per scope + target identity (same target only).
-  - `target.kind = "player"` is WO-owned and merges across mods.
-  - `target.kind = "square"` is mod-owned and intentionally does **not** merge across mods, even if coordinates match.
+  - `target = { player = ... }` is WO-owned and merges across mods.
+  - `target = { square = ... }` is mod-owned and intentionally does **not** merge across mods, even if coordinates match.
 
 Then an adaptive policy picks an effective level based on runtime pressure:
 - Degrade order is: **increase staleness → reduce radius → increase cooldown**.

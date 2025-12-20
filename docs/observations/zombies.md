@@ -87,9 +87,9 @@ Record helpers (use inside `:whereZombie(...)` or inside Rx `:filter(...)` after
 
 Supported combinations for `type = "zombies"`:
 
-| scope     | target.kind | target fields | Notes |
-|-----------|-------------|---------------|-------|
-| allLoaded | n/a         | n/a           | Scans the loaded zombie list (v0: singleplayer). |
+| scope     | target key | target shape | Notes |
+|-----------|------------|--------------|-------|
+| allLoaded | n/a        | n/a          | Scans the loaded zombie list (v0: singleplayer). |
 
 Meaningful knobs: `radius`, `zRange`, `staleness`, `cooldown`, `highlight`.
 

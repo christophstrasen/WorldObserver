@@ -52,7 +52,7 @@ describe("squares probe cursor", function()
 			interestRegistry:declare("test", "near", {
 				type = "squares",
 				scope = "near",
-				target = { kind = "player", id = 0 },
+				target = { player = { id = 0 } },
 			})
 
 			local state = {}
@@ -78,7 +78,7 @@ describe("squares probe cursor", function()
 			interestRegistry:declare("test", "near", {
 				type = "squares",
 				scope = "near",
-				target = { kind = "player", id = 0 },
+				target = { player = { id = 0 } },
 			})
 
 			local nowMs = 0

@@ -30,7 +30,7 @@ local Time = require("WorldObserver/helpers/time")
 local squaresLease = WorldObserver.factInterest:declare("YourModId", "derived.squares", {
   type = "squares",
   scope = "near",
-  target = { kind = "player", id = 0 }, -- v0: singleplayer local player
+  target = { player = { id = 0 } }, -- v0: singleplayer local player
   radius = { desired = 10 },
   staleness = { desired = 5 },
   cooldown = { desired = 2 },

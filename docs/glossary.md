@@ -21,7 +21,11 @@ Note: in docs we call this **interest type** to avoid confusion with observation
 A sub-mode within an interest type. In the interest API this is `scope` (example: squares `near|vision|onLoad`, zombies `allLoaded`).
 
 ### Target
-The anchor for some probe scopes (example: `target = { kind = "player", id = 0 }` or `target = { kind = "square", x = ..., y = ..., z = ... }`).
+The anchor for some probe scopes. `target` must include exactly one kind key.
+
+Examples:
+- `target = { player = { id = 0 } }`
+- `target = { square = { x = ..., y = ..., z = ... } }`
 
 Not all scopes use a target (example: squares `scope = "onLoad"` ignores `target`).
 
@@ -115,4 +119,3 @@ The per-family table inside an observation (example: `observation.square`).
 
 ### RxMeta / schema
 Metadata WorldObserver (via LQR) attaches to records so windowing/joining/dedup can work. Most modders do not need to interact with `RxMeta` directly.
-

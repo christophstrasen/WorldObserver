@@ -66,7 +66,7 @@ Key idea: periodically scan squares within a radius of a declared target.
 Spec fields (illustrative):
 - `type = "squares"`
 - `scope = "near"`
-- `target = { kind = "player", id = 0 }` or `target = { kind = "square", x = ..., y = ..., z = ... }`
+- `target = { player = { id = 0 } }` or `target = { square = { x = ..., y = ..., z = ... } }`
 - `radius` (tiles) or `radius = { desired = 8, tolerable = 5 }`
 - `staleness` (seconds) or `staleness = { desired = 10, tolerable = 20 }`
 - `cooldown` (seconds) or `cooldown = { desired = 30, tolerable = 60 }`

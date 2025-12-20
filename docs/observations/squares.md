@@ -94,12 +94,12 @@ WorldObserver will only produce square observations once at least one mod declar
 
 Supported combinations for `type = "squares"`:
 
-| scope   | target.kind | target fields                     | Notes |
-|---------|-------------|-----------------------------------|-------|
-| near    | player      | id (defaults to 0)                | Probe around player. |
-| near    | square      | x, y, z (z defaults to 0)         | Probe around a fixed square. |
-| vision  | player      | id (defaults to 0)                | Probe; only emits squares visible to the player. |
-| onLoad  | n/a         | n/a                               | Event-driven: emits when squares load. |
+| scope   | target key | target shape                                  | Notes |
+|---------|------------|-----------------------------------------------|-------|
+| near    | player     | `target = { player = { id = 0 } }`            | Probe around player. |
+| near    | square     | `target = { square = { x, y, z } }`           | Probe around a fixed square (`z` defaults to 0). |
+| vision  | player     | `target = { player = { id = 0 } }`            | Probe; only emits squares visible to the player. |
+| onLoad  | n/a        | n/a                                           | Event-driven: emits when squares load. |
 
 Meaningful knobs:
 - Probe scopes (`near`, `vision`): `radius`, `staleness`, `cooldown`, `highlight`.

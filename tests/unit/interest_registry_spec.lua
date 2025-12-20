@@ -16,7 +16,7 @@ describe("interest registry", function()
 		reg:declare("modA", "near", {
 			type = "squares",
 			scope = "near",
-			target = { kind = "player", id = 0 },
+			target = { player = { id = 0 } },
 			staleness = { desired = 10, tolerable = 20 },
 			radius = { desired = 5, tolerable = 3 },
 			cooldown = { desired = 30, tolerable = 60 },
@@ -24,7 +24,7 @@ describe("interest registry", function()
 		reg:declare("modB", "near", {
 			type = "squares",
 			scope = "near",
-			target = { kind = "player", id = 0 },
+			target = { player = { id = 0 } },
 			staleness = { desired = 8, tolerable = 15 },
 			radius = { desired = 7, tolerable = 4 },
 			cooldown = { desired = 25, tolerable = 40 },
@@ -43,8 +43,8 @@ describe("interest registry", function()
 
 	it("keeps separate buckets for different targets", function()
 		local reg = Registry.new({ ttlSeconds = 100 })
-		reg:declare("modA", "near", { type = "squares", scope = "near", target = { kind = "player", id = 0 }, staleness = 5 })
-		reg:declare("modB", "near", { type = "squares", scope = "near", target = { kind = "square", x = 10, y = 12, z = 0 }, staleness = 8 })
+		reg:declare("modA", "near", { type = "squares", scope = "near", target = { player = { id = 0 } }, staleness = 5 })
+		reg:declare("modB", "near", { type = "squares", scope = "near", target = { square = { x = 10, y = 12, z = 0 } }, staleness = 8 })
 
 		local buckets = reg:effectiveBuckets("squares")
 		assert.equals(2, #buckets)

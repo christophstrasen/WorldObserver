@@ -32,7 +32,7 @@ The simplest way to confirm “WO is looking where I think it is” is to turn o
 local lease = WorldObserver.factInterest:declare("YourModId", "featureKey", {
   type = "squares",
   scope = "near",
-  target = { kind = "player", id = 0 }, -- v0: singleplayer
+  target = { player = { id = 0 } }, -- v0: singleplayer
   radius = { desired = 8 },
   staleness = { desired = 5 },
   cooldown = { desired = 2 },
@@ -62,8 +62,8 @@ end
 
 What to expect (today):
 - Squares merge per `scope` + target identity.
-  - `target.kind = "player"` is WO-owned and merges across mods.
-  - `target.kind = "square"` is mod-owned and intentionally does **not** merge across mods (even if coords match).
+  - `target = { player = ... }` is WO-owned and merges across mods.
+  - `target = { square = ... }` is mod-owned and intentionally does **not** merge across mods (even if coords match).
 
 Supported combinations per type:
 - [Squares](../observations/squares.md)
@@ -133,4 +133,3 @@ Practical rules:
 Zombie note:
 - For `type = "zombies", scope = "allLoaded"`, the probe still has to scan the loaded zombie list.
   `radius` makes emissions leaner (and reduces downstream work), but does not avoid the baseline “iterate zombies” cost.
-
