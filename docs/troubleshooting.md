@@ -16,7 +16,7 @@ Things to check:
   - `type = "squares", scope = "vision"`: probe-driven; only emits squares you can currently see.
 
 - **Your filters aren’t filtering everything away**  
-  Temporarily remove helpers like `:squareHasCorpse()` to confirm the base stream emits at all.
+  Temporarily remove helpers like `:squareHasCorpse()` to confirm the base observation stream emits at all.
 
 ## “It worked, then it stopped”
 

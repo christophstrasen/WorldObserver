@@ -31,9 +31,9 @@ Notes:
 
 ## 2. Type, scope, target (what they mean)
 
-- `type`: the fact plan that will run (probe/listener).
+- `type` (interest type): the fact plan that will run (probe/listener).
   - Example: `type = "squares"` or `type = "zombies"`.
-- `scope`: a sub-mode within a type (used for grouping and merging).
+- `scope`: a sub-mode within an interest type (used for grouping and merging).
   - For `type = "squares"`, the supported scopes today are `near`, `vision`, and `onLoad`.
   - For `type = "zombies"`, the supported scope today is `allLoaded`.
 - `target`: the anchor identity for the probe plan.

@@ -58,7 +58,7 @@ rxStream
 ## Best practices (keeps things sane)
 
 - Keep transformations in `:map()` and selection in `:filter()`; keep side effects in `:subscribe()` (or `:tap()` for debug prints).
-- Prefer stable ids/coords from observation records; don’t store engine userdata (`Iso*`) long-term.
+- Prefer stable ids/coords from observation records (example: `observation.square.x`); don’t store engine userdata (`Iso*`) long-term.
 - Unsubscribe when your feature turns off (`sub:unsubscribe()`) and stop your interest lease (`lease:stop()`).
   See [Lifecycle](../guides/lifecycle.md).
 

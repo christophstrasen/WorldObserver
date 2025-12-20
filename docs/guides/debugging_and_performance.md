@@ -65,7 +65,7 @@ What to expect (today):
   - `target = { player = ... }` is WO-owned and merges across mods.
   - `target = { square = ... }` is mod-owned and intentionally does **not** merge across mods (even if coords match).
 
-Supported combinations per type:
+Supported combinations per interest type:
 - [Squares](../observations/squares.md)
 - [Zombies](../observations/zombies.md)
 

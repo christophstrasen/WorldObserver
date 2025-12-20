@@ -13,7 +13,7 @@ The mechanism that produces facts:
 - **Probe (active scan):** periodically inspects world state (example: squares `scope = "near"` / `"vision"`, zombies `scope = "allLoaded"`).
 
 ### Fact type (fact plan type / interest type)
-The top-level category of fact work WorldObserver can run and merge. In the interest API this is `type` (example: `"squares"`, `"zombies"`).
+The top-level category of fact work WorldObserver can run and merge. In the interest API this is `spec.type` (example: `"squares"`, `"zombies"`).
 
 Note: in docs we call this **interest type** to avoid confusion with observation payload “families”.
 
@@ -41,7 +41,7 @@ The handle returned by `declare(...)`. It represents your active interest “lea
 - `lease:stop()` removes it.
 
 ### Merge (merged interest)
-When multiple mods declare interest, WorldObserver merges active leases into a single merged spec per type (and per bucket).
+When multiple mods declare interest, WorldObserver merges active leases into a single merged spec per interest type (and per bucket).
 
 ### Bucket (bucketKey)
 The “merge group” for a type. For bucketed types like squares, merging happens per `scope + target identity` (same bucket only).
@@ -62,7 +62,7 @@ How often the same key is allowed to re-emit (example: the same square or the sa
 ### Radius (tiles)
 How far around a target to consider.
 
-Note: For some fact types such as zombies with `scope = "allLoaded"`, the `radius` mainly makes **emissions** leaner; it does not avoid the baseline cost of scanning the loaded zombie list.
+Note: For some interest types such as zombies with `scope = "allLoaded"`, the `radius` mainly makes **emissions** leaner; it does not avoid the baseline cost of scanning the loaded zombie list.
 
 ### zRange (floors)
 How many Z-levels above/below the player are included.
@@ -87,7 +87,7 @@ A stream you can subscribe to, produced by WorldObserver (example: `WorldObserve
 The handle returned by `stream:subscribe(fn)`. You stop receiving events by calling `sub:unsubscribe()`.
 
 ### Base observation stream
-A built-in stream fed directly by a fact type (example: squares, zombies).
+A built-in stream fed directly by an interest type (example: squares, zombies).
 
 ### Derived observation stream
 A stream you build from one or more other streams (example: joining squares + zombies).
@@ -95,7 +95,7 @@ A stream you build from one or more other streams (example: joining squares + zo
 Derived streams can emit **multi-family observations** (multiple families in one observation).
 
 ### Family (observation payload family)
-A named record namespace inside an observation table (example: `observation.square`, `observation.zombie`).
+A named record namespace inside an observation table (example: `observation.square`, `observation.zombie`,  `observation.InOfficeZombie`).
 
 Important: “family” is about the **output payload shape**, not the interest type.
 
@@ -103,9 +103,6 @@ Important: “family” is about the **output payload shape**, not the interest 
 
 ### Helper
 WorldObserver-provided convenience methods for common filtering and readability (example: `:squareHasCorpse()`, `:zombieHasTarget()`).
-
-### whereSquare / whereZombie
-Convenience operators that call your predicate with the record you care about (square record or zombie record).
 
 ### distinct(dimension, seconds)
 A WorldObserver stream operator that de-duplicates by a named dimension over an in-game time window (example: “once per square every 10 seconds”).

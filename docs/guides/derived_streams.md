@@ -7,7 +7,7 @@ This is an advanced guide. If you haven’t built a working base subscription ye
 
 ## 1) What “multi-family” means (in practice)
 
-A normal base stream emits one family:
+A normal base observation stream emits one family:
 - squares: `observation.square`
 - zombies: `observation.zombie`
 
@@ -45,7 +45,8 @@ local zombiesLease = WorldObserver.factInterest:declare("YourModId", "derived.zo
   cooldown = { desired = 2 },
 })
 
--- Turn base observations into record streams (one record per emission).
+-- Turn base observation streams into record streams (one record per emission),
+-- by plucking the family record out of each observation.
 -- The records still carry LQR metadata (RxMeta) so they can participate in joins.
 local squares = WorldObserver.observations.squares()
   :distinct("square", 1)
@@ -99,4 +100,3 @@ Guidelines that help avoid “nil-check soup”:
 
 Next:
 - [Stream basics](../observations/stream_basics.md)
-

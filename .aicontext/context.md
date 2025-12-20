@@ -11,6 +11,7 @@ Repo-wide guidance for AI agents.
 - Bias for simplicity and minimal changes; avoid speculative features.
 - Note when context may be stale or missing and request needed files.
 - If instructions conflict, follow the higher-priority source (system > developer > AGENTS.md > this file > task > file-local comments).
+- Refer back to existing canonical terms and do not invent new definitions. When you believe it is necessary flag it clearly.
 - When we make changes, from time to time check and challenge if we improve the situation for users as we target in our `docs_internal/vision.md`
 
 ## Output & Style
@@ -62,6 +63,7 @@ If repo guidance conflicts, flag it and ask; don’t guess past ambiguities. Upd
 - Vision for the WorldObserver `docs_internal/vision.md`
 - AI gennerated logbook of changes and lessons learned `docs_internal/logbook.md`
 - All LQR related documentation at `external/LQR/docs`
+- Canonical terms and definitions `docs/glossary.md` 
 
 ## External Sources of Truth (in order)
 
