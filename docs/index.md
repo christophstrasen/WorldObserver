@@ -2,14 +2,15 @@
 
 WorldObserver helps Lua mods observe the Project Zomboid world safely (shared budgets, shared probes) using **observation streams**.
 
-You are reading the documentation index. For a high level overview go to the main 5. [Readme.md](/readme.md)
+You are reading the documentation index. For a high level overview, see [readme.md](../readme.md).
 
 Recommended reading order:
 1. [Quickstart](quickstart.md)
-2. [Guide: declaring interest](guides/interest.md)
-3. [Lifecycle: subscriptions and interest leases](guides/lifecycle.md)
-4. [Observations](observations/index.md)
-5. [Troubleshooting](troubleshooting.md)
+2. [Glossary](glossary.md)
+3. [Guide: declaring interest](guides/interest.md)
+4. [Lifecycle: subscriptions and interest leases](guides/lifecycle.md)
+5. [Observations](observations/index.md)
+6. [Troubleshooting](troubleshooting.md)
 
 ## Pages
 

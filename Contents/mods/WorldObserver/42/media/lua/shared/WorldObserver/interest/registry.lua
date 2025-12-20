@@ -241,7 +241,7 @@ local function normalizeSpec(spec, defaults, modId)
 		scope = normalizeScope(scope, "near")
 		if not isSquaresEventScope(scope) then
 			if spec.target == nil then
-				target = { player = { id = 0 } }
+				target = { kind = "player", id = 0 }
 			else
 				target = normalizeTarget(spec.target)
 			end

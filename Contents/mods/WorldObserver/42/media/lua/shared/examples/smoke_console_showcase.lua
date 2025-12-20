@@ -41,7 +41,8 @@ function Showcase.startSquares()
 		Showcase.stopSquares()
 	end
 	local WorldObserver = require("WorldObserver")
-	local lease = WorldObserver.factInterest:declare("examples/smoke_console_showcase", "squares.vision", SQUARES_INTEREST)
+	local lease =
+		WorldObserver.factInterest:declare("examples/smoke_console_showcase", "squares.vision", SQUARES_INTEREST)
 	local stream = WorldObserver.observations.squares():distinct("square", 5)
 	local sub = stream:subscribe(function(observation)
 		local sq = observation.square
@@ -73,7 +74,8 @@ function Showcase.startZombies()
 		Showcase.stopZombies()
 	end
 	local WorldObserver = require("WorldObserver")
-	local lease = WorldObserver.factInterest:declare("examples/smoke_console_showcase", "zombies.allLoaded", ZOMBIES_INTEREST)
+	local lease =
+		WorldObserver.factInterest:declare("examples/smoke_console_showcase", "zombies.allLoaded", ZOMBIES_INTEREST)
 	local stream = WorldObserver.observations.zombies():distinct("zombie", 5)
 	local sub = stream:subscribe(function(observation)
 		local z = observation.zombie

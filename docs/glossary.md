@@ -62,13 +62,13 @@ How often the same key is allowed to re-emit (example: the same square or the sa
 ### Radius (tiles)
 How far around a target to consider.
 
-Note: for zombies `scope = "allLoaded"`, `radius` mainly makes **emissions** leaner; it does not avoid the baseline cost of scanning the loaded zombie list.
+Note: For some fact types such as zombies with `scope = "allLoaded"`, the `radius` mainly makes **emissions** leaner; it does not avoid the baseline cost of scanning the loaded zombie list.
 
 ### zRange (floors)
-Zombie-only: how many Z-levels above/below the player are included.
+How many Z-levels above/below the player are included.
 
 ### Highlight
-Best-effort visual debugging aid (not a stable contract, not merged deterministically across mods).
+Best-effort debugging aid that may help you spot _some_ observations visually.
 
 ### TTL (lease ttlSeconds / ttlMs)
 How long a lease stays valid without renewal.
