@@ -39,6 +39,7 @@ end
 ```
 
 Note: one emitted `observation` is a Lua table and can carry multiple “families” at once (for example both `observation.square` and `observation.zombie`). The built-in base streams mostly emit one family, but derived streams can combine them.
+See: [Derived streams (multi-family observations)](../guides/derived_streams.md)
 
 Lifecycle details (renewal, TTL override):
 - [Lifecycle](../guides/lifecycle.md)

@@ -43,3 +43,7 @@ General stream usage (subscribe, distinct, stop/unsubscribe):
 
 ReactiveX primer (optional, but helpful):
 - [ReactiveX primer](reactivex_primer.md)
+
+Next steps (advanced):
+- [Derived streams (multi-family observations)](../guides/derived_streams.md)
+- [Troubleshooting](../troubleshooting.md)

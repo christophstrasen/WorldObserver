@@ -5,6 +5,23 @@ Goal: react to what WorldObserver observes about zombies (positions, movement, t
 Quickstart first (recommended):
 - [Quickstart](../quickstart.md)
 
+## Declare interest (required)
+
+WorldObserver does no zombie probing unless at least one mod declares interest.
+
+```lua
+local WorldObserver = require("WorldObserver")
+
+local lease = WorldObserver.factInterest:declare("YourModId", "featureKey", {
+  type = "zombies",
+  scope = "allLoaded",      -- default today (and only supported scope)
+  radius = { desired = 25 }, -- filter emissions; does not avoid scanning the loaded zombie list
+  zRange = { desired = 0 },  -- floors above/below the player
+  staleness = { desired = 2 },
+  cooldown = { desired = 2 },
+})
+```
+
 ## Subscribe
 
 ```lua
@@ -65,3 +82,15 @@ Available today:
 
 Record helpers (use inside `:whereZombie(...)` or inside Rx `:filter(...)` after `:asRx()`):
 - `WorldObserver.helpers.zombie.record.zombieHasTarget(zombieRecord)`
+
+## Supported interest configuration (today)
+
+Supported combinations for `type = "zombies"`:
+
+| scope     | target.kind | target fields | Notes |
+|-----------|-------------|---------------|-------|
+| allLoaded | n/a         | n/a           | Scans the loaded zombie list (v0: singleplayer). |
+
+Meaningful knobs: `radius`, `zRange`, `staleness`, `cooldown`, `highlight`.
+
+Note: `radius` makes emissions leaner, but does not avoid the baseline cost of scanning the loaded zombie list.

@@ -1,6 +1,8 @@
 # Quickstart (WorldObserver)
 
 Goal: subscribe to a WorldObserver observation and get a visible/logged result in-game.
+If you want an overview of all docs pages and a recommended reading order:
+- [Docs index](index.md)
 
 ## 1. Prereqs
 
@@ -29,7 +31,7 @@ local MOD_ID = "YourModId"
 local lease = WorldObserver.factInterest:declare(MOD_ID, "quickstart.squares", {
   type = "squares",
   scope = "near",
-  target = { kind = "player", id = 0 }, -- singleplayer: local player
+  target = { kind = "player", id = 0 }, -- v0: singleplayer local player
   radius = { desired = 8 },     -- tiles around the player
   staleness = { desired = 5 },  -- informs the frequency of probing in seconds
   cooldown = { desired = 2 },   -- don't re-emit for the same square within the cooldown seconds
@@ -70,6 +72,11 @@ _G.WOQuickstart = {
 ### Why declare interest?
 
 - It tells WO *how far* to probe (`radius`) or what else to listen to and *how fresh* results should be (`staleness`/`cooldown`).
+
+### A note about stability (square ids vs coords)
+
+- `x/y/z` is the stable long-term anchor.
+- `squareId` is stable within a running session, but should not be relied on across game reloads (TODO: confirm and document stricter guarantees later).
 
 ### Lease renewal and cleanup
 
