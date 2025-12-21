@@ -55,7 +55,7 @@ Common fields on the zombie record:
 - targeting: `hasTarget`, `targetId`, `targetKind`, `targetVisible`, `targetSeenSeconds`
 - target coords: `targetX`, `targetY`, `targetZ`, `targetSquareId`
 - `source` (which producer saw it)
-- `sourceTime` / `observedAtTimeMS` (ms, in-game clock)
+- `sourceTime` (ms, in-game clock)
 
 Engine object:
 - Usually not included. If you need one, use `WorldObserver.helpers.zombie.record.getIsoZombie(record)` as best-effort rehydration.

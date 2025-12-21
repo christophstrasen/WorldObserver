@@ -89,7 +89,7 @@ If we temporarily buffer objects (e.g. `IsoGridSquare`), we should treat that as
 
 For some facts, ingest can buffer only a key (or key + minimal metadata), and drain-time builds the final record:
 
-- Ingest: `{ squareId = ..., x = ..., y = ..., z = ..., source = "event", observedAtTimeMS = ... }`
+- Ingest: `{ squareId = ..., x = ..., y = ..., z = ..., source = "event", sourceTime = ... }`
 - Drain: attach derived fields and/or validate invariants, then emit to the fact stream
 
 This keeps the event path minimal and avoids doing heavy work under bursts.

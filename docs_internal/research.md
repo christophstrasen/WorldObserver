@@ -56,6 +56,18 @@ https://pzwiki.net/wiki/OnPlayerMove
 
 https://pzwiki.net/wiki/OnSeeNewRoom
 
+
+Events.OnSeeNewRoom.Add(function(isoRoom)
+Via squares (drive-by of the square facts)
+getSquare():getRoom()
+Via all buildings in the cell
+getCell():getBuildings
+via the cell directly
+getCell():getRoomList()
+
+FYI: getCell is not helpful on server-ide because it gets no chunks and without chunks there are no rooms and other objects.
+
+
 # CharacterStatObservation
 
 https://demiurgequantified.github.io/ProjectZomboidJavaDocs/zombie/characters/CharacterStat.html
@@ -98,3 +110,10 @@ https://pzwiki.net/wiki/OnWeaponSwingHitPoint
 # ThumpableObservation
 
 https://pzwiki.net/wiki/OnWeaponHitThumpable
+
+# ZoneObservations
+
+getZoneAt(x,y,z)
+getZonesAt(x,y,z)
+getZonesIntersecting(x,y,z,w,h)
+getZoneWithBoundsAndType(...)

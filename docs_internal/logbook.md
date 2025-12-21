@@ -63,15 +63,15 @@
   - Clarified in `api_proposal.md` that core schemas (e.g. `SquareObservation`) are structured and documented, while custom schemas are “opaque but honest” and only constrained where they opt into helper sets or debug tooling.
 
 - Defined `SquareObservation` and time handling:
-  - Specified the `SquareObservation` schema, including `squareId`, a best-effort `IsoGridSquare` reference, flags like `hasBloodSplat`/`hasTrashItems`, and `observedAtTimeMS` (from `timeCalendar:getTimeInMillis()`).
+  - Specified the `SquareObservation` schema, including `squareId`, a best-effort `IsoGridSquare` reference, flags like `hasBloodSplat`/`hasTrashItems`, and `sourceTime` (from `timeCalendar:getTimeInMillis()`).
   - Decided that `squareId` represents the semi-stable identity of the square (e.g. from `IsoGridSquare` ID), while `RxMeta.id` is a per-observation identifier.
   - For MVP, left content heuristics for `hasBloodSplat`/`hasTrashItems` as stubs, with richer detection explicitly deferred.
 
 - Integrated event time and observation IDs with LQR:
-  - Agreed not to patch LQR ad-hoc but to extend `LQR.Schema.wrap` with a clean option to populate `RxMeta.sourceTime` from a payload field (e.g. `sourceTimeField = "observedAtTimeMS"`) and to allow a custom `idSelector`.
+  - Agreed not to patch LQR ad-hoc but to extend `LQR.Schema.wrap` with a clean option to populate `RxMeta.sourceTime` from a payload field (e.g. `sourceTimeField = "sourceTime"`) and to allow a custom `idSelector`.
   - Decided that WorldObserver fact sources will:
-    - stamp `observedAtTimeMS` in the fact layer when creating a `SquareObservation`, and
-    - call `Schema.wrap("SquareObservation", observable, { idSelector = nextObservationId, sourceTimeField = "observedAtTimeMS" })` so LQR sees a monotonic per-observation `RxMeta.id` and a numeric `RxMeta.sourceTime`.
+    - stamp `sourceTime` in the fact layer when creating a `SquareObservation`, and
+    - call `Schema.wrap("SquareObservation", observable, { idSelector = nextObservationId, sourceTimeField = "sourceTime" })` so LQR sees a monotonic per-observation `RxMeta.id` and a numeric `RxMeta.sourceTime`.
   - Documented these decisions in both `mvp.md` and `api_proposal.md`, including implementation notes about separating domain IDs from LQR metadata.
 
 - Added an advanced helper for custom schemas:
@@ -88,7 +88,7 @@
 
 ### Next steps
 - Implement the MVP module skeletons (`WorldObserver.lua`, `config.lua`, `facts/registry.lua`, `facts/squares.lua`, `observations/core.lua`, `observations/squares.lua`, `helpers/square.lua`, `debug.lua`) to match the agreed layouts and contracts.
-- Extend `LQR.Schema.wrap` with `sourceTimeField` / `sourceTimeSelector` and validate that time-based windows behave correctly against `observedAtTimeMS`.
+- Extend `LQR.Schema.wrap` with `sourceTimeField` / `sourceTimeSelector` and validate that time-based windows behave correctly against `sourceTime`.
 - Start adding engine-independent Busted tests for `facts.squares`, `observations.squares()`, and the first square helpers, following the patterns sketched in `mvp.md`.
 
 ## day4 – MVP skeleton implemented (untested in-game)
@@ -301,8 +301,8 @@
 ## day11 – Time semantics, `sourceTime` standardization, and config hygiene
 
 ### Highlights
-- Standardized per-record `sourceTime` (ms) on fact records and aligned it with `observedAtTimeMS`:
-  - Squares and zombies facts now emit `sourceTime` alongside `observedAtTimeMS`.
+- Standardized per-record `sourceTime` (ms) on fact records and aligned it with `sourceTime`:
+  - Squares and zombies facts now emit `sourceTime` alongside `sourceTime`.
   - Observation schema wrapping stamps `RxMeta.sourceTime` from `sourceTime` (not from ad-hoc field names).
 - Reduced per-query verbosity for time windows by adding a default clock override in LQR and injecting it from WorldObserver:
   - WorldObserver sets LQR’s default window `currentFn` to the same `Time.gameMillis` source used for `sourceTime` stamping.
@@ -379,3 +379,28 @@
 ### Next steps
 - Decide whether and how to introduce `scope="allLoaded"` for squares (loaded-cell sweep vs event stream) without blurring probe vs event semantics.
 - Consider adding a small interest-validation test suite that asserts all supported combinations from `docs_internal/interest_combinations.md` remain accepted and that forbidden knobs are rejected/ignored deterministically.
+
+## day14 – Rooms facts, cell room list probing, and stable room IDs
+
+### Highlights
+- Added a new room fact family backed by `IsoRoom` snapshots and a corresponding observation stream:
+  - Event-driven scope: `type="rooms", scope="onSeeNewRoom"` via `Events.OnSeeNewRoom`.
+  - Probe-driven scope: `type="rooms", scope="allLoaded"` via `getCell():getRoomList()` with a time-sliced cursor.
+- Simplified rooms acquisition deliberately: removed any “drive-by”/piggyback probing through squares; rooms now come only from `onSeeNewRoom` + `allLoaded`.
+- Standardized room record timestamping on `sourceTime` (ms) and kept room records as small snapshots (ids, counts, flags, bounds where available).
+- Introduced `helpers/java_list.lua` for defensive Java-backed list access (`size`/`get`) across Kahlua quirks (including non-indexable values that stringify like `[]`).
+- Fixed a real-world room identity problem:
+  - Engine room/roomDef ids can exceed Lua number precision, causing collisions and confusing dedup/highlight behavior.
+  - Room records now use a stable string `roomId` derived from the **first room square** coordinates: `x123y456z7`.
+  - `roomDefId` remains as optional metadata (best-effort), not a key.
+- Improved smoke usability:
+  - Extended `examples/smoke_console_showcase.lua` to include rooms with `rooms.allLoaded` interest.
+
+### Lessons
+- Avoid using large engine “IDs” as Lua numbers for keys: once values exceed IEEE-754 safe integer range, collisions become subtle and hard to diagnose.
+- For identity keys, prefer **stable, domain-derived strings** (like coordinate-based ids) over best-effort engine ids when running in Lua/Kahlua.
+- Java/Kahlua interop needs explicit guardrails: an “empty list” can be present but non-indexable (`[]`), so even method lookups must be defensive.
+
+### Next steps
+- Consider a small optional debug mode to report rooms where `getSquares()` is unavailable (`[]`) so we can understand when/why certain rooms can’t be highlighted or keyed.
+- Decide whether the “first square” rule should be upgraded to “minimum square” (order-independent) if we ever see unstable ordering in `getSquares()` in practice.

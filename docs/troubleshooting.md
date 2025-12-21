@@ -40,7 +40,7 @@ If you need ongoing freshness, use a probe scope (`near` or `vision`) and tune `
 
 WorldObserver uses the **in-game clock**:
 - Many knobs and helpers use **seconds** (e.g. `staleness`, `cooldown`, `:distinct(..., seconds)`).
-- Record timestamps are usually **milliseconds** (`sourceTime`, `observedAtTimeMS`).
+- Record timestamps are usually **milliseconds** (`sourceTime`).
 
 If you expected real-time seconds, your numbers will feel off.
 

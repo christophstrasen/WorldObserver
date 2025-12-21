@@ -27,6 +27,55 @@ local function nowMillis()
 	return Time.gameMillis()
 end
 
+-- Patch seam: only define when nil so mods can override.
+if Highlight.durationMsFromCooldownSeconds == nil then
+	function Highlight.durationMsFromCooldownSeconds(cooldownSeconds)
+		local ms = math.max(0, (tonumber(cooldownSeconds) or 0) * 1000)
+		-- Keep highlights brief to avoid long-lived overlays from slow cooldowns.
+		return math.max(250, math.min(5000, ms))
+	end
+end
+
+if Highlight.durationMsFromCadenceSeconds == nil then
+	function Highlight.durationMsFromCadenceSeconds(stalenessSeconds, cooldownSeconds)
+		local staleness = tonumber(stalenessSeconds) or 0
+		local cooldown = tonumber(cooldownSeconds) or 0
+		local cadence = math.max(staleness, cooldown)
+		if cadence <= 0 then
+			return 0
+		end
+		return math.floor((cadence * 1000) / 2)
+	end
+end
+
+if Highlight.highlightFloor == nil then
+	--- Highlight a square's floor if available.
+	--- @param square any
+	--- @param durationMs number
+	--- @param opts table|nil { color?, alpha?, blink? }
+	--- @return table|nil handle
+	function Highlight.highlightFloor(square, durationMs, opts)
+		if square == nil or durationMs <= 0 then
+			return nil, "noSquare"
+		end
+		if type(square.getFloor) ~= "function" then
+			return nil, "noFloor"
+		end
+		local okFloor, floor = pcall(square.getFloor, square)
+		if not okFloor or floor == nil then
+			return nil, "noFloor"
+		end
+		if type(Highlight.highlightTarget) ~= "function" then
+			return nil, "noTargetHelper"
+		end
+		opts = opts or {}
+		if opts.durationMs == nil then
+			opts.durationMs = durationMs
+		end
+		return Highlight.highlightTarget(floor, opts)
+	end
+end
+
 local function callSetHighlighted(target, enabled, blink)
 	if type(target.setHighlighted) ~= "function" then
 		return

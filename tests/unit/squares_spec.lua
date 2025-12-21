@@ -42,7 +42,7 @@ describe("WorldObserver observations.squares()", function()
 			x = 1,
 			y = 2,
 			z = 0,
-			observedAtTimeMS = 123,
+			sourceTime = 123,
 			sourceTime = 123,
 			source = "event",
 		})
@@ -69,7 +69,7 @@ describe("WorldObserver observations.squares()", function()
 			x = 5,
 			y = 6,
 			z = 0,
-			observedAtTimeMS = 1000,
+			sourceTime = 1000,
 			sourceTime = 1000,
 		})
 		WorldObserver._internal.facts:emit("squares", {
@@ -78,7 +78,7 @@ describe("WorldObserver observations.squares()", function()
 			x = 5,
 			y = 6,
 			z = 0,
-			observedAtTimeMS = 1001,
+			sourceTime = 1001,
 			sourceTime = 1001,
 		})
 
@@ -99,7 +99,7 @@ describe("WorldObserver observations.squares()", function()
 			x = 0,
 			y = 0,
 			z = 0,
-			observedAtTimeMS = 50,
+			sourceTime = 50,
 			sourceTime = 50,
 		})
 		WorldObserver._internal.facts:emit("squares", {
@@ -109,7 +109,7 @@ describe("WorldObserver observations.squares()", function()
 			x = 1,
 			y = 1,
 			z = 0,
-			observedAtTimeMS = 60,
+			sourceTime = 60,
 			sourceTime = 60,
 		})
 
@@ -137,7 +137,7 @@ describe("WorldObserver observations.squares()", function()
 			x = 0,
 			y = 0,
 			z = 0,
-			observedAtTimeMS = 50,
+			sourceTime = 50,
 			sourceTime = 50,
 		})
 		WorldObserver._internal.facts:emit("squares", {
@@ -147,7 +147,7 @@ describe("WorldObserver observations.squares()", function()
 			x = 1,
 			y = 1,
 			z = 0,
-			observedAtTimeMS = 60,
+			sourceTime = 60,
 			sourceTime = 60,
 		})
 
@@ -197,7 +197,7 @@ describe("WorldObserver observations.squares()", function()
 				y = 2,
 				z = 0,
 				IsoGridSquare = nil,
-				observedAtTimeMS = 1,
+				sourceTime = 1,
 				sourceTime = 1,
 			})
 

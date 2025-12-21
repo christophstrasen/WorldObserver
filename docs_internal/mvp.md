@@ -137,7 +137,7 @@ least the following:
 ---@field hasBloodSplat boolean?    -- true if any blood decal is present
 ---@field hasCorpse boolean?        -- true if any corpse is present
 ---@field hasTrashItems boolean?    -- true if items considered "trash" are present
----@field observedAtTimeMS number?  -- game time (timeCalendar:getTimeInMillis())
+---@field sourceTime number?  -- game time (timeCalendar:getTimeInMillis())
 ---@field source string?            -- optional: "event" | "probe" (diagnostic)
 ```
 
@@ -259,7 +259,7 @@ establish a clear, reusable pattern:
   - When a listener or probe creates a `SquareObservation`, it should:
     - read the current game time once from the engine (e.g.
       `getGameTime():getTimeCalendar():getTimeInMillis()`); and
-    - write that value into `SquareObservation.observedAtTimeMS`.
+    - write that value into `SquareObservation.sourceTime`.
   - This happens in the fact layer (e.g. inside `makeSquareRecord`), as close
     as possible to the “fact creation” moment.
 
@@ -277,8 +277,8 @@ establish a clear, reusable pattern:
 
 - **WorldObserver usage in MVP**
   - For `SquareObservation` sources, WorldObserver will:
-    - populate `observedAtTimeMS` in the fact layer; then
-    - call `Schema.wrap("SquareObservation", observable, { idSelector = nextObservationId, sourceTimeField = "observedAtTimeMS" })`
+    - populate `sourceTime` in the fact layer; then
+    - call `Schema.wrap("SquareObservation", observable, { idSelector = nextObservationId, sourceTimeField = "sourceTime" })`
       so that:
       - `RxMeta.id` is a cheap, monotonically increasing observation identifier
         (via an internal `nextObservationId()` helper) rather than the
@@ -286,7 +286,7 @@ establish a clear, reusable pattern:
       - `RxMeta.sourceTime` is automatically stamped from our payload.
   - Time-based LQR windows and helpers can then rely on `RxMeta.id` and
     `RxMeta.sourceTime` for behavior, while mod authors see
-    `SquareObservation.squareId` and `SquareObservation.observedAtTimeMS` as
+    `SquareObservation.squareId` and `SquareObservation.sourceTime` as
     the domain-level identifiers and timestamps.
   - For advanced users or custom fact sources that call `Schema.wrap`
     directly, WorldObserver exposes a `nextObservationId()` helper on the
@@ -313,7 +313,7 @@ MVP and later versions, and we explicitly avoid shims/backward-compatibility.
 ---@field z integer
 ---@field hasBloodSplat boolean?
 ---@field hasTrashItems boolean?
----@field observedAtTimeMS number?
+---@field sourceTime number?
 ---@field source string?
 
 ---@class Observation

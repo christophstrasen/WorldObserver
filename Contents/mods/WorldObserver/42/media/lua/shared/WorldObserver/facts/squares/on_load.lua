@@ -26,26 +26,6 @@ local function nowMillis()
 	return Time.gameMillis() or math.floor(os.time() * 1000)
 end
 
-local function highlightFloor(square, durationMs)
-	if square == nil or durationMs <= 0 then
-		return
-	end
-	if type(square.getFloor) ~= "function" then
-		return
-	end
-	local okFloor, floor = pcall(square.getFloor, square)
-	if not okFloor or floor == nil then
-		return
-	end
-	Highlight.highlightTarget(floor, { durationMs = durationMs, color = ONLOAD_HIGHLIGHT_COLOR, alpha = 0.9 })
-end
-
-local function highlightMsFromCooldownSeconds(cooldownSeconds)
-	local ms = math.max(0, (tonumber(cooldownSeconds) or 0) * 1000)
-	-- Keep the highlight short and readable; this is event-driven, not a probe visualization.
-	return math.max(250, math.min(5000, ms))
-end
-
 local function emitWithCooldown(state, emitFn, record, nowMs, cooldownMs, onEmitFn)
 	if type(emitFn) ~= "function" or type(record) ~= "table" or record.squareId == nil then
 		return false
@@ -96,12 +76,16 @@ local function registerListener(ctx)
 			if effective.highlight ~= true then
 				return
 			end
-			highlightFloor(square, highlightMsFromCooldownSeconds(effective.cooldown))
+			Highlight.highlightFloor(
+				square,
+				Highlight.durationMsFromCooldownSeconds(effective.cooldown),
+				{ color = ONLOAD_HIGHLIGHT_COLOR, alpha = 0.9 }
+			)
 		end)
 	end
 
-	handler.Add(fn)
-	state.loadGridsquareHandler = fn
+handler.Add(fn)
+state.loadGridsquareHandler = fn
 	Log:info("LoadGridsquare listener registered")
 	return true
 end
@@ -167,6 +151,6 @@ end
 
 OnLoad._internal.registerListener = registerListener
 OnLoad._internal.emitWithCooldown = emitWithCooldown
-OnLoad._internal.highlightFloor = highlightFloor
+OnLoad._internal.highlightFloor = Highlight.highlightFloor
 
 return OnLoad

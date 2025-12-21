@@ -57,6 +57,13 @@ local DEFAULTS = {
 		cooldown = { desired = 2, tolerable = 4 },
 		highlight = nil,
 	},
+	["rooms"] = {
+		staleness = { desired = 60, tolerable = 120 },
+		radius = { desired = 0, tolerable = 0 },
+		zRange = { desired = 0, tolerable = 0 },
+		cooldown = { desired = 20, tolerable = 40 },
+		highlight = nil,
+	},
 }
 
 local function cloneTable(tbl)
@@ -184,6 +191,15 @@ local function isSquaresEventScope(scope)
 	return scope == "onLoad"
 end
 
+local function isRoomsEventScope(scope)
+	return scope == "onSeeNewRoom"
+end
+
+local function isEventScope(interestType, scope)
+	return (interestType == "squares" and isSquaresEventScope(scope))
+		or (interestType == "rooms" and isRoomsEventScope(scope))
+end
+
 local function warnIgnored(interestType, scope, field)
 	if _G.WORLDOBSERVER_HEADLESS == true then
 		return
@@ -265,17 +281,57 @@ local function normalizeSpec(spec, defaults, modId)
 		if spec.target ~= nil then
 			warnIgnored(interestType, scope, "target")
 		end
+	elseif interestType == "rooms" then
+		scope = normalizeScope(scope, "allLoaded")
+		if isRoomsEventScope(scope) then
+			if spec.target ~= nil then
+				warnIgnored(interestType, scope, "target")
+			end
+			if spec.radius ~= nil then
+				warnIgnored(interestType, scope, "radius")
+			end
+			if spec.staleness ~= nil then
+				warnIgnored(interestType, scope, "staleness")
+			end
+		else
+			if scope ~= "allLoaded" then
+				warnIgnored(interestType, scope, "scope")
+				scope = "allLoaded"
+			end
+			if spec.target ~= nil then
+				warnIgnored(interestType, scope, "target")
+			end
+			if spec.radius ~= nil then
+				warnIgnored(interestType, scope, "radius")
+			end
+			if spec.zRange ~= nil then
+				warnIgnored(interestType, scope, "zRange")
+			end
+		end
 	end
 	local typeDefaults = defaults[canonicalType] or defaults[interestType] or {}
 	local staleness = nil
 	local radius = nil
-	if interestType == "squares" and isSquaresEventScope(scope) then
+	local zRange = nil
+	if isEventScope(interestType, scope) then
 		-- Event scopes ignore probe-only knobs; normalize them to zeroed bands so merges stay stable.
 		staleness = { desired = 0, tolerable = 0 }
 		radius = { desired = 0, tolerable = 0 }
+		if interestType == "rooms" then
+			zRange = { desired = 0, tolerable = 0 }
+		end
 	else
 		staleness = normalizeBand(spec.staleness, typeDefaults.staleness)
-		radius = normalizeBand(spec.radius, typeDefaults.radius)
+		if interestType == "rooms" and scope == "allLoaded" then
+			radius = { desired = 0, tolerable = 0 }
+			zRange = { desired = 0, tolerable = 0 }
+		else
+			radius = normalizeBand(spec.radius, typeDefaults.radius)
+			zRange = normalizeBand(spec.zRange, typeDefaults.zRange)
+		end
+	end
+	if zRange == nil then
+		zRange = normalizeBand(spec.zRange, typeDefaults.zRange)
 	end
 	local normalized = {
 		type = canonicalType,
@@ -283,7 +339,7 @@ local function normalizeSpec(spec, defaults, modId)
 		target = target,
 		staleness = staleness,
 		radius = radius,
-		zRange = normalizeBand(spec.zRange, typeDefaults.zRange),
+		zRange = zRange,
 		cooldown = normalizeBand(spec.cooldown, typeDefaults.cooldown),
 		highlight = spec.highlight ~= nil and spec.highlight or typeDefaults.highlight,
 	}
@@ -292,6 +348,12 @@ local function normalizeSpec(spec, defaults, modId)
 		bucketKey = bucketKeyForTarget(scope, target, modId or "unknown")
 	elseif canonicalType == "zombies" then
 		bucketKey = scope or "allLoaded"
+	elseif canonicalType == "rooms" then
+		if isRoomsEventScope(scope) then
+			bucketKey = "onSeeNewRoom"
+		else
+			bucketKey = "allLoaded"
+		end
 	end
 	return normalized, bucketKey
 end

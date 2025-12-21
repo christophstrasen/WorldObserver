@@ -531,7 +531,7 @@ function FactRegistry:_drainSchedulerOnce()
 					tostring(record.hasCorpse),
 					tostring(record.hasBloodSplat),
 					tostring(record.hasTrashItems),
-					tostring(record.observedAtTimeMS)
+					tostring(record.sourceTime)
 				)
 			end
 			if emitFn then

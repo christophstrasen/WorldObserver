@@ -41,13 +41,13 @@ describe("WorldObserver observations.zombies()", function()
 		WorldObserver._internal.facts:emit("zombies", {
 			zombieId = 1,
 			hasTarget = false,
-			observedAtTimeMS = 50,
+			sourceTime = 50,
 			sourceTime = 50,
 		})
 		WorldObserver._internal.facts:emit("zombies", {
 			zombieId = 2,
 			hasTarget = true,
-			observedAtTimeMS = 60,
+			sourceTime = 60,
 			sourceTime = 60,
 		})
 

@@ -109,7 +109,6 @@ if Record.makeSquareRecord == nil then
 			hasBloodSplat = detectFlag(square, square.hasBlood),
 				hasCorpse = detectCorpse(square),
 				hasTrashItems = false, -- placeholder until we wire real trash detection
-				observedAtTimeMS = ts,
 				sourceTime = ts,
 				IsoGridSquare = square,
 				source = source,

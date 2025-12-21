@@ -34,9 +34,25 @@ Knobs: `radius`, `zRange`, `staleness`, `cooldown`, `highlight`.
 Defaults:
 - If `scope` is missing, it defaults to `"allLoaded"`.
 
+## Rooms
+
+### type = "rooms" (probe-driven + event-driven)
+
+| scope        | target key | target shape | Notes |
+|--------------|------------|--------------|-------|
+| allLoaded    | n/a        | n/a          | Scans the room list in the active cell (singleplayer). |
+| onSeeNewRoom | n/a        | n/a          | Event-driven: emits when a room is seen. |
+
+Knobs:
+- Probe scope (`allLoaded`): `staleness`, `cooldown`, `highlight`.
+- Event scope (`onSeeNewRoom`): `cooldown`, `highlight`.
+
+Defaults:
+- If `scope` is missing, it defaults to `"allLoaded"`.
+
 ## Unsupported (not yet implemented)
 
 - `type = "squares"` with scope `inside`, `outside`, or `allLoaded`.
 - `type = "squares"` with `target = { room = { ... } }` or `target = { roomDef = { ... } }`.
 - Any zombie scopes beyond `allLoaded`.
-- Rooms / roomDefs interest types (future).
+- RoomDef / zone interest types (future).

@@ -1,6 +1,7 @@
 -- facts/zombies/record.lua -- builds stable zombie fact records from IsoZombie objects.
 local Log = require("LQR/util/log").withTag("WO.FACTS.zombies")
 local Time = require("WorldObserver/helpers/time")
+local SafeCall = require("WorldObserver/helpers/safe_call")
 
 local moduleName = ...
 local Record = {}
@@ -16,16 +17,6 @@ Record._internal = Record._internal or {}
 
 local function nowMillis()
 	return Time.gameMillis() or math.floor(os.time() * 1000)
-end
-
-local function safeCall(obj, methodName)
-	if obj and type(obj[methodName]) == "function" then
-		local ok, value = pcall(obj[methodName], obj)
-		if ok then
-			return value
-		end
-	end
-	return nil
 end
 
 local function deriveLocomotion(isCrawling, isRunning, isMoving)
@@ -106,9 +97,9 @@ if Record.makeZombieRecord == nil then
 		opts = opts or {}
 		local ts = opts.nowMs or nowMillis()
 
-		local x = safeCall(zombie, "getX")
-	local y = safeCall(zombie, "getY")
-	local z = safeCall(zombie, "getZ") or 0
+		local x = SafeCall.safeCall(zombie, "getX")
+	local y = SafeCall.safeCall(zombie, "getY")
+	local z = SafeCall.safeCall(zombie, "getZ") or 0
 	if x == nil or y == nil then
 		Log:warn("Skipped zombie record: missing coordinates")
 		return nil
@@ -117,24 +108,24 @@ if Record.makeZombieRecord == nil then
 	local tileY = math.floor(y)
 	local tileZ = math.floor(z)
 
-	local square = safeCall(zombie, "getCurrentSquare")
+	local square = SafeCall.safeCall(zombie, "getCurrentSquare")
 	local squareId = deriveSquareId(square, tileX, tileY, tileZ)
 
-	local zombieId = safeCall(zombie, "getID")
-	local zombieOnlineId = safeCall(zombie, "getOnlineID") or 0
+	local zombieId = SafeCall.safeCall(zombie, "getID")
+	local zombieOnlineId = SafeCall.safeCall(zombie, "getOnlineID") or 0
 
-		local isMoving = safeCall(zombie, "isMoving") == true
-		local isRunning = safeCall(zombie, "isRunning") == true
-		local isCrawling = safeCall(zombie, "isCrawling") == true
+		local isMoving = SafeCall.safeCall(zombie, "isMoving") == true
+		local isRunning = SafeCall.safeCall(zombie, "isRunning") == true
+		local isCrawling = SafeCall.safeCall(zombie, "isCrawling") == true
 		local locomotion = deriveLocomotion(isCrawling, isRunning, isMoving)
 
-		local target = safeCall(zombie, "getTarget")
+		local target = SafeCall.safeCall(zombie, "getTarget")
 		local targetId = deriveTargetId(target)
 		local targetKind = deriveTargetKind(target)
-		local targetVisible = safeCall(zombie, "isTargetVisible") == true
-	local targetSeenSeconds = safeCall(zombie, "getTargetSeenTime")
+		local targetVisible = SafeCall.safeCall(zombie, "isTargetVisible") == true
+	local targetSeenSeconds = SafeCall.safeCall(zombie, "getTargetSeenTime")
 
-	local targetSquare = target and safeCall(target, "getCurrentSquare") or nil
+	local targetSquare = target and SafeCall.safeCall(target, "getCurrentSquare") or nil
 
 	local record = {
 		zombieId = zombieId,
@@ -156,18 +147,17 @@ if Record.makeZombieRecord == nil then
 			targetKind = targetKind,
 			targetVisible = targetVisible,
 			targetSeenSeconds = targetSeenSeconds,
-			targetX = target and safeCall(target, "getX") or nil,
-			targetY = target and safeCall(target, "getY") or nil,
-			targetZ = target and safeCall(target, "getZ") or nil,
+			targetX = target and SafeCall.safeCall(target, "getX") or nil,
+			targetY = target and SafeCall.safeCall(target, "getY") or nil,
+			targetZ = target and SafeCall.safeCall(target, "getZ") or nil,
 			targetSquareId = targetSquare
 				and deriveSquareId(
 					targetSquare,
-					safeCall(targetSquare, "getX"),
-					safeCall(targetSquare, "getY"),
-					safeCall(targetSquare, "getZ")
+					SafeCall.safeCall(targetSquare, "getX"),
+					SafeCall.safeCall(targetSquare, "getY"),
+					SafeCall.safeCall(targetSquare, "getZ")
 				)
 			or nil,
-			observedAtTimeMS = ts,
 			sourceTime = ts,
 			source = source,
 		}

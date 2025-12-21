@@ -133,6 +133,29 @@ local function defaultBuildDefaults()
 					logEachSweep = false,
 				},
 			},
+			rooms = {
+				headless = headless,
+				listener = {
+					enabled = true,
+				},
+				ingest = {
+					enabled = true,
+					mode = "latestByKey",
+					capacity = 2500,
+					ordering = "fifo",
+					priority = 1,
+				},
+				record = {
+					includeIsoRoom = false,
+					includeRoomDef = false,
+					includeBuilding = false,
+				},
+				probe = {
+					enabled = true,
+					maxPerRun = 40,
+					maxMillisPerTick = 0.5,
+				},
+			},
 		},
 		ingest = {
 			scheduler = {
@@ -252,6 +275,7 @@ end
 local OVERRIDE_BOOL_PATHS = {
 	{ "facts", "squares", "headless" },
 	{ "facts", "zombies", "headless" },
+	{ "facts", "rooms", "headless" },
 }
 
 local OVERRIDE_TABLE_PATHS = {
@@ -260,6 +284,10 @@ local OVERRIDE_TABLE_PATHS = {
 	{ "facts", "squares", "probe" },
 	{ "facts", "zombies", "ingest" },
 	{ "facts", "zombies", "probe" },
+	{ "facts", "rooms", "listener" },
+	{ "facts", "rooms", "ingest" },
+	{ "facts", "rooms", "probe" },
+	{ "facts", "rooms", "record" },
 	{ "ingest", "scheduler" },
 	{ "runtime", "controller" },
 }

@@ -3,6 +3,7 @@ local Log = require("LQR/util/log").withTag("WO.FACTS.zombies")
 local Cooldown = require("WorldObserver/facts/cooldown")
 local InterestEffective = require("WorldObserver/facts/interest_effective")
 local Record = require("WorldObserver/facts/zombies/record")
+local JavaList = require("WorldObserver/helpers/java_list")
 local Time = require("WorldObserver/helpers/time")
 local SquareHelpers = require("WorldObserver/helpers/square")
 
@@ -29,44 +30,6 @@ end
 local function cpuMillis(runtime)
 	if runtime and runtime.nowCpu then
 		return runtime:nowCpu()
-	end
-	return nil
-end
-
-local function listSize(list)
-	if list == nil then
-		return 0
-	end
-	if type(list.size) == "function" then
-		local ok, size = pcall(list.size, list)
-		if ok and type(size) == "number" then
-			return size
-		end
-	end
-	if type(list.getSize) == "function" then
-		local ok, size = pcall(list.getSize, list)
-		if ok and type(size) == "number" then
-			return size
-		end
-	end
-	if type(list) == "table" then
-		return #list
-	end
-	return 0
-end
-
-local function listGet(list, index1)
-	if list == nil then
-		return nil
-	end
-	if type(list.get) == "function" then
-		local ok, value = pcall(list.get, list, index1 - 1)
-		if ok then
-			return value
-		end
-	end
-	if type(list) == "table" then
-		return list[index1]
 	end
 	return nil
 end
@@ -267,7 +230,7 @@ if Probe.tick == nil then
 		end
 
 		local list = resolveZombieList()
-		local listCount = listSize(list)
+		local listCount = JavaList.size(list)
 		if listCount <= 0 then
 			finishSweep(state, nowMs, 0)
 			return
@@ -287,7 +250,7 @@ if Probe.tick == nil then
 				end
 			end
 
-			local zombie = listGet(list, state.cursorIndex)
+			local zombie = JavaList.get(list, state.cursorIndex)
 			state.cursorIndex = state.cursorIndex + 1
 			processed = processed + 1
 			state.sweepProcessed = (state.sweepProcessed or 0) + 1
@@ -329,8 +292,8 @@ if Probe.tick == nil then
 	end
 end
 
-Probe._internal.listSize = listSize
-Probe._internal.listGet = listGet
+Probe._internal.listSize = JavaList.size
+Probe._internal.listGet = JavaList.get
 Probe._internal.nearbyPlayers = nearbyPlayers
 Probe._internal.withinInterest = withinInterest
 Probe._internal.PROBE_TICK_HOOK_ID = PROBE_TICK_HOOK_ID

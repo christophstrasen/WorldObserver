@@ -60,7 +60,7 @@ These fields are chosen to align with Build 42 getters we can call cheaply:
 - `zombieOnlineId` (integer; `zombie:getOnlineID()`; may be `0`/unset in SP, but useful to retain for MP correlation)
 - `x`, `y`, `z` (numbers; use `zombie:getX()`, `zombie:getY()`, `zombie:getZ()`; treat as tile coords in v1)
 - `squareId` (number; use `zombie:getCurrentSquare():getID()` when available; else derive like squares)
-- `observedAtTimeMS` (domain timestamp, ms)
+- `sourceTime` (domain timestamp, ms)
 - `source` (`"probe"`, later `"event"`, `"driveBy"`)
 
 **Movement / locomotion (very useful)**

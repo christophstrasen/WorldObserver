@@ -32,11 +32,14 @@ end
 	local FactRegistry = require("WorldObserver/facts/registry")
 	local SquaresFacts = require("WorldObserver/facts/squares")
 	local ZombiesFacts = require("WorldObserver/facts/zombies")
+	local RoomsFacts = require("WorldObserver/facts/rooms")
 local ObservationsCore = require("WorldObserver/observations/core")
 local SquaresObservations = require("WorldObserver/observations/squares")
 local ZombiesObservations = require("WorldObserver/observations/zombies")
+local RoomsObservations = require("WorldObserver/observations/rooms")
 local SquareHelpers = require("WorldObserver/helpers/square")
 local ZombieHelpers = require("WorldObserver/helpers/zombie")
+local RoomHelpers = require("WorldObserver/helpers/room")
 local InterestRegistry = require("WorldObserver/interest/registry")
 local Debug = require("WorldObserver/debug")
 local Runtime = require("WorldObserver/runtime")
@@ -47,6 +50,7 @@ local Runtime = require("WorldObserver/runtime")
 	assert(type(config) == "table", "WorldObserver config must be a table")
 	assert(type(config.facts) == "table", "WorldObserver config must include facts")
 	assert(type(config.facts.squares) == "table", "WorldObserver config must include facts.squares")
+	assert(type(config.facts.rooms) == "table", "WorldObserver config must include facts.rooms")
 	assert(type(config.runtime) == "table", "WorldObserver config must include runtime")
 	assert(type(config.runtime.controller) == "table", "WorldObserver config must include runtime.controller")
 	local runtime = Runtime.new(Config.runtimeOpts(config))
@@ -104,6 +108,7 @@ end
 
 SquaresFacts.register(factRegistry, config, interestRegistry)
 ZombiesFacts.register(factRegistry, config, interestRegistry)
+RoomsFacts.register(factRegistry, config, interestRegistry)
 
 local observationRegistry = ObservationsCore.new({
 	factRegistry = factRegistry,
@@ -111,11 +116,13 @@ local observationRegistry = ObservationsCore.new({
 	helperSets = {
 		square = SquareHelpers,
 		zombie = ZombieHelpers,
+		room = RoomHelpers,
 	},
 })
 
 SquaresObservations.register(observationRegistry, factRegistry, ObservationsCore.nextObservationId)
 ZombiesObservations.register(observationRegistry, factRegistry, ObservationsCore.nextObservationId)
+RoomsObservations.register(observationRegistry, factRegistry, ObservationsCore.nextObservationId)
 
 WorldObserver = {
 	config = config,
@@ -145,6 +152,7 @@ WorldObserver = {
 	helpers = {
 		square = SquareHelpers,
 		zombie = ZombieHelpers,
+		room = RoomHelpers,
 	},
 	highlight = SquareHelpers.highlight,
 	debug = nil,

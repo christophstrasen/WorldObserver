@@ -98,4 +98,32 @@ describe("interest registry", function()
 		assert.is_table(reg:effective("squares", 2000, { bucketKey = "near:player:0" }))
 		assert.is_nil(reg:effective("squares", 2600, { bucketKey = "near:player:0" }))
 	end)
+
+	it("supports rooms onSeeNewRoom as an event scope bucket", function()
+		local reg = Registry.new({ ttlSeconds = 100 })
+		reg:declare("modA", "see", {
+			type = "rooms",
+			scope = "onSeeNewRoom",
+			cooldown = { desired = 1, tolerable = 2 },
+		})
+
+		local merged = reg:effective("rooms", nil, { bucketKey = "onSeeNewRoom" })
+		assert.is_table(merged)
+		assert.equals("rooms", merged.type)
+		assert.equals("onSeeNewRoom", merged.scope)
+		assert.is_nil(merged.target)
+		assert.equals(0, merged.staleness.desired)
+		assert.equals(0, merged.radius.desired)
+		assert.equals(0, merged.zRange.desired)
+		assert.equals(1, merged.cooldown.desired)
+	end)
+
+	it("supports rooms allLoaded as a probe bucket", function()
+		local reg = Registry.new({ ttlSeconds = 100 })
+		reg:declare("modA", "rooms", { type = "rooms", scope = "allLoaded", staleness = 30 })
+
+		local buckets = reg:effectiveBuckets("rooms")
+		assert.equals(1, #buckets)
+		assert.equals("allLoaded", buckets[1].bucketKey)
+	end)
 end)

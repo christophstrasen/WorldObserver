@@ -82,7 +82,7 @@ local SquaresFacts = require("WorldObserver/facts/squares")
 					x = 1,
 					y = 2,
 					z = 0,
-					observedAtTimeMS = 0,
+					sourceTime = 0,
 					source = source,
 					patched = true,
 				}
@@ -193,6 +193,22 @@ local SquaresFacts = require("WorldObserver/facts/squares")
 						called.target = target
 						called.opts = opts
 						return { stop = function() end }
+					end,
+					durationMsFromCooldownSeconds = function()
+						return 1000
+					end,
+					highlightFloor = function(square, durationMs, opts)
+						local okFloor, floor = pcall(square.getFloor, square)
+						if not okFloor or floor == nil then
+							return nil
+						end
+						if opts == nil then
+							opts = {}
+						end
+						if opts.durationMs == nil then
+							opts.durationMs = durationMs
+						end
+						return package.loaded["WorldObserver/helpers/highlight"].highlightTarget(floor, opts)
 					end,
 				}
 				package.loaded["WorldObserver/facts/squares/on_load"] = nil

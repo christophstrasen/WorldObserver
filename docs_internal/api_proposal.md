@@ -67,7 +67,7 @@ builders, etc.) is considered implementation detail and may change without notic
 
 - Core fact sources (squares in the MVP, later rooms/zombies/vehicles) stamp
   each record with a domain-level timestamp field (for example
-  `observedAtTimeMS` on `SquareObservation`, derived from
+  `sourceTime` on `SquareObservation`, derived from
   `getTimeCalendar():getTimeInMillis()`), as close as possible to when the
   fact is created.
 - When tagging these records with LQR schemas via `LQR.Schema.wrap`, the
@@ -78,7 +78,7 @@ builders, etc.) is considered implementation detail and may change without notic
     `record.RxMeta.sourceTime` for use by time-based windows and grouping.
 - In practice this means:
   - domain schemas such as `SquareObservation` carry fields like
-    `squareId` (semi-stable identity of the square) and `observedAtTimeMS`
+    `squareId` (semi-stable identity of the square) and `sourceTime`
     (domain timestamp visible to mod authors); while
   - LQR sees `RxMeta.id` (per-observation ID) and `RxMeta.sourceTime`
     (event time) derived from those payload fields via `Schema.wrap`.

@@ -30,7 +30,7 @@ WorldObserver uses time for two distinct purposes, and these must not be mixed:
 ### 2.1 Event time (semantic time)
 
 Used for facts/observations and LQR time windows (distinct/join/group).
-- Example: `observedAtTimeMS`, `RxMeta.sourceTime`
+- Example: `sourceTime`, `RxMeta.sourceTime`
 - Current implementation uses game calendar time (`getGameTime():getTimeCalendar():getTimeInMillis()`).
 
 Important nuance:

@@ -12,7 +12,9 @@ WorldObserver is a cooperative “world sensing engine” for Project Zomboid mo
 
 This makes “world watching” code feel compact and declarative: you chain readable operations (helpers, `distinct`, joins) and let the engine do the looping, scheduling, and throttling. The result is **signal above noise**: instead of processing raw world state, you subscribe to fewer, more actionable observations can more easily express “what you really care about”.
 
-Use it for features like “corpse squares near the player”, “chef zombies in kitchens”, or “cars under attack” — and other more advanced situations.
+It trades the tight control and super sharp onTick timing that rolling your own "world sensing" can give you for a more compact, expressive access to a library of observations.
+
+Use it for features like “corpse squares near the player”, “chef zombies in kitchens”, or “cars under attack” — and other situations that require more data and tolerate an async behavior.
 
 The player-facing payoff is smoother FPS: when several mods would otherwise run heavy scanning in parallel, WorldObserver makes them cooperate by merging overlapping interests, sharing the probing work enforcing budgets and fairness and thus keeping frame time predictable.
 
