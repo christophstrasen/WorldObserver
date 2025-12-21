@@ -4,6 +4,9 @@ local Log = require("LQR/util/log").withTag("WO.FACTS.squares")
 local Record = require("WorldObserver/facts/squares/record")
 local Geometry = require("WorldObserver/facts/squares/geometry")
 local Probe = require("WorldObserver/facts/squares/probe")
+local SquareSweep = require("WorldObserver/facts/sensors/square_sweep")
+local Highlight = require("WorldObserver/helpers/highlight")
+local Cooldown = require("WorldObserver/facts/cooldown")
 local OnLoad = require("WorldObserver/facts/squares/on_load")
 
 -- `squares` is the canonical squares probe type. We split behavior by scope (near/vision/etc).
@@ -79,6 +82,68 @@ if Squares.makeSquareRecord == nil then
 end
 Squares._defaults.makeSquareRecord = Squares._defaults.makeSquareRecord or Squares.makeSquareRecord
 
+local function highlightDurationMsFromCadenceSeconds(stalenessSeconds, cooldownSeconds)
+	-- Visual feedback should roughly match the fastest possible *emit cadence*.
+	-- If cooldown is larger than staleness, emits (and therefore highlights) cannot happen faster than cooldown anyway.
+	-- Using the max makes highlights persist long enough to look “continuous” at the true cadence, without overstaying.
+	local staleness = tonumber(stalenessSeconds) or 0
+	local cooldown = tonumber(cooldownSeconds) or 0
+	local cadence = math.max(staleness, cooldown)
+	if cadence <= 0 then
+		return 0
+	end
+	return math.floor((cadence * 1000) / 2)
+end
+
+local function squareCollector(ctx, cursor, square, _playerIndex, nowMs, effective)
+	local squares = ctx.squares
+	if not (squares and type(squares.makeSquareRecord) == "function") then
+		return false
+	end
+
+	local record = squares.makeSquareRecord(square, cursor.source)
+	if not (type(record) == "table" and record.squareId ~= nil) then
+		return false
+	end
+
+	local state = ctx.state or {}
+	state._squareCollector = state._squareCollector or {}
+	local emittedByKey = state._squareCollector.lastEmittedMs or {}
+	state._squareCollector.lastEmittedMs = emittedByKey
+	local cooldownSeconds = tonumber(effective and effective.cooldown) or 0
+	local cooldownMs = math.max(0, cooldownSeconds * 1000)
+	if not Cooldown.shouldEmit(emittedByKey, record.squareId, nowMs, cooldownMs) then
+		return false
+	end
+
+	if not ctx.headless and effective and effective.highlight == true then
+		local highlightMs = highlightDurationMsFromCadenceSeconds(effective.staleness, effective.cooldown)
+		if highlightMs > 0 then
+			local okFloor, floor = pcall(square.getFloor, square)
+			if okFloor and floor then
+				Highlight.highlightTarget(floor, {
+					durationMs = highlightMs,
+					color = cursor.color,
+					alpha = cursor.alpha,
+				})
+			end
+		end
+	end
+
+	if type(ctx.emitFn) == "function" then
+		ctx.emitFn(record)
+		Cooldown.markEmitted(emittedByKey, record.squareId, nowMs)
+	end
+	return true
+end
+
+if Squares._internal.registerSquareCollector == nil then
+	function Squares._internal.registerSquareCollector()
+		SquareSweep.registerCollector("squares", squareCollector, { interestType = INTEREST_TYPE_SQUARES })
+	end
+end
+Squares._internal.registerSquareCollector()
+
 local function tickSquares(ctx)
 	ctx = ctx or {}
 	local state = ctx.state or {}
@@ -93,20 +158,6 @@ local function tickSquares(ctx)
 		interestRegistry = ctx.interestRegistry,
 		listenerCfg = ctx.listenerCfg,
 	})
-
-	local probeCfg = ctx.probeCfg or {}
-	if probeCfg.enabled ~= false then
-		Probe.tick({
-			state = state,
-			squares = Squares,
-			emitFn = ctx.emitFn,
-			headless = ctx.headless,
-			runtime = ctx.runtime,
-			interestRegistry = ctx.interestRegistry,
-			defaultInterest = Squares._defaults.interest,
-			probeCfg = probeCfg,
-		})
-	end
 end
 
 local function registerTickHook(state, emitFn, ctx)
@@ -201,14 +252,31 @@ Squares._internal.registerTickHook = registerTickHook
 					probeCfg = probeCfg,
 					listenerCfg = listenerCfg,
 				})
+				local sweepRegistered = false
+				if probeEnabled then
+					local ok = SquareSweep.registerConsumer(INTEREST_TYPE_SQUARES, {
+						collectorId = INTEREST_TYPE_SQUARES,
+						interestType = INTEREST_TYPE_SQUARES,
+						emitFn = originalEmit,
+						context = { squares = Squares },
+						headless = headless,
+						runtime = ctx.runtime,
+						interestRegistry = interestRegistry,
+						probeCfg = probeCfg,
+						probePriority = 10,
+						factRegistry = registry,
+					})
+					sweepRegistered = ok == true
+				end
 
 					if not headless then
 						local hasOnLoadInterest = hasSquaresScopeInterest(interestRegistry, "onLoad")
 						local hasNearInterest = hasSquaresScopeInterest(interestRegistry, "near")
 						local hasVisionInterest = hasSquaresScopeInterest(interestRegistry, "vision")
 						Log:info(
-							"Squares facts started (tickHook=%s cfgProbe=%s cfgListener=%s interestOnLoad=%s interestNear=%s interestVision=%s)",
+							"Squares facts started (tickHook=%s sweep=%s cfgProbe=%s cfgListener=%s interestOnLoad=%s interestNear=%s interestVision=%s)",
 							tostring(tickHookRegistered),
+							tostring(sweepRegistered),
 							tostring(probeEnabled),
 							tostring(listenerEnabled),
 							tostring(hasOnLoadInterest),
@@ -247,6 +315,10 @@ Squares._internal.registerTickHook = registerTickHook
 					else
 						fullyStopped = false
 					end
+				end
+
+				if probeEnabled then
+					SquareSweep.unregisterConsumer(INTEREST_TYPE_SQUARES)
 				end
 
 				if not fullyStopped and not headless then

@@ -4,6 +4,7 @@ local Log = require("LQR/util/log").withTag("WO.FACTS.rooms")
 local Record = require("WorldObserver/facts/rooms/record")
 local Probe = require("WorldObserver/facts/rooms/probe")
 local OnSee = require("WorldObserver/facts/rooms/on_see_new_room")
+local OnPlayerChange = require("WorldObserver/facts/rooms/on_player_change_room")
 
 local INTEREST_TYPE_ROOMS = "rooms"
 
@@ -52,6 +53,16 @@ local function tickRooms(ctx)
 	ctx.state = state
 
 	OnSee.ensure({
+		state = state,
+		rooms = Rooms,
+		emitFn = ctx.emitFn,
+		headless = ctx.headless,
+		runtime = ctx.runtime,
+		interestRegistry = ctx.interestRegistry,
+		listenerCfg = ctx.listenerCfg,
+		recordOpts = ctx.recordOpts,
+	})
+	OnPlayerChange.ensure({
 		state = state,
 		rooms = Rooms,
 		emitFn = ctx.emitFn,

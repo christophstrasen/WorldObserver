@@ -156,6 +156,64 @@ local function defaultBuildDefaults()
 					maxMillisPerTick = 0.5,
 				},
 			},
+			items = {
+				headless = headless,
+				listener = {
+					enabled = true,
+				},
+				ingest = {
+					enabled = true,
+					mode = "latestByKey",
+					capacity = 5000,
+					ordering = "fifo",
+					priority = 1,
+				},
+				record = {
+					includeInventoryItem = false,
+					includeWorldItem = false,
+					includeContainerItems = true,
+				},
+				probe = {
+					enabled = true,
+					maxPerRun = 50,
+					maxPerRunHardCap = 200,
+					maxMillisPerTick = 0.75,
+					infoLogEveryMs = 10000,
+					autoBudget = true,
+					autoBudgetReserveMs = 0.5,
+					autoBudgetHeadroomFactor = 1.0,
+					autoBudgetMaxMillisPerTick = nil,
+					autoBudgetMinMillisPerTick = nil,
+				},
+			},
+			deadBodies = {
+				headless = headless,
+				listener = {
+					enabled = true,
+				},
+				ingest = {
+					enabled = true,
+					mode = "latestByKey",
+					capacity = 5000,
+					ordering = "fifo",
+					priority = 1,
+				},
+				record = {
+					includeIsoDeadBody = false,
+				},
+				probe = {
+					enabled = true,
+					maxPerRun = 50,
+					maxPerRunHardCap = 200,
+					maxMillisPerTick = 0.75,
+					infoLogEveryMs = 10000,
+					autoBudget = true,
+					autoBudgetReserveMs = 0.5,
+					autoBudgetHeadroomFactor = 1.0,
+					autoBudgetMaxMillisPerTick = nil,
+					autoBudgetMinMillisPerTick = nil,
+				},
+			},
 		},
 		ingest = {
 			scheduler = {

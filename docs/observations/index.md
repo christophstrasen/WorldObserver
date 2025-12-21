@@ -39,6 +39,8 @@ Current base streams:
 - [Squares](squares.md)
 - [Rooms](rooms.md)
 - [Zombies](zombies.md)
+- [Items](items.md)
+- [Dead bodies](dead_bodies.md)
 
 General stream usage (subscribe, distinct, stop/unsubscribe):
 - [Stream basics](stream_basics.md)

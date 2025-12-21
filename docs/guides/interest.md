@@ -36,10 +36,16 @@ Notes:
 - `scope`: a sub-mode within an interest type (used for grouping and merging).
   - For `type = "squares"`, the supported scopes today are `near`, `vision`, and `onLoad`.
   - For `type = "zombies"`, the supported scope today is `allLoaded`.
+  - For `type = "rooms"`, the supported scopes today are `allLoaded`, `onSeeNewRoom`, and `onPlayerChangeRoom`.
+  - For `type = "items"`, the supported scopes today are `playerSquare`, `near`, and `vision`.
+  - For `type = "deadBodies"`, the supported scopes today are `playerSquare`, `near`, and `vision`.
 - `target`: the anchor identity for the probe plan.
   - For `squares` probe scopes (`near`, `vision`), valid target keys are `player` and `square`.
   - `target` must contain exactly **one** kind key (example: `target = { player = { id = 0 } }`).
   - `scope = "onLoad"` ignores `target`.
+  - `items` and `deadBodies` use the same target rules as `squares` for probe scopes.
+  - `scope = "playerSquare"` for `items`/`deadBodies` requires a player target (defaults to `id = 0`).
+  - `scope = "onPlayerChangeRoom"` uses a player target (defaults to `id = 0`).
   - v0 note: singleplayer assumes the local player is `id = 0`.
 
 ## 3. Interest types available today
@@ -69,6 +75,42 @@ Interest `type` selects the “fact plan” behind the scenes (listener vs probe
   - Probe-driven: scans the game’s zombie list in loaded areas (singleplayer uses the local player).
   - Knobs: `radius`, `zRange`, `staleness`, `cooldown`, `highlight`.
   - Note: `radius` makes emissions leaner, but does not avoid the baseline cost of scanning the loaded zombie list.
+
+### Rooms
+
+- `type = "rooms"` with `scope = "allLoaded"`
+  - Probe-driven: scans the room list in the active cell (singleplayer).
+  - Knobs: `staleness`, `cooldown`, `highlight`.
+- `type = "rooms"` with `scope = "onSeeNewRoom"`
+  - Event-driven: emits when the player sees a new room.
+  - Knobs: `cooldown`, `highlight`.
+- `type = "rooms"` with `scope = "onPlayerChangeRoom"`
+  - Event-driven: emits when the player changes rooms (only when a room is detected).
+  - Knobs: `cooldown`, `highlight`.
+
+### Items
+
+- `type = "items"` with `scope = "playerSquare"`
+  - Player-driven: emits items on the square the player stands on.
+  - Knobs: `cooldown`, `highlight`.
+- `type = "items"` with `scope = "near"`
+  - Probe-driven: scans squares near a target.
+  - Knobs: `radius`, `staleness`, `cooldown`, `highlight`.
+- `type = "items"` with `scope = "vision"`
+  - Probe-driven: like `near`, but only emits items on squares visible to the player.
+  - Knobs: `radius`, `staleness`, `cooldown`, `highlight`.
+
+### Dead bodies
+
+- `type = "deadBodies"` with `scope = "playerSquare"`
+  - Player-driven: emits dead bodies on the square the player stands on.
+  - Knobs: `cooldown`, `highlight`.
+- `type = "deadBodies"` with `scope = "near"`
+  - Probe-driven: scans squares near a target.
+  - Knobs: `radius`, `staleness`, `cooldown`, `highlight`.
+- `type = "deadBodies"` with `scope = "vision"`
+  - Probe-driven: like `near`, but only emits dead bodies on squares visible to the player.
+  - Knobs: `radius`, `staleness`, `cooldown`, `highlight`.
 
 ## 4. The knobs (what they mean)
 
@@ -104,6 +146,9 @@ How often the *same key* is allowed to re-emit.
 
 - For squares, the key is `squareId`.
 - For zombies, the key is `zombieId`.
+- For rooms, the key is `roomId`.
+- For items, the key is `itemId`.
+- For dead bodies, the key is `deadBodyId`.
 - Larger `cooldown` means fewer repeats (lower cost + less spam).
 
 ### `zRange` (floors)

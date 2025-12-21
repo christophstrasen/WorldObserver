@@ -2,21 +2,25 @@
 
 [![CI](https://github.com/christophstrasen/WorldObserver/actions/workflows/ci.yml/badge.svg)](https://github.com/christophstrasen/WorldObserver/actions/workflows/ci.yml)
 
-*A shared observation layer for **Project Zomboid (Build 42)** mods written in Lua.*
+*A shared observation layer for **Project Zomboid (Build 42)** mods.*
 
-WorldObserver helps mods **observe what is happening in the world — safely, fairly, and over time** — without each mod re‑implementing fragile scan loops, throttling logic, and ad‑hoc state tracking.
+--- 
 
-**30-second overview**
+**WorldObserver** is a cooperative *world-sensing engine* for Project Zomboid mods. Instead of hand-rolling `OnTick` scan batches, stitching together event listeners, and managing your own cache invalidation, you **declare interest**—*what should we observe, what guarantees for scope and freshness do we need?*—and subscribe to ready-made **observation streams**.
 
-WorldObserver is a cooperative “world sensing engine” for Project Zomboid mods. Instead of hand-rolling `OnTick` scan batches, multiple interweaving event-listeners, and your own cache-invalidation, you **declare interest** (“what should we watch, and how fresh do you need it?”) and then subscribe to ready-made **observation streams**.
+This makes world-observation code compact and declarative. You compose readable pipelines (helpers, `distinct`, joins) and let the engine handle looping, scheduling, throttling, and batching. The result is **signal over noise**: rather than processing raw world state, you consume fewer, more actionable observations that directly express *what you actually care about*.
 
-This makes “world watching” code feel compact and declarative: you chain readable operations (helpers, `distinct`, joins) and let the engine do the looping, scheduling, and throttling. The result is **signal above noise**: instead of processing raw world state, you subscribe to fewer, more actionable observations can more easily express “what you really care about”.
+Like many high-level frameworks, it gives up some of the tight control over scope and timing you’d have when building your own world-sensing logic, in return for a more compact, convenient, and expressive way to work with a broad set of observations.
 
-It trades the tight control and super sharp onTick timing that rolling your own "world sensing" can give you for a more compact, expressive access to a library of observations.
+Use it for features like *“corpse squares near the player”*, *“chef zombies in kitchens”*, or *“cars under attack”*—and other situations that require richer data and can tolerate asynchronous behavior.
 
-Use it for features like “corpse squares near the player”, “chef zombies in kitchens”, or “cars under attack” — and other situations that require more data and tolerate an async behavior.
+The player-facing payoff is smoother FPS. When multiple mods would otherwise perform heavy scanning in parallel, WorldObserver makes them cooperate by merging overlapping interests, sharing the probing work, enforcing budgets and fairness, and keeping frame time predictable.
 
-The player-facing payoff is smoother FPS: when several mods would otherwise run heavy scanning in parallel, WorldObserver makes them cooperate by merging overlapping interests, sharing the probing work enforcing budgets and fairness and thus keeping frame time predictable.
+---
+
+This now reads like a clean **README-grade contract**: what it is, how it feels, the tradeoff, when to use it, and why players benefit — without overexplaining or underselling the cost.
+
+
 
 Start here: [Quickstart](docs/quickstart.md), then follow the [docs index](docs/index.md).
 

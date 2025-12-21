@@ -408,3 +408,31 @@
 ### Next steps
 - Consider a small optional debug mode to report rooms where `getSquares()` is unavailable (`[]`) so we can understand when/why certain rooms can’t be highlighted or keyed.
 - Decide whether the “first square” rule should be upgraded to “minimum square” (order-independent) if we ever see unstable ordering in `getSquares()` in practice.
+
+### Addendum — Interest refactor: shared square sweep + items + dead bodies
+
+### Highlights
+- Introduced an explicit “internal sensor” pattern via a shared square sweep driver:
+  - `facts/sensors/square_sweep.lua` now time-slices square scanning once and calls registered collectors per interest type (`squares`, `items`, `deadBodies`), avoiding duplicated sweeps.
+  - Updated probe log labels to use `-` instead of the earlier `DOUBLECOLON` encoding (display label only; internal keys unchanged).
+- Added new fact types using the shared driver:
+  - `type="items"` with `scope="playerSquare" | "near" | "vision"`:
+    - Emits ground items plus direct container contents (depth=1).
+    - Uses `getID()`/`getObjectID()` from the most stable available object; warns+skips when missing.
+  - `type="deadBodies"` with `scope="playerSquare" | "near" | "vision"`:
+    - Uses `IsoDeadBody:getObjectID()` as the identity (string like `DeadBody-1` observed in-engine).
+    - Record builder supports optional `includeIsoDeadBody`.
+- Extended moddability:
+  - Added record extender hooks for items and dead bodies (in addition to squares/rooms/zombies), plus unit coverage.
+- Documentation + smoke workflows:
+  - Added observation docs: `docs/observations/items.md` and `docs/observations/dead_bodies.md` and linked them from `docs/observations/index.md`.
+  - Updated `docs/guides/interest.md` and `docs_internal/interest_combinations.md` to include `items`/`deadBodies` types and `rooms.onPlayerChangeRoom`.
+  - Extended `examples/smoke_console_showcase.lua` with `startItems/stopItems` and `startDeadBodies/stopDeadBodies`.
+
+### Lessons
+- Kahlua Lua differs from vanilla Lua in sharp corners; avoid relying on `next(...)` as a presence test and prefer `pairs`-based guards for “has any entries”.
+- A shared square sweep driver is a big win for architectural runway: “vision/near” becomes a *shared sensing scope* that can emit multiple record families without multiplying scan cost.
+
+### Next steps
+- Step 8: add lightweight sensor/collector counters (squares scanned, collectors invoked, records emitted) so performance tuning stays empirical.
+- Revisit removal/expiry semantics for “entities on ground” only if we find real mod use cases that need explicit “removed” signals; otherwise keep streams observation-only.

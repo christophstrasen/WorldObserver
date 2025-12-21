@@ -8,6 +8,10 @@
 	show.stopSquares()
 	show.startZombies()
 	show.stopZombies()
+	show.startItems()
+	show.stopItems()
+	show.startDeadBodies()
+	show.stopDeadBodies()
 ]]
 --
 
@@ -44,9 +48,61 @@ local ROOMS_INTEREST = {
 	highlight = { 0.9, 0.7, 0.2, debugRoomId = "1.06962295036315E16" },
 }
 
+local ITEMS_INTEREST_PLAYER_SQUARE = {
+	type = "items",
+	scope = "playerSquare",
+	cooldown = { desired = 0, tolerable = 0 },
+	highlight = true,
+}
+
+local ITEMS_INTEREST_NEAR = {
+	type = "items",
+	scope = "near",
+	staleness = { desired = 2, tolerable = 6 },
+	radius = { desired = 8, tolerable = 5 },
+	cooldown = { desired = 5, tolerable = 10 },
+	highlight = true,
+}
+
+local ITEMS_INTEREST_VISION = {
+	type = "items",
+	scope = "vision",
+	staleness = { desired = 5, tolerable = 10 },
+	radius = { desired = 10, tolerable = 6 },
+	cooldown = { desired = 10, tolerable = 20 },
+	highlight = true,
+}
+
+local DEAD_BODIES_INTEREST_PLAYER_SQUARE = {
+	type = "deadBodies",
+	scope = "playerSquare",
+	cooldown = { desired = 0, tolerable = 0 },
+	highlight = true,
+}
+
+local DEAD_BODIES_INTEREST_NEAR = {
+	type = "deadBodies",
+	scope = "near",
+	staleness = { desired = 2, tolerable = 6 },
+	radius = { desired = 8, tolerable = 5 },
+	cooldown = { desired = 5, tolerable = 10 },
+	highlight = true,
+}
+
+local DEAD_BODIES_INTEREST_VISION = {
+	type = "deadBodies",
+	scope = "vision",
+	staleness = { desired = 5, tolerable = 10 },
+	radius = { desired = 10, tolerable = 6 },
+	cooldown = { desired = 10, tolerable = 20 },
+	highlight = true,
+}
+
 local squaresHandle = nil
 local zombiesHandle = nil
 local roomsHandle = nil
+local itemsHandle = nil
+local deadBodiesHandle = nil
 
 function Showcase.startSquares()
 	if squaresHandle then
@@ -154,6 +210,115 @@ function Showcase.stopRooms()
 	roomsHandle.lease:stop()
 	roomsHandle = nil
 	Log.info("[showcase] rooms allLoaded stopped")
+end
+
+function Showcase.startItems()
+	if itemsHandle then
+		Showcase.stopItems()
+	end
+	local WorldObserver = require("WorldObserver")
+	local leases = {
+		playerSquare = WorldObserver.factInterest:declare(
+			"examples/smoke_console_showcase",
+			"items.playerSquare",
+			ITEMS_INTEREST_PLAYER_SQUARE
+		),
+		near = WorldObserver.factInterest:declare(
+			"examples/smoke_console_showcase",
+			"items.near",
+			ITEMS_INTEREST_NEAR
+		),
+		vision = WorldObserver.factInterest:declare(
+			"examples/smoke_console_showcase",
+			"items.vision",
+			ITEMS_INTEREST_VISION
+		),
+	}
+	local stream = WorldObserver.observations.items():distinct("item", 10)
+	local sub = stream:subscribe(function(observation)
+		local item = observation.item
+		Log.info(
+			"[item] id=%s type=%s full=%s loc=(%s,%s,%s) square=%s container=%s source=%s",
+			tostring(item.itemId),
+			tostring(item.itemType),
+			tostring(item.itemFullType),
+			tostring(item.x),
+			tostring(item.y),
+			tostring(item.z),
+			tostring(item.squareId),
+			tostring(item.containerItemId),
+			tostring(item.source)
+		)
+	end)
+	itemsHandle = { sub = sub, leases = leases }
+	Log.info("[showcase] items started")
+end
+
+function Showcase.stopItems()
+	if not itemsHandle then
+		return
+	end
+	itemsHandle.sub:unsubscribe()
+	for _, lease in pairs(itemsHandle.leases or {}) do
+		if lease and lease.stop then
+			pcall(lease.stop)
+		end
+	end
+	itemsHandle = nil
+	Log.info("[showcase] items stopped")
+end
+
+function Showcase.startDeadBodies()
+	if deadBodiesHandle then
+		Showcase.stopDeadBodies()
+	end
+	local WorldObserver = require("WorldObserver")
+	local leases = {
+		playerSquare = WorldObserver.factInterest:declare(
+			"examples/smoke_console_showcase",
+			"deadBodies.playerSquare",
+			DEAD_BODIES_INTEREST_PLAYER_SQUARE
+		),
+		near = WorldObserver.factInterest:declare(
+			"examples/smoke_console_showcase",
+			"deadBodies.near",
+			DEAD_BODIES_INTEREST_NEAR
+		),
+		vision = WorldObserver.factInterest:declare(
+			"examples/smoke_console_showcase",
+			"deadBodies.vision",
+			DEAD_BODIES_INTEREST_VISION
+		),
+	}
+	local stream = WorldObserver.observations.deadBodies():distinct("deadBody", 10)
+	local sub = stream:subscribe(function(observation)
+		local body = observation.deadBody
+		Log.info(
+			"[deadBody] id=%s loc=(%s,%s,%s) square=%s source=%s",
+			tostring(body.deadBodyId),
+			tostring(body.x),
+			tostring(body.y),
+			tostring(body.z),
+			tostring(body.squareId),
+			tostring(body.source)
+		)
+	end)
+	deadBodiesHandle = { sub = sub, leases = leases }
+	Log.info("[showcase] dead bodies started")
+end
+
+function Showcase.stopDeadBodies()
+	if not deadBodiesHandle then
+		return
+	end
+	deadBodiesHandle.sub:unsubscribe()
+	for _, lease in pairs(deadBodiesHandle.leases or {}) do
+		if lease and lease.stop then
+			pcall(lease.stop)
+		end
+	end
+	deadBodiesHandle = nil
+	Log.info("[showcase] dead bodies stopped")
 end
 
 return Showcase

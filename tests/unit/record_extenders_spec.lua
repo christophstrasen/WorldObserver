@@ -11,6 +11,8 @@ package.path = table.concat({
 local SquareRecord = require("WorldObserver/facts/squares/record")
 local RoomRecord = require("WorldObserver/facts/rooms/record")
 local ZombieRecord = require("WorldObserver/facts/zombies/record")
+local ItemRecord = require("WorldObserver/facts/items/record")
+local DeadBodyRecord = require("WorldObserver/facts/dead_bodies/record")
 
 describe("record extenders", function()
 	local idCounter = 0
@@ -152,5 +154,79 @@ describe("record extenders", function()
 
 		ZombieRecord.unregisterZombieRecordExtender(id)
 	end)
-end)
 
+	it("extends item records", function()
+		local id = newId("item")
+		local ok = ItemRecord.registerItemRecordExtender(id, function(record)
+			record.extra = record.extra or {}
+			record.extra.extended = true
+		end)
+		assert.is_true(ok)
+
+		local square = {
+			getX = function()
+				return 3
+			end,
+			getY = function()
+				return 4
+			end,
+			getZ = function()
+				return 0
+			end,
+		}
+		local item = {
+			getID = function()
+				return 55
+			end,
+			getType = function()
+				return "Nails"
+			end,
+			getFullType = function()
+				return "Base.Nails"
+			end,
+		}
+
+		local record = ItemRecord.makeItemRecord(item, square, "probe", { nowMs = 123 })
+		assert.is_table(record)
+		assert.is_table(record.extra)
+		assert.is_true(record.extra.extended)
+
+		ItemRecord.unregisterItemRecordExtender(id)
+	end)
+
+	it("extends dead body records", function()
+		local id = newId("deadBody")
+		local ok = DeadBodyRecord.registerDeadBodyRecordExtender(id, function(record)
+			record.extra = record.extra or {}
+			record.extra.extended = true
+		end)
+		assert.is_true(ok)
+
+		local square = {
+			getX = function()
+				return 7
+			end,
+			getY = function()
+				return 9
+			end,
+			getZ = function()
+				return 0
+			end,
+			getID = function()
+				return 808
+			end,
+		}
+		local body = {
+			getObjectID = function()
+				return 77
+			end,
+		}
+
+		local record = DeadBodyRecord.makeDeadBodyRecord(body, square, "probe", { nowMs = 123 })
+		assert.is_table(record)
+		assert.is_table(record.extra)
+		assert.is_true(record.extra.extended)
+
+		DeadBodyRecord.unregisterDeadBodyRecordExtender(id)
+	end)
+end)

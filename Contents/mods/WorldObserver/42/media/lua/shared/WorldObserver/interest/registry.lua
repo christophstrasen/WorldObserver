@@ -11,6 +11,7 @@
 --   into geometry + prioritization problems) and keeps behavior predictable for modders.
 local Time = require("WorldObserver/helpers/time")
 local Log = require("LQR/util/log").withTag("WO.INTEREST")
+local Definitions = require("WorldObserver/interest/definitions")
 
 local moduleName = ...
 local Registry = {}
@@ -62,6 +63,18 @@ local DEFAULTS = {
 		radius = { desired = 0, tolerable = 0 },
 		zRange = { desired = 0, tolerable = 0 },
 		cooldown = { desired = 20, tolerable = 40 },
+		highlight = nil,
+	},
+	["items"] = {
+		staleness = { desired = 10, tolerable = 20 },
+		radius = { desired = 8, tolerable = 5 },
+		cooldown = { desired = 10, tolerable = 20 },
+		highlight = nil,
+	},
+	["deadBodies"] = {
+		staleness = { desired = 10, tolerable = 20 },
+		radius = { desired = 8, tolerable = 5 },
+		cooldown = { desired = 10, tolerable = 20 },
 		highlight = nil,
 	},
 }
@@ -187,17 +200,12 @@ local function normalizeScope(scope, fallback)
 	return fallback
 end
 
-local function isSquaresEventScope(scope)
-	return scope == "onLoad"
+local function typeDefFor(interestType)
+	return Definitions and Definitions.types and Definitions.types[interestType] or nil
 end
 
-local function isRoomsEventScope(scope)
-	return scope == "onSeeNewRoom"
-end
-
-local function isEventScope(interestType, scope)
-	return (interestType == "squares" and isSquaresEventScope(scope))
-		or (interestType == "rooms" and isRoomsEventScope(scope))
+local function isEventScope(typeDef, scope)
+	return typeDef and typeDef.eventScopes and typeDef.eventScopes[scope] == true
 end
 
 local function warnIgnored(interestType, scope, field)
@@ -216,7 +224,7 @@ end
 --   This keeps the "trust surface" small: a mod can't affect another mod's probes by spoofing a shared center.
 local function bucketKeyForTarget(scope, target, modId)
 	scope = normalizeScope(scope, "near")
-	if isSquaresEventScope(scope) then
+	if scope == "onLoad" then
 		return "onLoad"
 	end
 	local kind = target and target.kind or "player"
@@ -243,96 +251,89 @@ end
 -- Why normalize here:
 -- - Leases are stored for a long time; we want them to have stable semantics even if callers omit fields.
 -- - Downstream (policy/probes) should not have to handle every historical "shape".
+local function warnIgnoredFields(spec, interestType, scope, typeDef)
+	if not (typeDef and typeDef.ignoreFields) then
+		return
+	end
+	local ignored = typeDef.ignoreFields[scope]
+	if type(ignored) ~= "table" then
+		return
+	end
+	for field in pairs(ignored) do
+		if spec[field] ~= nil then
+			warnIgnored(interestType, scope, field)
+		end
+	end
+end
+
+local function resolveScope(interestType, scope, typeDef)
+	if not typeDef then
+		return scope
+	end
+	local normalized = normalizeScope(scope, typeDef.defaultScope)
+	if typeDef.strictScopes and typeDef.allowedScopes and not typeDef.allowedScopes[normalized] then
+		warnIgnored(interestType, normalized, "scope")
+		normalized = typeDef.defaultScope
+	end
+	return normalized
+end
+
+local function normalizeKnob(value, defaults, zeroed)
+	if zeroed then
+		return { desired = 0, tolerable = 0 }
+	end
+	return normalizeBand(value, defaults)
+end
+
+local function allowTargetForScope(typeDef, scope)
+	if not typeDef then
+		return false
+	end
+	if typeDef.allowTargetScopes and typeDef.allowTargetScopes[scope] then
+		return true
+	end
+	if typeDef.allowTarget == true and not isEventScope(typeDef, scope) then
+		return true
+	end
+	return false
+end
+
+local function resolveDefaultTarget(typeDef, scope)
+	if not typeDef then
+		return nil
+	end
+	if typeDef.defaultTargetScopes and typeDef.defaultTargetScopes[scope] then
+		return typeDef.defaultTargetScopes[scope]
+	end
+	return typeDef.defaultTarget
+end
+
 local function normalizeSpec(spec, defaults, modId)
 	spec = spec or {}
 	local interestType = spec.type
 	if type(interestType) ~= "string" or interestType == "" then
 		-- Default to the common “near squares” interest so mods can declare without boilerplate.
-		interestType = "squares"
+		interestType = Definitions.defaultType or "squares"
 	end
 	local canonicalType = interestType
-	local scope = spec.scope
+	local typeDef = typeDefFor(interestType)
+	local scope = resolveScope(interestType, spec.scope, typeDef)
 	local target = nil
-	if interestType == "squares" then
-		scope = normalizeScope(scope, "near")
-		if not isSquaresEventScope(scope) then
+	if typeDef then
+		warnIgnoredFields(spec, interestType, scope, typeDef)
+		if allowTargetForScope(typeDef, scope) then
 			if spec.target == nil then
-				target = { kind = "player", id = 0 }
+				target = cloneTable(resolveDefaultTarget(typeDef, scope))
 			else
 				target = normalizeTarget(spec.target)
-			end
-		else
-			if spec.target ~= nil then
-				warnIgnored(interestType, scope, "target")
-			end
-			if spec.radius ~= nil then
-				warnIgnored(interestType, scope, "radius")
-			end
-			if spec.staleness ~= nil then
-				warnIgnored(interestType, scope, "staleness")
-			end
-		end
-	elseif interestType == "zombies" then
-		scope = normalizeScope(scope, "allLoaded")
-		if scope ~= "allLoaded" then
-			warnIgnored(interestType, scope, "scope")
-			scope = "allLoaded"
-		end
-		if spec.target ~= nil then
-			warnIgnored(interestType, scope, "target")
-		end
-	elseif interestType == "rooms" then
-		scope = normalizeScope(scope, "allLoaded")
-		if isRoomsEventScope(scope) then
-			if spec.target ~= nil then
-				warnIgnored(interestType, scope, "target")
-			end
-			if spec.radius ~= nil then
-				warnIgnored(interestType, scope, "radius")
-			end
-			if spec.staleness ~= nil then
-				warnIgnored(interestType, scope, "staleness")
-			end
-		else
-			if scope ~= "allLoaded" then
-				warnIgnored(interestType, scope, "scope")
-				scope = "allLoaded"
-			end
-			if spec.target ~= nil then
-				warnIgnored(interestType, scope, "target")
-			end
-			if spec.radius ~= nil then
-				warnIgnored(interestType, scope, "radius")
-			end
-			if spec.zRange ~= nil then
-				warnIgnored(interestType, scope, "zRange")
 			end
 		end
 	end
 	local typeDefaults = defaults[canonicalType] or defaults[interestType] or {}
-	local staleness = nil
-	local radius = nil
-	local zRange = nil
-	if isEventScope(interestType, scope) then
-		-- Event scopes ignore probe-only knobs; normalize them to zeroed bands so merges stay stable.
-		staleness = { desired = 0, tolerable = 0 }
-		radius = { desired = 0, tolerable = 0 }
-		if interestType == "rooms" then
-			zRange = { desired = 0, tolerable = 0 }
-		end
-	else
-		staleness = normalizeBand(spec.staleness, typeDefaults.staleness)
-		if interestType == "rooms" and scope == "allLoaded" then
-			radius = { desired = 0, tolerable = 0 }
-			zRange = { desired = 0, tolerable = 0 }
-		else
-			radius = normalizeBand(spec.radius, typeDefaults.radius)
-			zRange = normalizeBand(spec.zRange, typeDefaults.zRange)
-		end
-	end
-	if zRange == nil then
-		zRange = normalizeBand(spec.zRange, typeDefaults.zRange)
-	end
+	local zeroKnobs = typeDef and typeDef.zeroKnobs and typeDef.zeroKnobs[scope] or nil
+	local staleness = normalizeKnob(spec.staleness, typeDefaults.staleness, zeroKnobs and zeroKnobs.staleness)
+	local radius = normalizeKnob(spec.radius, typeDefaults.radius, zeroKnobs and zeroKnobs.radius)
+	local zRange = normalizeKnob(spec.zRange, typeDefaults.zRange, zeroKnobs and zeroKnobs.zRange)
 	local normalized = {
 		type = canonicalType,
 		scope = scope,
@@ -344,12 +345,14 @@ local function normalizeSpec(spec, defaults, modId)
 		highlight = spec.highlight ~= nil and spec.highlight or typeDefaults.highlight,
 	}
 	local bucketKey = "default"
-	if canonicalType == "squares" then
+	if typeDef and typeDef.bucketKey == "squaresTarget" then
 		bucketKey = bucketKeyForTarget(scope, target, modId or "unknown")
-	elseif canonicalType == "zombies" then
-		bucketKey = scope or "allLoaded"
-	elseif canonicalType == "rooms" then
-		if isRoomsEventScope(scope) then
+	elseif typeDef and typeDef.bucketKey == "scope" then
+		bucketKey = scope or typeDef.defaultScope or "default"
+	elseif typeDef and typeDef.bucketKey == "roomsScope" then
+		if scope == "onPlayerChangeRoom" then
+			bucketKey = bucketKeyForTarget(scope, target, modId or "unknown")
+		elseif isEventScope(typeDef, scope) then
 			bucketKey = "onSeeNewRoom"
 		else
 			bucketKey = "allLoaded"

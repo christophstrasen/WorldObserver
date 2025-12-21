@@ -42,13 +42,52 @@ Defaults:
 |--------------|------------|--------------|-------|
 | allLoaded    | n/a        | n/a          | Scans the room list in the active cell (singleplayer). |
 | onSeeNewRoom | n/a        | n/a          | Event-driven: emits when a room is seen. |
+| onPlayerChangeRoom | player | `target = { player = { id = 0 } }` | Event-driven: emits when the player changes rooms (no emission when room is nil). |
 
 Knobs:
 - Probe scope (`allLoaded`): `staleness`, `cooldown`, `highlight`.
-- Event scope (`onSeeNewRoom`): `cooldown`, `highlight`.
+- Event scopes (`onSeeNewRoom`, `onPlayerChangeRoom`): `cooldown`, `highlight`.
 
 Defaults:
 - If `scope` is missing, it defaults to `"allLoaded"`.
+
+## Items
+
+### type = "items" (probe-driven + playerSquare driver)
+
+| scope        | target key | target shape                                  | Notes |
+|--------------|------------|-----------------------------------------------|-------|
+| playerSquare | player     | `target = { player = { id = 0 } }`            | Emits only items on the square under the player. |
+| near         | player     | `target = { player = { id = 0 } }`            | Probe around player. |
+| near         | square     | `target = { square = { x, y, z } }`           | Probe around a fixed square (`z` defaults to 0). |
+| vision       | player     | `target = { player = { id = 0 } }`            | Probe; only emits items on squares visible to the player. |
+
+Knobs:
+- Probe scopes (`near`, `vision`): `radius`, `staleness`, `cooldown`, `highlight`.
+- `playerSquare`: `cooldown`, `highlight`.
+
+Defaults:
+- If `scope` is missing, it defaults to `"near"`.
+- If `target` is missing, it defaults to `{ player = { id = 0 } }`.
+
+## Dead bodies
+
+### type = "deadBodies" (probe-driven + playerSquare driver)
+
+| scope        | target key | target shape                                  | Notes |
+|--------------|------------|-----------------------------------------------|-------|
+| playerSquare | player     | `target = { player = { id = 0 } }`            | Emits only dead bodies on the square under the player. |
+| near         | player     | `target = { player = { id = 0 } }`            | Probe around player. |
+| near         | square     | `target = { square = { x, y, z } }`           | Probe around a fixed square (`z` defaults to 0). |
+| vision       | player     | `target = { player = { id = 0 } }`            | Probe; only emits dead bodies on squares visible to the player. |
+
+Knobs:
+- Probe scopes (`near`, `vision`): `radius`, `staleness`, `cooldown`, `highlight`.
+- `playerSquare`: `cooldown`, `highlight`.
+
+Defaults:
+- If `scope` is missing, it defaults to `"near"`.
+- If `target` is missing, it defaults to `{ player = { id = 0 } }`.
 
 ## Unsupported (not yet implemented)
 

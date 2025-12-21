@@ -8,6 +8,9 @@ package.path = table.concat({
 	package.path,
 }, ";")
 
+_G.WORLDOBSERVER_HEADLESS = true
+_G.LQR_HEADLESS = true
+
 local Registry = require("WorldObserver/interest/registry")
 
 describe("interest registry", function()
@@ -99,6 +102,86 @@ describe("interest registry", function()
 		assert.is_nil(reg:effective("squares", 2600, { bucketKey = "near:player:0" }))
 	end)
 
+	it("defaults squares scope to near and target to player 0", function()
+		local reg = Registry.new({ ttlSeconds = 100 })
+		reg:declare("modA", "defaults", { type = "squares" })
+
+		local merged = reg:effective("squares", nil, { bucketKey = "near:player:0" })
+		assert.is_table(merged)
+		assert.equals("near", merged.scope)
+		assert.is_table(merged.target)
+		assert.equals("player", merged.target.kind)
+		assert.equals(0, merged.target.id)
+	end)
+
+	it("squares onLoad ignores target/radius/staleness and uses onLoad bucket", function()
+		local reg = Registry.new({ ttlSeconds = 100 })
+		reg:declare("modA", "load", {
+			type = "squares",
+			scope = "onLoad",
+			target = { player = { id = 1 } },
+			radius = { desired = 10, tolerable = 12 },
+			staleness = { desired = 5, tolerable = 7 },
+			cooldown = { desired = 2, tolerable = 3 },
+		})
+
+		local merged = reg:effective("squares", nil, { bucketKey = "onLoad" })
+		assert.is_table(merged)
+		assert.equals("onLoad", merged.scope)
+		assert.is_nil(merged.target)
+		assert.equals(0, merged.radius.desired)
+		assert.equals(0, merged.staleness.desired)
+		assert.equals(2, merged.cooldown.desired)
+	end)
+
+	it("normalizes zombies scope to allLoaded and ignores target", function()
+		local reg = Registry.new({ ttlSeconds = 100 })
+		reg:declare("modA", "zeds", {
+			type = "zombies",
+			scope = "near",
+			target = { player = { id = 0 } },
+			staleness = 3,
+		})
+
+		local merged = reg:effective("zombies", nil, { bucketKey = "allLoaded" })
+		assert.is_table(merged)
+		assert.equals("allLoaded", merged.scope)
+		assert.is_nil(merged.target)
+		assert.equals(3, merged.staleness.desired)
+	end)
+
+	it("rooms allLoaded ignores radius and zRange", function()
+		local reg = Registry.new({ ttlSeconds = 100 })
+		reg:declare("modA", "rooms", {
+			type = "rooms",
+			scope = "allLoaded",
+			staleness = 30,
+			radius = { desired = 8, tolerable = 4 },
+			zRange = { desired = 2, tolerable = 1 },
+		})
+
+		local merged = reg:effective("rooms", nil, { bucketKey = "allLoaded" })
+		assert.is_table(merged)
+		assert.equals(30, merged.staleness.desired)
+		assert.equals(0, merged.radius.desired)
+		assert.equals(0, merged.zRange.desired)
+	end)
+
+	it("square target buckets include modId and coordinates", function()
+		local reg = Registry.new({ ttlSeconds = 100 })
+		reg:declare("modA", "square", { type = "squares", scope = "near", target = { square = { x = 10, y = 12, z = 0 } } })
+		reg:declare("modB", "square", { type = "squares", scope = "near", target = { square = { x = 10, y = 12, z = 0 } } })
+
+		local buckets = reg:effectiveBuckets("squares")
+		assert.equals(2, #buckets)
+		local keys = {}
+		for _, entry in ipairs(buckets) do
+			keys[entry.bucketKey] = true
+		end
+		assert.is_true(keys["near:square:modA:10:12:0"])
+		assert.is_true(keys["near:square:modB:10:12:0"])
+	end)
+
 	it("supports rooms onSeeNewRoom as an event scope bucket", function()
 		local reg = Registry.new({ ttlSeconds = 100 })
 		reg:declare("modA", "see", {
@@ -116,6 +199,23 @@ describe("interest registry", function()
 		assert.equals(0, merged.radius.desired)
 		assert.equals(0, merged.zRange.desired)
 		assert.equals(1, merged.cooldown.desired)
+	end)
+
+	it("supports rooms onPlayerChangeRoom as a per-player bucket", function()
+		local reg = Registry.new({ ttlSeconds = 100 })
+		reg:declare("modA", "change", {
+			type = "rooms",
+			scope = "onPlayerChangeRoom",
+			target = { player = { id = 1 } },
+		})
+
+		local merged = reg:effective("rooms", nil, { bucketKey = "onPlayerChangeRoom:player:1" })
+		assert.is_table(merged)
+		assert.equals("rooms", merged.type)
+		assert.equals("onPlayerChangeRoom", merged.scope)
+		assert.is_table(merged.target)
+		assert.equals("player", merged.target.kind)
+		assert.equals(1, merged.target.id)
 	end)
 
 	it("supports rooms allLoaded as a probe bucket", function()
