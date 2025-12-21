@@ -81,6 +81,7 @@ if Highlight.highlightFloor == nil then
 	--- @param durationMs number
 	--- @param opts table|nil { color?, alpha?, blink? }
 	--- @return table|nil handle
+	--- @return string|nil reason
 	function Highlight.highlightFloor(square, durationMs, opts)
 		if square == nil or durationMs <= 0 then
 			return nil, "noSquare"
@@ -234,6 +235,7 @@ if Highlight.highlightTarget == nil then
 	--- @param target any
 	--- @param opts table|nil { durationMs?, color?, alpha?, blink? }
 	--- @return table|nil handle { stop = function() end } or nil on failure
+	--- @return string|nil reason
 	function Highlight.highlightTarget(target, opts)
 		if target == nil then
 			return nil, "noTarget"

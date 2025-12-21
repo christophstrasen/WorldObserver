@@ -88,7 +88,7 @@ end
 	end
 
 	if SquareHelpers.squareHasCorpse == nil then
-		function SquareHelpers.squareHasCorpse(stream, fieldName)
+		function SquareHelpers.squareHasCorpse(stream, fieldName, ...)
 			local target = fieldName or "square"
 		return stream:filter(function(observation)
 			local square = squareField(observation, target)

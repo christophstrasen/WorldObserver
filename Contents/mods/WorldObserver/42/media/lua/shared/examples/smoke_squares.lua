@@ -45,7 +45,7 @@ function SmokeSquares.start(opts)
 
 	-- Declare upstream interest (keep it explicit and readable).
 	local modId = "examples/smoke_squares"
-	--local nearLease = WorldObserver.factInterest:declare(modId, "near", INTEREST_NEAR, LEASE_OPTS)
+	local nearLease = WorldObserver.factInterest:declare(modId, "near", INTEREST_NEAR, LEASE_OPTS)
 	local visionLease = WorldObserver.factInterest:declare(modId, "vision", INTEREST_VISION, LEASE_OPTS)
 
 	-- Build stream.

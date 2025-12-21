@@ -134,7 +134,7 @@ if ZombieHelpers.highlight == nil then
 end
 
 if ZombieHelpers.zombieHasTarget == nil then
-	function ZombieHelpers.zombieHasTarget(stream, fieldName)
+	function ZombieHelpers.zombieHasTarget(stream, fieldName, ...)
 		local target = fieldName or "zombie"
 		return stream:filter(function(observation)
 			local zombieRecord = zombieField(observation, target)

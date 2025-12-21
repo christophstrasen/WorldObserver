@@ -80,7 +80,7 @@ if RoomHelpers.record.roomHasWater == nil then
 end
 
 if RoomHelpers.roomHasWater == nil then
-	function RoomHelpers.roomHasWater(stream, fieldName)
+	function RoomHelpers.roomHasWater(stream, fieldName, ...)
 		local target = fieldName or "room"
 		return stream:filter(function(observation)
 			local roomRecord = roomField(observation, target)
@@ -95,4 +95,3 @@ if RoomHelpers.stream.roomHasWater == nil then
 end
 
 return RoomHelpers
-

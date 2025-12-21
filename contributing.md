@@ -37,6 +37,12 @@ Rules of thumb:
 More context: `docs_internal/code_architecture.md`
 
 
+## Codestyle
+
+- [StyLua](https://github.com/JohnnyMorganz/StyLua) defaults
+- Emmylua with [Umbrella](https://pzwiki.net/wiki/Umbrella_(modding))
+- No Emmylua warnings outside of `tests/unit`
+
 ## Logging
 
 - Use the repo logging utility (tagged, level-controlled and borrowed from LQR) instead of ad-hoc `print`:

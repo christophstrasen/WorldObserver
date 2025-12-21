@@ -17,14 +17,14 @@ if okLuaEvent and _G.Events and _G.Events.setLuaEvent then
 	-- Wire Starlit LuaEvent when available so downstream mods can emit/observe it.
 	-- We also clear any Runtime-tracked LuaEvent error so consumers know the hook is healthy.
 	Events.setLuaEvent(LuaEventOrError)
-	if _G.Runtime and Runtime.setLuaEventError then
-		Runtime.setLuaEventError(nil)
+	if _G.Runtime and _G.Runtime.setLuaEventError then
+		_G.Runtime.setLuaEventError(nil)
 	end
 elseif _G.Events and _G.Events.setLuaEvent then
 	-- LuaEvent failed to load: publish the failure into Runtime so consumers can diagnose it.
 	Events.setLuaEvent(nil)
-	if _G.Runtime and Runtime.setLuaEventError then
-		Runtime.setLuaEventError(LuaEventOrError)
+	if _G.Runtime and _G.Runtime.setLuaEventError then
+		_G.Runtime.setLuaEventError(LuaEventOrError)
 	end
 end
 
@@ -45,10 +45,10 @@ local SquareHelpers = require("WorldObserver/helpers/square")
 local ZombieHelpers = require("WorldObserver/helpers/zombie")
 local RoomHelpers = require("WorldObserver/helpers/room")
 local ItemHelpers = require("WorldObserver/helpers/item")
-local DeadBodyHelpers = require("WorldObserver/helpers/dead_body")
-local InterestRegistry = require("WorldObserver/interest/registry")
-local Debug = require("WorldObserver/debug")
-local Runtime = require("WorldObserver/runtime")
+	local DeadBodyHelpers = require("WorldObserver/helpers/dead_body")
+	local InterestRegistry = require("WorldObserver/interest/registry")
+	local Debug = require("WorldObserver/debug")
+	local Runtime = require("WorldObserver/runtime")
 
 	local WorldObserver
 	
@@ -61,9 +61,16 @@ local Runtime = require("WorldObserver/runtime")
 	assert(type(config.facts.deadBodies) == "table", "WorldObserver config must include facts.deadBodies")
 	assert(type(config.runtime) == "table", "WorldObserver config must include runtime")
 	assert(type(config.runtime.controller) == "table", "WorldObserver config must include runtime.controller")
+
+	---@class WorldObserverRuntimeWithIngestReset : WorldObserverRuntime
+	---@field emergency_resetIngest fun(self:WorldObserverRuntimeWithIngestReset)
+
+	---@type WorldObserverRuntimeWithIngestReset
 	local runtime = Runtime.new(Config.runtimeOpts(config))
 	local runtimeDiagnosticsHandle = nil
 	local debugApi = nil
+
+	---@type WOInterestRegistry
 	local interestRegistry = InterestRegistry.new({})
 	local headless = config.facts.squares.headless == true
 	local function setRuntimeDiagnosticsActive(active)
