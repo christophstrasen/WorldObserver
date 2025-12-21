@@ -77,6 +77,11 @@ Notes:
 Engine objects:
 - Off by default; can be enabled in config via `facts.rooms.record.includeIsoRoom`, `.includeRoomDef`, `.includeBuilding`.
 
+## Extending the record (advanced)
+
+If you need extra fields on `observation.room`, register a record extender:
+- [Guide: extending record fields](../guides/extending_records.md)
+
 ## Built-in stream helpers
 
 ```lua

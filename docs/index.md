@@ -24,10 +24,12 @@ Recommended reading order:
 - [Lifecycle (unsubscribe + stop/renew leases)](guides/lifecycle.md)
 - [Debugging and performance](guides/debugging_and_performance.md)
 - [Derived streams (multi-family observations)](guides/derived_streams.md)
+- [Extending record fields](guides/extending_records.md)
 
 ### Observations (what you can subscribe to)
 - [Observations overview](observations/index.md)
 - [Squares](observations/squares.md)
+- [Rooms](observations/rooms.md)
 - [Zombies](observations/zombies.md)
 - [Stream basics](observations/stream_basics.md)
 - [ReactiveX primer](observations/reactivex_primer.md)

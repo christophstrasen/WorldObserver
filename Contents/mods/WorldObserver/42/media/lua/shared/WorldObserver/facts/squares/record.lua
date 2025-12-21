@@ -13,6 +13,68 @@ if type(moduleName) == "string" then
 	end
 end
 Record._internal = Record._internal or {}
+Record._extensions = Record._extensions or {}
+Record._extensions.squareRecord = Record._extensions.squareRecord or { order = {}, orderCount = 0, byId = {} }
+
+--- Register an extender that can add extra fields to each square record.
+--- Extenders run after the base record has been constructed.
+--- @param id string
+--- @param fn fun(record: table, square: any, source: string|nil)
+--- @return boolean ok
+--- @return string|nil err
+if Record.registerSquareRecordExtender == nil then
+	function Record.registerSquareRecordExtender(id, fn)
+		if type(id) ~= "string" or id == "" then
+			return false, "badId"
+		end
+		if type(fn) ~= "function" then
+			return false, "badFn"
+		end
+		local ext = Record._extensions.squareRecord
+		if ext.byId[id] == nil then
+			ext.orderCount = (ext.orderCount or 0) + 1
+			ext.order[ext.orderCount] = id
+		end
+		ext.byId[id] = fn
+		return true
+	end
+end
+
+--- Unregister a previously registered square record extender.
+--- @param id string
+if Record.unregisterSquareRecordExtender == nil then
+	function Record.unregisterSquareRecordExtender(id)
+		if type(id) ~= "string" or id == "" then
+			return false, "badId"
+		end
+		local ext = Record._extensions.squareRecord
+		ext.byId[id] = nil
+		return true
+	end
+end
+
+--- Apply all registered square record extenders to a record.
+--- @param record table
+--- @param square any
+--- @param source string|nil
+if Record.applySquareRecordExtenders == nil then
+	function Record.applySquareRecordExtenders(record, square, source)
+		local ext = Record._extensions and Record._extensions.squareRecord or nil
+		if type(record) ~= "table" or not ext then
+			return
+		end
+		for i = 1, (ext.orderCount or 0) do
+			local id = ext.order[i]
+			local fn = id and ext.byId[id] or nil
+			if fn then
+				local ok, err = pcall(fn, record, square, source)
+				if not ok then
+					Log:warn("Square record extender failed id=%s err=%s", tostring(id), tostring(err))
+				end
+			end
+		end
+	end
+end
 
 local function nowMillis()
 	return Time.gameMillis() or math.floor(os.time() * 1000)
@@ -101,20 +163,23 @@ if Record.makeSquareRecord == nil then
 		end
 
 		local ts = nowMillis()
-		return {
+		local record = {
 			squareId = deriveSquareId(square, x, y, z),
 			x = x,
 			y = y,
 			z = z,
 			hasBloodSplat = detectFlag(square, square.hasBlood),
-				hasCorpse = detectCorpse(square),
-				hasTrashItems = false, -- placeholder until we wire real trash detection
-				sourceTime = ts,
-				IsoGridSquare = square,
-				source = source,
-			}
-		end
+			hasCorpse = detectCorpse(square),
+			hasTrashItems = false, -- placeholder until we wire real trash detection
+			sourceTime = ts,
+			IsoGridSquare = square,
+			source = source,
+		}
+
+		Record.applySquareRecordExtenders(record, square, source)
+		return record
 	end
+end
 
 Record._internal.coordOf = coordOf
 Record._internal.deriveSquareId = deriveSquareId

@@ -60,6 +60,11 @@ Common fields on the zombie record:
 Engine object:
 - Usually not included. If you need one, use `WorldObserver.helpers.zombie.record.getIsoZombie(record)` as best-effort rehydration.
 
+## Extending the record (advanced)
+
+If you need extra fields on `observation.zombie`, register a record extender:
+- [Guide: extending record fields](../guides/extending_records.md)
+
 ## Built-in stream helpers
 
 ```lua

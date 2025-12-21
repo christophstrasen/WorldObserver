@@ -241,6 +241,7 @@ if Probe.tick == nil then
 		local processed = 0
 		local emitted = 0
 		state.lastEmittedById = state.lastEmittedById or {}
+		local makeZombieRecord = ctx.makeZombieRecord or Record.makeZombieRecord
 
 		while state.cursorIndex <= listCount and processed < maxPerRun do
 			if budgetMs > 0 and startCpu then
@@ -256,7 +257,7 @@ if Probe.tick == nil then
 			state.sweepProcessed = (state.sweepProcessed or 0) + 1
 
 			if zombie then
-				local record = Record.makeZombieRecord(zombie, "probe", { nowMs = nowMs })
+				local record = makeZombieRecord(zombie, "probe", { nowMs = nowMs })
 				if record and record.zombieId ~= nil then
 					local inRange = false
 					for i = 1, #players do

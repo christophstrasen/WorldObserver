@@ -15,6 +15,69 @@ if type(moduleName) == "string" then
 	end
 end
 Record._internal = Record._internal or {}
+Record._extensions = Record._extensions or {}
+Record._extensions.roomRecord = Record._extensions.roomRecord or { order = {}, orderCount = 0, byId = {} }
+
+--- Register an extender that can add extra fields to each room record.
+--- Extenders run after the base record has been constructed.
+--- @param id string
+--- @param fn fun(record: table, room: any, source: string|nil, opts: table|nil)
+--- @return boolean ok
+--- @return string|nil err
+if Record.registerRoomRecordExtender == nil then
+	function Record.registerRoomRecordExtender(id, fn)
+		if type(id) ~= "string" or id == "" then
+			return false, "badId"
+		end
+		if type(fn) ~= "function" then
+			return false, "badFn"
+		end
+		local ext = Record._extensions.roomRecord
+		if ext.byId[id] == nil then
+			ext.orderCount = (ext.orderCount or 0) + 1
+			ext.order[ext.orderCount] = id
+		end
+		ext.byId[id] = fn
+		return true
+	end
+end
+
+--- Unregister a previously registered room record extender.
+--- @param id string
+if Record.unregisterRoomRecordExtender == nil then
+	function Record.unregisterRoomRecordExtender(id)
+		if type(id) ~= "string" or id == "" then
+			return false, "badId"
+		end
+		local ext = Record._extensions.roomRecord
+		ext.byId[id] = nil
+		return true
+	end
+end
+
+--- Apply all registered room record extenders to a record.
+--- @param record table
+--- @param room any
+--- @param source string|nil
+--- @param opts table|nil
+if Record.applyRoomRecordExtenders == nil then
+	function Record.applyRoomRecordExtenders(record, room, source, opts)
+		local ext = Record._extensions and Record._extensions.roomRecord or nil
+		if type(record) ~= "table" or not ext then
+			return
+		end
+		for i = 1, (ext.orderCount or 0) do
+			local id = ext.order[i]
+			local fn = id and ext.byId[id] or nil
+			if fn then
+				local ok, err = pcall(fn, record, room, source, opts)
+				if not ok then
+					Log:warn("Room record extender failed id=%s err=%s", tostring(id), tostring(err))
+				end
+			end
+		end
+	end
+end
 
 local function nowMillis()
 	return Time.gameMillis() or math.floor(os.time() * 1000)
@@ -215,6 +278,7 @@ if Record.makeRoomRecord == nil then
 			record.IsoBuilding = building
 		end
 
+		Record.applyRoomRecordExtenders(record, room, source, opts)
 		return record
 	end
 end

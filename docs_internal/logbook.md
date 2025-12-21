@@ -395,6 +395,10 @@
   - `roomDefId` remains as optional metadata (best-effort), not a key.
 - Improved smoke usability:
   - Extended `examples/smoke_console_showcase.lua` to include rooms with `rooms.allLoaded` interest.
+- Improved moddability of record schemas:
+  - Added additive “record extender” hooks for squares/rooms/zombies so multiple mods can safely add fields without copying/overriding the base builders.
+  - Aligned zombies with the existing `make<Family>Record` patch seam pattern so probes dispatch through `Zombies.makeZombieRecord`.
+  - Documented the extension patterns for modders in `docs/guides/extending_records.md` and added unit coverage in `tests/unit/record_extenders_spec.lua`.
 
 ### Lessons
 - Avoid using large engine “IDs” as Lua numbers for keys: once values exceed IEEE-754 safe integer range, collisions become subtle and hard to diagnose.

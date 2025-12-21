@@ -2,6 +2,7 @@
 local Log = require("LQR/util/log").withTag("WO.FACTS.zombies")
 
 local Probe = require("WorldObserver/facts/zombies/probe")
+local Record = require("WorldObserver/facts/zombies/record")
 
 local INTEREST_TYPE_ZOMBIES = "zombies"
 
@@ -24,6 +25,15 @@ Zombies._defaults.interest = Zombies._defaults.interest or {
 	zRange = { desired = 1, tolerable = 2 },
 	cooldown = { desired = 2, tolerable = 4 },
 }
+
+-- Default zombie record builder.
+-- Intentionally exposed via Zombies.makeZombieRecord so other mods can patch/override it.
+if Zombies.makeZombieRecord == nil then
+	function Zombies.makeZombieRecord(zombie, source, opts)
+		return Record.makeZombieRecord(zombie, source, opts)
+	end
+end
+Zombies._defaults.makeZombieRecord = Zombies._defaults.makeZombieRecord or Zombies.makeZombieRecord
 
 local ZOMBIES_TICK_HOOK_ID = Probe._internal.PROBE_TICK_HOOK_ID or "facts.zombies.tick"
 
@@ -48,6 +58,7 @@ local function tickZombies(ctx)
 		interestRegistry = ctx.interestRegistry,
 		defaultInterest = Zombies._defaults.interest,
 		probeCfg = ctx.probeCfg,
+		makeZombieRecord = Zombies.makeZombieRecord,
 	})
 end
 

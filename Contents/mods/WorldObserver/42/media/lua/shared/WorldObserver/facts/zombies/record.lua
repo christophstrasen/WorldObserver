@@ -14,6 +14,69 @@ if type(moduleName) == "string" then
 	end
 end
 Record._internal = Record._internal or {}
+Record._extensions = Record._extensions or {}
+Record._extensions.zombieRecord = Record._extensions.zombieRecord or { order = {}, orderCount = 0, byId = {} }
+
+--- Register an extender that can add extra fields to each zombie record.
+--- Extenders run after the base record has been constructed.
+--- @param id string
+--- @param fn fun(record: table, zombie: any, source: string|nil, opts: table|nil)
+--- @return boolean ok
+--- @return string|nil err
+if Record.registerZombieRecordExtender == nil then
+	function Record.registerZombieRecordExtender(id, fn)
+		if type(id) ~= "string" or id == "" then
+			return false, "badId"
+		end
+		if type(fn) ~= "function" then
+			return false, "badFn"
+		end
+		local ext = Record._extensions.zombieRecord
+		if ext.byId[id] == nil then
+			ext.orderCount = (ext.orderCount or 0) + 1
+			ext.order[ext.orderCount] = id
+		end
+		ext.byId[id] = fn
+		return true
+	end
+end
+
+--- Unregister a previously registered zombie record extender.
+--- @param id string
+if Record.unregisterZombieRecordExtender == nil then
+	function Record.unregisterZombieRecordExtender(id)
+		if type(id) ~= "string" or id == "" then
+			return false, "badId"
+		end
+		local ext = Record._extensions.zombieRecord
+		ext.byId[id] = nil
+		return true
+	end
+end
+
+--- Apply all registered zombie record extenders to a record.
+--- @param record table
+--- @param zombie any
+--- @param source string|nil
+--- @param opts table|nil
+if Record.applyZombieRecordExtenders == nil then
+	function Record.applyZombieRecordExtenders(record, zombie, source, opts)
+		local ext = Record._extensions and Record._extensions.zombieRecord or nil
+		if type(record) ~= "table" or not ext then
+			return
+		end
+		for i = 1, (ext.orderCount or 0) do
+			local id = ext.order[i]
+			local fn = id and ext.byId[id] or nil
+			if fn then
+				local ok, err = pcall(fn, record, zombie, source, opts)
+				if not ok then
+					Log:warn("Zombie record extender failed id=%s err=%s", tostring(id), tostring(err))
+				end
+			end
+		end
+	end
+end
 
 local function nowMillis()
 	return Time.gameMillis() or math.floor(os.time() * 1000)
@@ -98,21 +161,21 @@ if Record.makeZombieRecord == nil then
 		local ts = opts.nowMs or nowMillis()
 
 		local x = SafeCall.safeCall(zombie, "getX")
-	local y = SafeCall.safeCall(zombie, "getY")
-	local z = SafeCall.safeCall(zombie, "getZ") or 0
-	if x == nil or y == nil then
-		Log:warn("Skipped zombie record: missing coordinates")
-		return nil
-	end
-	local tileX = math.floor(x)
-	local tileY = math.floor(y)
-	local tileZ = math.floor(z)
+		local y = SafeCall.safeCall(zombie, "getY")
+		local z = SafeCall.safeCall(zombie, "getZ") or 0
+		if x == nil or y == nil then
+			Log:warn("Skipped zombie record: missing coordinates")
+			return nil
+		end
+		local tileX = math.floor(x)
+		local tileY = math.floor(y)
+		local tileZ = math.floor(z)
 
-	local square = SafeCall.safeCall(zombie, "getCurrentSquare")
-	local squareId = deriveSquareId(square, tileX, tileY, tileZ)
+		local square = SafeCall.safeCall(zombie, "getCurrentSquare")
+		local squareId = deriveSquareId(square, tileX, tileY, tileZ)
 
-	local zombieId = SafeCall.safeCall(zombie, "getID")
-	local zombieOnlineId = SafeCall.safeCall(zombie, "getOnlineID") or 0
+		local zombieId = SafeCall.safeCall(zombie, "getID")
+		local zombieOnlineId = SafeCall.safeCall(zombie, "getOnlineID") or 0
 
 		local isMoving = SafeCall.safeCall(zombie, "isMoving") == true
 		local isRunning = SafeCall.safeCall(zombie, "isRunning") == true
@@ -123,21 +186,21 @@ if Record.makeZombieRecord == nil then
 		local targetId = deriveTargetId(target)
 		local targetKind = deriveTargetKind(target)
 		local targetVisible = SafeCall.safeCall(zombie, "isTargetVisible") == true
-	local targetSeenSeconds = SafeCall.safeCall(zombie, "getTargetSeenTime")
+		local targetSeenSeconds = SafeCall.safeCall(zombie, "getTargetSeenTime")
 
-	local targetSquare = target and SafeCall.safeCall(target, "getCurrentSquare") or nil
+		local targetSquare = target and SafeCall.safeCall(target, "getCurrentSquare") or nil
 
-	local record = {
-		zombieId = zombieId,
-		zombieOnlineId = zombieOnlineId,
-		x = x,
-		y = y,
-		z = z,
-		tileX = tileX,
-		tileY = tileY,
-		tileZ = tileZ,
-		squareId = squareId,
-		isMoving = isMoving,
+		local record = {
+			zombieId = zombieId,
+			zombieOnlineId = zombieOnlineId,
+			x = x,
+			y = y,
+			z = z,
+			tileX = tileX,
+			tileY = tileY,
+			tileZ = tileZ,
+			squareId = squareId,
+			isMoving = isMoving,
 			isRunning = isRunning,
 			isCrawling = isCrawling,
 			speedType = zombie.speedType,
@@ -166,6 +229,7 @@ if Record.makeZombieRecord == nil then
 			record.IsoZombie = zombie
 		end
 
+		Record.applyZombieRecordExtenders(record, zombie, source, opts)
 		return record
 	end
 end

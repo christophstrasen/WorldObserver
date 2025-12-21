@@ -42,6 +42,11 @@ Common fields on the square record:
 Best-effort engine object (do not rely on it always existing):
 - `IsoGridSquare` (live engine object, may be missing/stale)
 
+## Extending the record (advanced)
+
+If you need extra fields on `observation.square`, register a record extender:
+- [Guide: extending record fields](../guides/extending_records.md)
+
 ## Built-in stream helpers (recommended)
 
 These are convenience filters you can chain:
