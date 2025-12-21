@@ -5,10 +5,12 @@ local Time = require("WorldObserver/helpers/time")
 local moduleName = ...
 local Record = {}
 if type(moduleName) == "string" then
+	---@diagnostic disable-next-line: undefined-field
 	local loaded = package.loaded[moduleName]
 	if type(loaded) == "table" then
 		Record = loaded
 	else
+		---@diagnostic disable-next-line: undefined-field
 		package.loaded[moduleName] = Record
 	end
 end
@@ -16,13 +18,13 @@ Record._internal = Record._internal or {}
 Record._extensions = Record._extensions or {}
 Record._extensions.squareRecord = Record._extensions.squareRecord or { order = {}, orderCount = 0, byId = {} }
 
---- Register an extender that can add extra fields to each square record.
---- Extenders run after the base record has been constructed.
---- @param id string
---- @param fn fun(record: table, square: any, source: string|nil)
---- @return boolean ok
---- @return string|nil err
 if Record.registerSquareRecordExtender == nil then
+	--- Register an extender that can add extra fields to each square record.
+	--- Extenders run after the base record has been constructed.
+	--- @param id string
+	--- @param fn fun(record: table, square: any, source: string|nil)
+	--- @return boolean ok
+	--- @return string|nil err
 	function Record.registerSquareRecordExtender(id, fn)
 		if type(id) ~= "string" or id == "" then
 			return false, "badId"
@@ -40,9 +42,9 @@ if Record.registerSquareRecordExtender == nil then
 	end
 end
 
---- Unregister a previously registered square record extender.
---- @param id string
 if Record.unregisterSquareRecordExtender == nil then
+	--- Unregister a previously registered square record extender.
+	--- @param id string
 	function Record.unregisterSquareRecordExtender(id)
 		if type(id) ~= "string" or id == "" then
 			return false, "badId"
@@ -53,11 +55,11 @@ if Record.unregisterSquareRecordExtender == nil then
 	end
 end
 
---- Apply all registered square record extenders to a record.
---- @param record table
---- @param square any
---- @param source string|nil
 if Record.applySquareRecordExtenders == nil then
+	--- Apply all registered square record extenders to a record.
+	--- @param record table
+	--- @param square any
+	--- @param source string|nil
 	function Record.applySquareRecordExtenders(record, square, source)
 		local ext = Record._extensions and Record._extensions.squareRecord or nil
 		if type(record) ~= "table" or not ext then
@@ -143,12 +145,12 @@ local function detectCorpse(square)
 	return detectFlag(square, square.hasCorpse)
 end
 
---- Build a square fact record.
---- Intentionally returns a tiny, stable "snapshot" so we can buffer safely and keep downstream pure.
---- @param square any
---- @param source string|nil
---- @return table|nil record
 if Record.makeSquareRecord == nil then
+	--- Build a square fact record.
+	--- Intentionally returns a tiny, stable "snapshot" so we can buffer safely and keep downstream pure.
+	--- @param square any
+	--- @param source string|nil
+	--- @return table|nil record
 	function Record.makeSquareRecord(square, source)
 		if not square then
 			return nil

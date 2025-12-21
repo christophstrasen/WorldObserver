@@ -4,10 +4,12 @@ local Log = require("LQR/util/log").withTag("WO.DIAG")
 local moduleName = ...
 local Debug = {}
 if type(moduleName) == "string" then
+	---@diagnostic disable-next-line: undefined-field
 	local loaded = package.loaded[moduleName]
 	if type(loaded) == "table" then
 		Debug = loaded
 	else
+		---@diagnostic disable-next-line: undefined-field
 		package.loaded[moduleName] = Debug
 	end
 end

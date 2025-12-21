@@ -7,10 +7,12 @@ local SafeCall = require("WorldObserver/helpers/safe_call")
 local moduleName = ...
 local Record = {}
 if type(moduleName) == "string" then
+	---@diagnostic disable-next-line: undefined-field
 	local loaded = package.loaded[moduleName]
 	if type(loaded) == "table" then
 		Record = loaded
 	else
+		---@diagnostic disable-next-line: undefined-field
 		package.loaded[moduleName] = Record
 	end
 end
@@ -18,13 +20,13 @@ Record._internal = Record._internal or {}
 Record._extensions = Record._extensions or {}
 Record._extensions.roomRecord = Record._extensions.roomRecord or { order = {}, orderCount = 0, byId = {} }
 
---- Register an extender that can add extra fields to each room record.
---- Extenders run after the base record has been constructed.
---- @param id string
---- @param fn fun(record: table, room: any, source: string|nil, opts: table|nil)
---- @return boolean ok
---- @return string|nil err
 if Record.registerRoomRecordExtender == nil then
+	--- Register an extender that can add extra fields to each room record.
+	--- Extenders run after the base record has been constructed.
+	--- @param id string
+	--- @param fn fun(record: table, room: any, source: string|nil, opts: table|nil)
+	--- @return boolean ok
+	--- @return string|nil err
 	function Record.registerRoomRecordExtender(id, fn)
 		if type(id) ~= "string" or id == "" then
 			return false, "badId"
@@ -42,9 +44,9 @@ if Record.registerRoomRecordExtender == nil then
 	end
 end
 
---- Unregister a previously registered room record extender.
---- @param id string
 if Record.unregisterRoomRecordExtender == nil then
+	--- Unregister a previously registered room record extender.
+	--- @param id string
 	function Record.unregisterRoomRecordExtender(id)
 		if type(id) ~= "string" or id == "" then
 			return false, "badId"
@@ -55,12 +57,12 @@ if Record.unregisterRoomRecordExtender == nil then
 	end
 end
 
---- Apply all registered room record extenders to a record.
---- @param record table
---- @param room any
---- @param source string|nil
---- @param opts table|nil
 if Record.applyRoomRecordExtenders == nil then
+	--- Apply all registered room record extenders to a record.
+	--- @param record table
+	--- @param room any
+	--- @param source string|nil
+	--- @param opts table|nil
 	function Record.applyRoomRecordExtenders(record, room, source, opts)
 		local ext = Record._extensions and Record._extensions.roomRecord or nil
 		if type(record) ~= "table" or not ext then
@@ -190,13 +192,13 @@ local function listSizeSafe(list, label, roomMeta)
 	return 0
 end
 
---- Build a room fact record.
---- Intent: keep this a small, stable snapshot (counts + ids) and avoid hard-coding engine-only fields.
---- @param room any
---- @param source string|nil
---- @param opts table|nil
---- @return table|nil record
 if Record.makeRoomRecord == nil then
+	--- Build a room fact record.
+	--- Intent: keep this a small, stable snapshot (counts + ids) and avoid hard-coding engine-only fields.
+	--- @param room any
+	--- @param source string|nil
+	--- @param opts table|nil
+	--- @return table|nil record
 	function Record.makeRoomRecord(room, source, opts)
 		if room == nil then
 			return nil

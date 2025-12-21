@@ -14,27 +14,29 @@ local Log = require("LQR/util/log").withTag("WO.FACTS.interest")
 local moduleName = ...
 local InterestEffective = {}
 if type(moduleName) == "string" then
+	---@diagnostic disable-next-line: undefined-field
 	local loaded = package.loaded[moduleName]
 	if type(loaded) == "table" then
 		InterestEffective = loaded
 	else
+		---@diagnostic disable-next-line: undefined-field
 		package.loaded[moduleName] = InterestEffective
 	end
 end
 InterestEffective._internal = InterestEffective._internal or {}
 
---- Resolve merged interest for `interestType` and pass it through the adaptive policy.
---- Stores state in `state._interestPolicyState` and caches the effective settings in `state._effectiveInterestByType`.
---- @param state table
---- @param interestRegistry table|nil
---- @param runtime table|nil
---- @param interestType string
---- @param opts table|nil
----   - opts.bucketKey: when set, resolves and stores state under this bucket key
----   - opts.merged: optional pre-fetched merged spec (avoids re-merging)
---- @return table|nil effective
---- @return table|nil meta
 if InterestEffective.ensure == nil then
+	--- Resolve merged interest for `interestType` and pass it through the adaptive policy.
+	--- Stores state in `state._interestPolicyState` and caches the effective settings in `state._effectiveInterestByType`.
+	--- @param state table
+	--- @param interestRegistry table|nil
+	--- @param runtime table|nil
+	--- @param interestType string
+	--- @param opts table|nil
+	---   - opts.bucketKey: when set, resolves and stores state under this bucket key
+	---   - opts.merged: optional pre-fetched merged spec (avoids re-merging)
+	--- @return table|nil effective
+	--- @return table|nil meta
 	function InterestEffective.ensure(state, interestRegistry, runtime, interestType, opts)
 		state = state or {}
 		opts = opts or {}

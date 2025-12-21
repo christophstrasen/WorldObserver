@@ -9,10 +9,12 @@ local INTEREST_TYPE_ZOMBIES = "zombies"
 local moduleName = ...
 local Zombies = {}
 if type(moduleName) == "string" then
+	---@diagnostic disable-next-line: undefined-field
 	local loaded = package.loaded[moduleName]
 	if type(loaded) == "table" then
 		Zombies = loaded
 	else
+		---@diagnostic disable-next-line: undefined-field
 		package.loaded[moduleName] = Zombies
 	end
 end

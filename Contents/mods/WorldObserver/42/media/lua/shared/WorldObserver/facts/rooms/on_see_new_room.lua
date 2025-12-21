@@ -9,10 +9,12 @@ local JavaList = require("WorldObserver/helpers/java_list")
 local moduleName = ...
 local OnSee = {}
 if type(moduleName) == "string" then
+	---@diagnostic disable-next-line: undefined-field
 	local loaded = package.loaded[moduleName]
 	if type(loaded) == "table" then
 		OnSee = loaded
 	else
+		---@diagnostic disable-next-line: undefined-field
 		package.loaded[moduleName] = OnSee
 	end
 end
@@ -124,10 +126,10 @@ local function registerListener(ctx)
 	return true
 end
 
---- Ensure the OnSeeNewRoom listener is registered/unregistered based on declared interest.
---- @param ctx table
---- @return boolean active
 if OnSee.ensure == nil then
+	--- Ensure the OnSeeNewRoom listener is registered/unregistered based on declared interest.
+	--- @param ctx table
+	--- @return boolean active
 	function OnSee.ensure(ctx)
 		ctx = ctx or {}
 		local state = ctx.state or {}

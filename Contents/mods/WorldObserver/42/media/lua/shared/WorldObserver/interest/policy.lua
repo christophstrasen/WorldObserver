@@ -4,10 +4,12 @@ local Log = require("LQR/util/log").withTag("WO.INTEREST")
 local moduleName = ...
 local Policy = {}
 if type(moduleName) == "string" then
+	---@diagnostic disable-next-line: undefined-field
 	local loaded = package.loaded[moduleName]
 	if type(loaded) == "table" then
 		Policy = loaded
 	else
+		---@diagnostic disable-next-line: undefined-field
 		package.loaded[moduleName] = Policy
 	end
 end
@@ -395,16 +397,16 @@ local function isHealthy(status, cfg)
 	return fill <= (cfg.recoverMaxFill or 1)
 end
 
---- Update probe quality state using runtime signals and merged interest.
---- @param prevState WOInterestState|nil
---- @param merged WOInterestMerged
---- @param runtimeStatus table|nil
---- @param opts table|nil
---- @return WOInterestState state
---- @return table effective
---- @return string reason
---- @return table meta
 if Policy.update == nil then
+	--- Update probe quality state using runtime signals and merged interest.
+	--- @param prevState WOInterestState|nil
+	--- @param merged WOInterestMerged
+	--- @param runtimeStatus table|nil
+	--- @param opts table|nil
+	--- @return WOInterestState state
+	--- @return table effective
+	--- @return string reason
+	--- @return table meta
 	function Policy.update(prevState, merged, runtimeStatus, opts)
 		local cfg = cloneTable(defaultConfig)
 		for k, v in pairs(opts or {}) do

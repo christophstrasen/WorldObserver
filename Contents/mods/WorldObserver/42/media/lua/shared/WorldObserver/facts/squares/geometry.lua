@@ -2,10 +2,12 @@
 local moduleName = ...
 local Geometry = {}
 if type(moduleName) == "string" then
+	---@diagnostic disable-next-line: undefined-field
 	local loaded = package.loaded[moduleName]
 	if type(loaded) == "table" then
 		Geometry = loaded
 	else
+		---@diagnostic disable-next-line: undefined-field
 		package.loaded[moduleName] = Geometry
 	end
 end
@@ -21,10 +23,10 @@ local function coordOf(square, getterName)
 	return nil
 end
 
---- Return the number of squares in a Chebyshev radius square: (2r+1)^2.
---- @param radius number
---- @return number
 if Geometry.squaresPerRadius == nil then
+	--- Return the number of squares in a Chebyshev radius square: (2r+1)^2.
+	--- @param radius number
+	--- @return number
 	function Geometry.squaresPerRadius(radius)
 		radius = math.max(0, math.floor(tonumber(radius) or 0))
 		local side = (radius * 2) + 1
@@ -32,10 +34,10 @@ if Geometry.squaresPerRadius == nil then
 	end
 end
 
---- Build a dense, unique Chebyshev sweep (center -> rings outward).
---- @param radius number
---- @return table offsets
 if Geometry.buildRingOffsets == nil then
+	--- Build a dense, unique Chebyshev sweep (center -> rings outward).
+	--- @param radius number
+	--- @return table offsets
 	function Geometry.buildRingOffsets(radius)
 		radius = math.max(0, math.floor(tonumber(radius) or 0))
 		local offsets = {}
@@ -57,14 +59,14 @@ if Geometry.buildRingOffsets == nil then
 	end
 end
 
---- Collect squares in Chebyshev rings around the center square.
---- Stops early once `budget` is reached (used for sampling).
---- @param centerSquare any
---- @param innerRadius number
---- @param outerRadius number
---- @param budget number
---- @return table squares
 if Geometry.iterSquaresInRing == nil then
+	--- Collect squares in Chebyshev rings around the center square.
+	--- Stops early once `budget` is reached (used for sampling).
+	--- @param centerSquare any
+	--- @param innerRadius number
+	--- @param outerRadius number
+	--- @param budget number
+	--- @return table squares
 	function Geometry.iterSquaresInRing(centerSquare, innerRadius, outerRadius, budget)
 		local results = {}
 		if not centerSquare or budget <= 0 then

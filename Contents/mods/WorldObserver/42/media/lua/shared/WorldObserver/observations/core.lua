@@ -8,10 +8,12 @@ local Time = require("WorldObserver/helpers/time")
 local moduleName = ...
 local ObservationsCore = {}
 if type(moduleName) == "string" then
+	---@diagnostic disable-next-line: undefined-field
 	local loaded = package.loaded[moduleName]
 	if type(loaded) == "table" then
 		ObservationsCore = loaded
 	else
+		---@diagnostic disable-next-line: undefined-field
 		package.loaded[moduleName] = ObservationsCore
 	end
 end

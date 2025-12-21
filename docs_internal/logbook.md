@@ -401,6 +401,13 @@
   - Follow-up hardening + UX: fixed square-sweep collector gating (no cross-type emits without interest) and updated smoke scripts (`smoke_console_showcase` starts squares near+vision; `smoke_squares` fixed + re-enabled vision interest).
   - Hardened `helpers/java_list.lua` against `tostring(...)` throwing (engine edge case) and added a contract test asserting all `interest/definitions.lua` types are wired as facts + observations.
   - Headless tests pass (`busted tests`: 99 successes).
+- Contributor docs polish:
+  - Added `docs_internal/code_architecture.md` (architecture overview + guardrails) and `docs_internal/runtime_dynamics.md` (how probes/drain adapt at runtime).
+  - Added root `contributing.md` (lean governance, testing + smoke + benchmarks, logging conventions, links to research backlog).
+  - Updated glossary + architecture terms to match code (fact sources, sensors, collectors) and clarified `docs_internal/development.md`.
+- IDE ergonomics (EmmyLua):
+  - Fixed “undefined param” warnings by aligning `---@param` blocks with patch-seam function definitions.
+  - Added targeted `---@diagnostic disable-next-line: undefined-field` for `package.loaded` access (avoid noisy false positives).
 
 ### Lessons
 - Never use large engine IDs as Lua numeric keys; prefer stable, domain-derived string keys for identity.
@@ -411,3 +418,4 @@
 - Optional: add debug reporting for rooms where `getSquares()` is unavailable (`[]`) so highlight/key failures are diagnosable.
 - Confirm the “first square” rule is stable; upgrade to “minimum square” if ordering ever proves non-deterministic.
 - Keep ground-entity streams observation-only unless real mod use-cases require explicit removal/expiry events.
+- Consider adding a simple contributor “IDE checks” note (EmmyLua + Luacheck expectations) to reduce churn.

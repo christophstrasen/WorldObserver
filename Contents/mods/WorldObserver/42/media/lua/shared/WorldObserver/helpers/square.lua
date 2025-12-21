@@ -4,10 +4,12 @@ local Highlight = require("WorldObserver/helpers/highlight")
 local moduleName = ...
 local SquareHelpers = {}
 if type(moduleName) == "string" then
+	---@diagnostic disable-next-line: undefined-field
 	local loaded = package.loaded[moduleName]
 	if type(loaded) == "table" then
 		SquareHelpers = loaded
 	else
+		---@diagnostic disable-next-line: undefined-field
 		package.loaded[moduleName] = SquareHelpers
 	end
 	end

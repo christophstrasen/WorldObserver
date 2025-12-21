@@ -12,6 +12,23 @@ The mechanism that produces facts:
 - **Listener (event-driven):** reacts to game events (example: squares `scope = "onLoad"`).
 - **Probe (active scan):** periodically inspects world state (example: squares `scope = "near"` / `"vision"`, zombies `scope = "allLoaded"`).
 
+### Fact acquisition (upstream)
+The general act of producing facts (via fact sources). You will see “acquisition” used as shorthand for “upstream fact production” in internal docs.
+
+### Sensor (shared probe driver)
+An internal implementation pattern: a shared probe loop that scans some part of the world and can feed multiple fact types.
+
+Example:
+- `square_sweep` scans squares for `near`/`vision` and calls registered collectors.
+
+### Collector (sensor callback)
+An internal implementation pattern: a per-type extraction function invoked by a sensor (for example, “given a square, emit item facts and dead body facts”).
+
+Collectors typically:
+- run quickly,
+- produce one or more fact records, and
+- use `ctx.ingest(record)` (buffered) rather than doing downstream work directly.
+
 ### Fact type (fact plan type / interest type)
 The top-level category of fact work WorldObserver can run and merge. In the interest API this is `spec.type` (example: `"squares"`, `"zombies"`).
 

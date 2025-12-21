@@ -8,18 +8,20 @@
 local moduleName = ...
 local Targets = {}
 if type(moduleName) == "string" then
+	---@diagnostic disable-next-line: undefined-field
 	local loaded = package.loaded[moduleName]
 	if type(loaded) == "table" then
 		Targets = loaded
 	else
+		---@diagnostic disable-next-line: undefined-field
 		package.loaded[moduleName] = Targets
 	end
 end
 
---- Resolve an engine player instance from a normalized target.
---- @param target table|nil { kind = "player", id = number }
---- @return any|nil player
 if Targets.resolvePlayer == nil then
+	--- Resolve an engine player instance from a normalized target.
+	--- @param target table|nil { kind = "player", id = number }
+	--- @return any|nil player
 	function Targets.resolvePlayer(target)
 		if type(target) ~= "table" or target.kind ~= "player" then
 			return nil

@@ -14,10 +14,12 @@ local PLAYER_SQUARE_HIGHLIGHT_COLOR = { 0.9, 0.8, 0.2 }
 local moduleName = ...
 local Items = {}
 if type(moduleName) == "string" then
+	---@diagnostic disable-next-line: undefined-field
 	local loaded = package.loaded[moduleName]
 	if type(loaded) == "table" then
 		Items = loaded
 	else
+		---@diagnostic disable-next-line: undefined-field
 		package.loaded[moduleName] = Items
 	end
 end

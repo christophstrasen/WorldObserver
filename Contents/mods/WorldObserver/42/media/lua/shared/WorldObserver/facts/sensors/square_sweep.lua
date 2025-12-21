@@ -12,10 +12,12 @@ local Geometry = require("WorldObserver/facts/squares/geometry")
 local moduleName = ...
 local SquareSweep = {}
 if type(moduleName) == "string" then
+	---@diagnostic disable-next-line: undefined-field
 	local loaded = package.loaded[moduleName]
 	if type(loaded) == "table" then
 		SquareSweep = loaded
 	else
+		---@diagnostic disable-next-line: undefined-field
 		package.loaded[moduleName] = SquareSweep
 	end
 end
@@ -24,12 +26,12 @@ SquareSweep._collectors = SquareSweep._collectors or { order = {}, orderCount = 
 SquareSweep._consumers = SquareSweep._consumers or {}
 SquareSweep._runner = SquareSweep._runner or { state = {}, tickHookRegistered = false, tickHookId = nil, factRegistry = nil }
 
---- Register a square sweep collector.
---- Collectors are called for each scanned square and can emit any fact records they own.
---- @param id string
---- @param fn fun(ctx: table, cursor: table, square: any, playerIndex: number|nil, nowMs: number, effective: table): boolean|nil
---- @param opts table|nil
 if SquareSweep.registerCollector == nil then
+	--- Register a square sweep collector.
+	--- Collectors are called for each scanned square and can emit any fact records they own.
+	--- @param id string
+	--- @param fn fun(ctx: table, cursor: table, square: any, playerIndex: number|nil, nowMs: number, effective: table): boolean|nil
+	--- @param opts table|nil
 	function SquareSweep.registerCollector(id, fn, opts)
 		if type(id) ~= "string" or id == "" then
 			return false, "badId"
@@ -227,10 +229,10 @@ end
 
 local SQUARE_SWEEP_TICK_HOOK_ID = "facts.squareSweep.tick"
 
---- Register a shared square sweep consumer (fact plan) that owns one collector.
---- @param id string
---- @param opts table
 if SquareSweep.registerConsumer == nil then
+	--- Register a shared square sweep consumer (fact plan) that owns one collector.
+	--- @param id string
+	--- @param opts table
 	function SquareSweep.registerConsumer(id, opts)
 		if type(id) ~= "string" or id == "" then
 			return false, "badId"
@@ -269,9 +271,9 @@ if SquareSweep.registerConsumer == nil then
 	end
 end
 
---- Unregister a previously registered square sweep consumer.
---- @param id string
 if SquareSweep.unregisterConsumer == nil then
+	--- Unregister a previously registered square sweep consumer.
+	--- @param id string
 	function SquareSweep.unregisterConsumer(id)
 		if type(id) ~= "string" or id == "" then
 			return false, "badId"
@@ -1113,9 +1115,9 @@ local function collectBucketsForTypes(ctx, interestTypes, scope)
 	return bucketsByKey
 end
 
---- Run probe scanning for squares (near + vision).
---- @param ctx table
 if SquareSweep.tick == nil then
+	--- Run probe scanning for squares (near + vision).
+	--- @param ctx table
 	function SquareSweep.tick(ctx)
 		ctx = ctx or {}
 		local state = ctx.state or {}

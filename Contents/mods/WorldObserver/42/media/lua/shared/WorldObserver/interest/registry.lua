@@ -16,10 +16,12 @@ local Definitions = require("WorldObserver/interest/definitions")
 local moduleName = ...
 local Registry = {}
 if type(moduleName) == "string" then
+	---@diagnostic disable-next-line: undefined-field
 	local loaded = package.loaded[moduleName]
 	if type(loaded) == "table" then
 		Registry = loaded
 	else
+		---@diagnostic disable-next-line: undefined-field
 		package.loaded[moduleName] = Registry
 	end
 end

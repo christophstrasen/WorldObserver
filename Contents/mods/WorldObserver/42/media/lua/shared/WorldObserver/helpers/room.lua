@@ -3,10 +3,12 @@ local Log = require("LQR/util/log").withTag("WO.HELPER.room")
 local moduleName = ...
 local RoomHelpers = {}
 if type(moduleName) == "string" then
+	---@diagnostic disable-next-line: undefined-field
 	local loaded = package.loaded[moduleName]
 	if type(loaded) == "table" then
 		RoomHelpers = loaded
 	else
+		---@diagnostic disable-next-line: undefined-field
 		package.loaded[moduleName] = RoomHelpers
 	end
 end

@@ -7,10 +7,12 @@ local Schema = LQR.Schema
 local moduleName = ...
 local RoomsObservation = {}
 if type(moduleName) == "string" then
+	---@diagnostic disable-next-line: undefined-field
 	local loaded = package.loaded[moduleName]
 	if type(loaded) == "table" then
 		RoomsObservation = loaded
 	else
+		---@diagnostic disable-next-line: undefined-field
 		package.loaded[moduleName] = RoomsObservation
 	end
 end

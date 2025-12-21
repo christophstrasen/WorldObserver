@@ -6,10 +6,12 @@ local SafeCall = require("WorldObserver/helpers/safe_call")
 local moduleName = ...
 local Record = {}
 if type(moduleName) == "string" then
+	---@diagnostic disable-next-line: undefined-field
 	local loaded = package.loaded[moduleName]
 	if type(loaded) == "table" then
 		Record = loaded
 	else
+		---@diagnostic disable-next-line: undefined-field
 		package.loaded[moduleName] = Record
 	end
 end
@@ -17,13 +19,13 @@ Record._internal = Record._internal or {}
 Record._extensions = Record._extensions or {}
 Record._extensions.deadBodyRecord = Record._extensions.deadBodyRecord or { order = {}, orderCount = 0, byId = {} }
 
---- Register an extender that can add extra fields to each dead body record.
---- Extenders run after the base record has been constructed.
---- @param id string
---- @param fn fun(record: table, body: any, source: string|nil, opts: table|nil)
---- @return boolean ok
---- @return string|nil err
 if Record.registerDeadBodyRecordExtender == nil then
+	--- Register an extender that can add extra fields to each dead body record.
+	--- Extenders run after the base record has been constructed.
+	--- @param id string
+	--- @param fn fun(record: table, body: any, source: string|nil, opts: table|nil)
+	--- @return boolean ok
+	--- @return string|nil err
 	function Record.registerDeadBodyRecordExtender(id, fn)
 		if type(id) ~= "string" or id == "" then
 			return false, "badId"
@@ -41,9 +43,9 @@ if Record.registerDeadBodyRecordExtender == nil then
 	end
 end
 
---- Unregister a previously registered dead body record extender.
---- @param id string
 if Record.unregisterDeadBodyRecordExtender == nil then
+	--- Unregister a previously registered dead body record extender.
+	--- @param id string
 	function Record.unregisterDeadBodyRecordExtender(id)
 		if type(id) ~= "string" or id == "" then
 			return false, "badId"
@@ -54,12 +56,12 @@ if Record.unregisterDeadBodyRecordExtender == nil then
 	end
 end
 
---- Apply all registered dead body record extenders to a record.
---- @param record table
---- @param body any
---- @param source string|nil
---- @param opts table|nil
 if Record.applyDeadBodyRecordExtenders == nil then
+	--- Apply all registered dead body record extenders to a record.
+	--- @param record table
+	--- @param body any
+	--- @param source string|nil
+	--- @param opts table|nil
 	function Record.applyDeadBodyRecordExtenders(record, body, source, opts)
 		local ext = Record._extensions and Record._extensions.deadBodyRecord or nil
 		if type(record) ~= "table" or not ext then
@@ -105,13 +107,13 @@ local function deriveSquareId(square, x, y, z)
 	return nil
 end
 
---- Build a dead body fact record.
---- @param body any
---- @param square any|nil
---- @param source string|nil
---- @param opts table|nil
---- @return table|nil record
 if Record.makeDeadBodyRecord == nil then
+	--- Build a dead body fact record.
+	--- @param body any
+	--- @param square any|nil
+	--- @param source string|nil
+	--- @param opts table|nil
+	--- @return table|nil record
 	function Record.makeDeadBodyRecord(body, square, source, opts)
 		if not body then
 			return nil

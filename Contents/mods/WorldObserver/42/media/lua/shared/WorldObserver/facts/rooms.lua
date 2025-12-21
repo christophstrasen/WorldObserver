@@ -11,10 +11,12 @@ local INTEREST_TYPE_ROOMS = "rooms"
 local moduleName = ...
 local Rooms = {}
 if type(moduleName) == "string" then
+	---@diagnostic disable-next-line: undefined-field
 	local loaded = package.loaded[moduleName]
 	if type(loaded) == "table" then
 		Rooms = loaded
 	else
+		---@diagnostic disable-next-line: undefined-field
 		package.loaded[moduleName] = Rooms
 	end
 end

@@ -9,10 +9,12 @@ local Time = require("WorldObserver/helpers/time")
 local moduleName = ...
 local Probe = {}
 if type(moduleName) == "string" then
+	---@diagnostic disable-next-line: undefined-field
 	local loaded = package.loaded[moduleName]
 	if type(loaded) == "table" then
 		Probe = loaded
 	else
+		---@diagnostic disable-next-line: undefined-field
 		package.loaded[moduleName] = Probe
 	end
 end
@@ -116,9 +118,9 @@ local function finishSweep(state, nowMs)
 	state.lastSweepFinishedMs = nowMs
 end
 
---- Tick the rooms probe.
---- @param ctx table
 if Probe.tick == nil then
+	--- Tick the rooms probe.
+	--- @param ctx table
 	function Probe.tick(ctx)
 		ctx = ctx or {}
 		local state = ctx.state or {}

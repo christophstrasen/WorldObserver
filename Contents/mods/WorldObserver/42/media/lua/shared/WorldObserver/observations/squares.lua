@@ -8,10 +8,12 @@ local Schema = LQR.Schema
 local moduleName = ...
 local SquaresObservation = {}
 if type(moduleName) == "string" then
+	---@diagnostic disable-next-line: undefined-field
 	local loaded = package.loaded[moduleName]
 	if type(loaded) == "table" then
 		SquaresObservation = loaded
 	else
+		---@diagnostic disable-next-line: undefined-field
 		package.loaded[moduleName] = SquaresObservation
 	end
 end

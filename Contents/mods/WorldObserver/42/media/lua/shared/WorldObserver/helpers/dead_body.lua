@@ -3,10 +3,12 @@ local Log = require("LQR/util/log").withTag("WO.HELPER.deadBody")
 local moduleName = ...
 local DeadBodyHelpers = {}
 if type(moduleName) == "string" then
+	---@diagnostic disable-next-line: undefined-field
 	local loaded = package.loaded[moduleName]
 	if type(loaded) == "table" then
 		DeadBodyHelpers = loaded
 	else
+		---@diagnostic disable-next-line: undefined-field
 		package.loaded[moduleName] = DeadBodyHelpers
 	end
 end

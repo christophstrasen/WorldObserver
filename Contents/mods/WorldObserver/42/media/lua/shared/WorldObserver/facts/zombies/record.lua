@@ -6,10 +6,12 @@ local SafeCall = require("WorldObserver/helpers/safe_call")
 local moduleName = ...
 local Record = {}
 if type(moduleName) == "string" then
+	---@diagnostic disable-next-line: undefined-field
 	local loaded = package.loaded[moduleName]
 	if type(loaded) == "table" then
 		Record = loaded
 	else
+		---@diagnostic disable-next-line: undefined-field
 		package.loaded[moduleName] = Record
 	end
 end
@@ -17,13 +19,13 @@ Record._internal = Record._internal or {}
 Record._extensions = Record._extensions or {}
 Record._extensions.zombieRecord = Record._extensions.zombieRecord or { order = {}, orderCount = 0, byId = {} }
 
---- Register an extender that can add extra fields to each zombie record.
---- Extenders run after the base record has been constructed.
---- @param id string
---- @param fn fun(record: table, zombie: any, source: string|nil, opts: table|nil)
---- @return boolean ok
---- @return string|nil err
 if Record.registerZombieRecordExtender == nil then
+	--- Register an extender that can add extra fields to each zombie record.
+	--- Extenders run after the base record has been constructed.
+	--- @param id string
+	--- @param fn fun(record: table, zombie: any, source: string|nil, opts: table|nil)
+	--- @return boolean ok
+	--- @return string|nil err
 	function Record.registerZombieRecordExtender(id, fn)
 		if type(id) ~= "string" or id == "" then
 			return false, "badId"
@@ -41,9 +43,9 @@ if Record.registerZombieRecordExtender == nil then
 	end
 end
 
---- Unregister a previously registered zombie record extender.
---- @param id string
 if Record.unregisterZombieRecordExtender == nil then
+	--- Unregister a previously registered zombie record extender.
+	--- @param id string
 	function Record.unregisterZombieRecordExtender(id)
 		if type(id) ~= "string" or id == "" then
 			return false, "badId"
@@ -54,12 +56,12 @@ if Record.unregisterZombieRecordExtender == nil then
 	end
 end
 
---- Apply all registered zombie record extenders to a record.
---- @param record table
---- @param zombie any
---- @param source string|nil
---- @param opts table|nil
 if Record.applyZombieRecordExtenders == nil then
+	--- Apply all registered zombie record extenders to a record.
+	--- @param record table
+	--- @param zombie any
+	--- @param source string|nil
+	--- @param opts table|nil
 	function Record.applyZombieRecordExtenders(record, zombie, source, opts)
 		local ext = Record._extensions and Record._extensions.zombieRecord or nil
 		if type(record) ~= "table" or not ext then
@@ -147,12 +149,12 @@ local function deriveTargetId(target)
 	return nil
 end
 
---- Build a zombie fact record.
---- @param zombie any
---- @param source string|nil
---- @param opts table|nil
---- @return table|nil record
 if Record.makeZombieRecord == nil then
+	--- Build a zombie fact record.
+	--- @param zombie any
+	--- @param source string|nil
+	--- @param opts table|nil
+	--- @return table|nil record
 	function Record.makeZombieRecord(zombie, source, opts)
 		if not zombie then
 			return nil

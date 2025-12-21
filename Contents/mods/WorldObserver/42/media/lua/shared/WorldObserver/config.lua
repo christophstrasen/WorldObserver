@@ -3,10 +3,12 @@
 local moduleName = ...
 local Config = {}
 if type(moduleName) == "string" then
+	---@diagnostic disable-next-line: undefined-field
 	local loaded = package.loaded[moduleName]
 	if type(loaded) == "table" then
 		Config = loaded
 	else
+		---@diagnostic disable-next-line: undefined-field
 		package.loaded[moduleName] = Config
 	end
 end
@@ -588,20 +590,20 @@ if Config.defaults == nil then
 	end
 end
 
----Merges user overrides into defaults and validates the result.
----@param overrides table|nil
----@return table
 -- Patch seam: define only when nil so mods can override by reassigning `Config.load` and so reloads
 -- (tests/console via `package.loaded`) don't clobber an existing patch.
-	if Config.load == nil then
-		function Config.load(overrides)
-			local cfg = Config.defaults()
-			if type(overrides) == "table" then
-				Config._internal.validateOverrides(overrides)
-				Config._internal.applyOverrides(cfg, overrides)
-			end
-			Config._internal.validate(cfg)
-			return cfg
+if Config.load == nil then
+	---Merges user overrides into defaults and validates the result.
+	---@param overrides table|nil
+	---@return table
+	function Config.load(overrides)
+		local cfg = Config.defaults()
+		if type(overrides) == "table" then
+			Config._internal.validateOverrides(overrides)
+			Config._internal.applyOverrides(cfg, overrides)
+		end
+		Config._internal.validate(cfg)
+		return cfg
 	end
 end
 
@@ -622,36 +624,36 @@ local function defaultRuntimeOpts(cfg)
 end
 Config._internal.runtimeOpts = defaultRuntimeOpts
 
----Builds runtime controller options from the loaded config.
----@param cfg table
----@return table
 if Config.runtimeOpts == nil then
+	---Builds runtime controller options from the loaded config.
+	---@param cfg table
+	---@return table
 	function Config.runtimeOpts(cfg)
 		return Config._internal.runtimeOpts(cfg)
 	end
 end
 
----Reads the global config override table when present.
----@return table|nil
 if Config.getOverrides == nil then
+	---Reads the global config override table when present.
+	---@return table|nil
 	function Config.getOverrides()
 		return _G.WORLDOBSERVER_CONFIG_OVERRIDES
 	end
 end
 
----Safely reads a nested value from a config or override table.
----@param tbl table|nil
----@param path string[]
----@return any
 if Config.readNested == nil then
+	---Safely reads a nested value from a config or override table.
+	---@param tbl table|nil
+	---@param path string[]
+	---@return any
 	function Config.readNested(tbl, path)
 		return Config._internal.readNested(tbl, path)
 	end
 end
 
----Loads config defaults merged with global overrides.
----@return table
 if Config.loadFromGlobals == nil then
+	---Loads config defaults merged with global overrides.
+	---@return table
 	function Config.loadFromGlobals()
 		return Config.load(Config.getOverrides())
 	end

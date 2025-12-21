@@ -70,6 +70,10 @@ Each sync/build run via `watch-workshop-sync.sh` automatically executes `pz_smok
 - Checks that `require("WorldObserver")`, `require("LQR")`, and `require("reactivex")` resolve correctly in the destination tree.
 - Probes for issues that would only appear in the Project Zomboid Kahlua runtime (e.g. missing vanilla Lua packages or overly strict `package`/`debug` expectations).
 
+Note:
+- The smoke test runs under a normal Lua interpreter, and it injects `PZ_LUA_PATH` to approximate Zomboid’s `shared/` module search.
+- This injected search path may include `?/init.lua` for compatibility with some Lua tooling, but **WorldObserver does not rely on init.lua auto-loading in the actual game** (PZ does not treat `init.lua` specially).
+
 ### 3.3 LQR tests (optional)
 
 You can run the LQR test suite from the LQR submodule root:
@@ -97,7 +101,7 @@ You can run the sync script once to push the current tree into your local worksh
 
 The script:
 
-- Copies the WorldObserver mod tree into `$HOME/Zomboid/Workshop/WorldObserver`.
+- Copies the WorldObserver mod tree into `$HOME/Zomboid/Workshop/WorldObserver` (ensure `$HOME/Zomboid/Workshop` exists first).
 - Excludes heavyweight/dev folders (including `external/`, `docs/`, `tests/`).
 - Mirrors only the Lua payload from `external/LQR/LQR/` into `Contents/mods/WorldObserver/42/media/lua/shared/LQR/`.
 - Copies only the runtime Lua parts of lua‑reactivex from `external/lua-reactivex` (specifically `reactivex.lua`, `reactivex/*.lua`, and `operators.lua`) into `Contents/mods/WorldObserver/42/media/lua/shared/` – docs, examples, rockspecs, and tests are not shipped.

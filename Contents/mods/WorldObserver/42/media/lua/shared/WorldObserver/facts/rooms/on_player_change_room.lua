@@ -11,10 +11,12 @@ local Targets = require("WorldObserver/facts/targets")
 local moduleName = ...
 local OnPlayerChange = {}
 if type(moduleName) == "string" then
+	---@diagnostic disable-next-line: undefined-field
 	local loaded = package.loaded[moduleName]
 	if type(loaded) == "table" then
 		OnPlayerChange = loaded
 	else
+		---@diagnostic disable-next-line: undefined-field
 		package.loaded[moduleName] = OnPlayerChange
 	end
 end
@@ -99,9 +101,9 @@ local function ensureBuckets(ctx)
 	return buckets
 end
 
---- Ensure the onPlayerChangeRoom flow runs when interest is declared.
---- @param ctx table
 if OnPlayerChange.ensure == nil then
+	--- Ensure the onPlayerChangeRoom flow runs when interest is declared.
+	--- @param ctx table
 	function OnPlayerChange.ensure(ctx)
 		ctx = ctx or {}
 		local state = ctx.state or {}

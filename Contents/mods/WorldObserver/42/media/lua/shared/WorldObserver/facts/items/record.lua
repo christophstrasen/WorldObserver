@@ -6,10 +6,12 @@ local SafeCall = require("WorldObserver/helpers/safe_call")
 local moduleName = ...
 local Record = {}
 if type(moduleName) == "string" then
+	---@diagnostic disable-next-line: undefined-field
 	local loaded = package.loaded[moduleName]
 	if type(loaded) == "table" then
 		Record = loaded
 	else
+		---@diagnostic disable-next-line: undefined-field
 		package.loaded[moduleName] = Record
 	end
 end
@@ -17,13 +19,13 @@ Record._internal = Record._internal or {}
 Record._extensions = Record._extensions or {}
 Record._extensions.itemRecord = Record._extensions.itemRecord or { order = {}, orderCount = 0, byId = {} }
 
---- Register an extender that can add extra fields to each item record.
---- Extenders run after the base record has been constructed.
---- @param id string
---- @param fn fun(record: table, item: any, source: string|nil, opts: table|nil)
---- @return boolean ok
---- @return string|nil err
 if Record.registerItemRecordExtender == nil then
+	--- Register an extender that can add extra fields to each item record.
+	--- Extenders run after the base record has been constructed.
+	--- @param id string
+	--- @param fn fun(record: table, item: any, source: string|nil, opts: table|nil)
+	--- @return boolean ok
+	--- @return string|nil err
 	function Record.registerItemRecordExtender(id, fn)
 		if type(id) ~= "string" or id == "" then
 			return false, "badId"
@@ -41,9 +43,9 @@ if Record.registerItemRecordExtender == nil then
 	end
 end
 
---- Unregister a previously registered item record extender.
---- @param id string
 if Record.unregisterItemRecordExtender == nil then
+	--- Unregister a previously registered item record extender.
+	--- @param id string
 	function Record.unregisterItemRecordExtender(id)
 		if type(id) ~= "string" or id == "" then
 			return false, "badId"
@@ -54,12 +56,12 @@ if Record.unregisterItemRecordExtender == nil then
 	end
 end
 
---- Apply all registered item record extenders to a record.
---- @param record table
---- @param item any
---- @param source string|nil
---- @param opts table|nil
 if Record.applyItemRecordExtenders == nil then
+	--- Apply all registered item record extenders to a record.
+	--- @param record table
+	--- @param item any
+	--- @param source string|nil
+	--- @param opts table|nil
 	function Record.applyItemRecordExtenders(record, item, source, opts)
 		local ext = Record._extensions and Record._extensions.itemRecord or nil
 		if type(record) ~= "table" or not ext then
@@ -125,13 +127,13 @@ local function resolveItemId(item, worldItem)
 	return nil
 end
 
---- Build an item fact record.
---- @param item any
---- @param square any|nil
---- @param source string|nil
---- @param opts table|nil
---- @return table|nil record
 if Record.makeItemRecord == nil then
+	--- Build an item fact record.
+	--- @param item any
+	--- @param square any|nil
+	--- @param source string|nil
+	--- @param opts table|nil
+	--- @return table|nil record
 	function Record.makeItemRecord(item, square, source, opts)
 		if not item then
 			return nil

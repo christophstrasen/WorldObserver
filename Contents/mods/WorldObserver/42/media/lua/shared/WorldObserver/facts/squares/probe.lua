@@ -4,10 +4,12 @@ local SquareSweep = require("WorldObserver/facts/sensors/square_sweep")
 local moduleName = ...
 local Probe = {}
 if type(moduleName) == "string" then
+	---@diagnostic disable-next-line: undefined-field
 	local loaded = package.loaded[moduleName]
 	if type(loaded) == "table" then
 		Probe = loaded
 	else
+		---@diagnostic disable-next-line: undefined-field
 		package.loaded[moduleName] = Probe
 	end
 end

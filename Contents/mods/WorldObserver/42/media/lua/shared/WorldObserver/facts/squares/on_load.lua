@@ -8,10 +8,12 @@ local Highlight = require("WorldObserver/helpers/highlight")
 local moduleName = ...
 local OnLoad = {}
 if type(moduleName) == "string" then
+	---@diagnostic disable-next-line: undefined-field
 	local loaded = package.loaded[moduleName]
 	if type(loaded) == "table" then
 		OnLoad = loaded
 	else
+		---@diagnostic disable-next-line: undefined-field
 		package.loaded[moduleName] = OnLoad
 	end
 end
@@ -90,10 +92,10 @@ state.loadGridsquareHandler = fn
 	return true
 end
 
---- Ensure the LoadGridsquare listener is registered/unregistered based on declared interest.
---- @param ctx table
---- @return boolean active
 if OnLoad.ensure == nil then
+	--- Ensure the LoadGridsquare listener is registered/unregistered based on declared interest.
+	--- @param ctx table
+	--- @return boolean active
 	function OnLoad.ensure(ctx)
 		ctx = ctx or {}
 		local state = ctx.state or {}

@@ -4,10 +4,12 @@ local Time = require("WorldObserver/helpers/time")
 local moduleName = ...
 local Highlight = {}
 if type(moduleName) == "string" then
+	---@diagnostic disable-next-line: undefined-field
 	local loaded = package.loaded[moduleName]
 	if type(loaded) == "table" then
 		Highlight = loaded
 	else
+		---@diagnostic disable-next-line: undefined-field
 		package.loaded[moduleName] = Highlight
 	end
 end

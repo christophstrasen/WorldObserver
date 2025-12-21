@@ -4,10 +4,12 @@ local Highlight = require("WorldObserver/helpers/highlight")
 local moduleName = ...
 local ZombieHelpers = {}
 if type(moduleName) == "string" then
+	---@diagnostic disable-next-line: undefined-field
 	local loaded = package.loaded[moduleName]
 	if type(loaded) == "table" then
 		ZombieHelpers = loaded
 	else
+		---@diagnostic disable-next-line: undefined-field
 		package.loaded[moduleName] = ZombieHelpers
 	end
 end

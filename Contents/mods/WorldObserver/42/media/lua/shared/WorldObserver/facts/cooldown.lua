@@ -2,21 +2,23 @@
 local moduleName = ...
 local Cooldown = {}
 if type(moduleName) == "string" then
+	---@diagnostic disable-next-line: undefined-field
 	local loaded = package.loaded[moduleName]
 	if type(loaded) == "table" then
 		Cooldown = loaded
 	else
+		---@diagnostic disable-next-line: undefined-field
 		package.loaded[moduleName] = Cooldown
 	end
 end
 
---- Decide whether a key is allowed to emit at `nowMs` given `cooldownMs`.
---- @param lastEmittedByKey table
---- @param key any
---- @param nowMs number|nil
---- @param cooldownMs number
---- @return boolean
 if Cooldown.shouldEmit == nil then
+	--- Decide whether a key is allowed to emit at `nowMs` given `cooldownMs`.
+	--- @param lastEmittedByKey table
+	--- @param key any
+	--- @param nowMs number|nil
+	--- @param cooldownMs number
+	--- @return boolean
 	function Cooldown.shouldEmit(lastEmittedByKey, key, nowMs, cooldownMs)
 		if cooldownMs <= 0 then
 			return true
@@ -29,11 +31,11 @@ if Cooldown.shouldEmit == nil then
 	end
 end
 
---- Record that a key emitted at `nowMs`.
---- @param lastEmittedByKey table
---- @param key any
---- @param nowMs number|nil
 if Cooldown.markEmitted == nil then
+	--- Record that a key emitted at `nowMs`.
+	--- @param lastEmittedByKey table
+	--- @param key any
+	--- @param nowMs number|nil
 	function Cooldown.markEmitted(lastEmittedByKey, key, nowMs)
 		if not (lastEmittedByKey and key ~= nil and nowMs) then
 			return
