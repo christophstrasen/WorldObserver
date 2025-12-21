@@ -1,6 +1,6 @@
 # Observation: items
 
-Goal: react to items observed on the ground (and optional container contents).
+Goal: react to items observed on the ground (including optional container contents at depth=1).
 
 Quickstart first (recommended):
 - [Quickstart](../quickstart.md)
@@ -9,15 +9,52 @@ Quickstart first (recommended):
 
 WorldObserver does no item probing unless at least one mod declares interest.
 
+### Option A: playerSquare (lowest noise; good for testing)
+
+Emits items on the square the player currently stands on.
+
+```lua
+local WorldObserver = require("WorldObserver")
+
+local lease = WorldObserver.factInterest:declare("YourModId", "items.playerSquare", {
+  type = "items",
+  scope = "playerSquare",
+  cooldown = { desired = 0 },
+  highlight = true,
+})
+```
+
+### Option B: near (probe around a target)
+
 ```lua
 local WorldObserver = require("WorldObserver")
 
 local lease = WorldObserver.factInterest:declare("YourModId", "featureKey", {
   type = "items",
   scope = "near",
+  target = { player = { id = 0 } }, -- optional; defaults to player 0
   radius = { desired = 8 },
   staleness = { desired = 2 },
   cooldown = { desired = 5 },
+  highlight = true,
+})
+```
+
+### Option C: vision (probe; visible squares only)
+
+Like `near`, but only emits items on squares currently visible to the player.
+
+```lua
+local WorldObserver = require("WorldObserver")
+
+local lease = WorldObserver.factInterest:declare("YourModId", "items.vision", {
+  type = "items",
+  scope = "vision",
+  target = { player = { id = 0 } },
+  radius = { desired = 10 },
+  staleness = { desired = 5 },
+  cooldown = { desired = 10 },
+  highlight = true,
 })
 ```
 
@@ -25,6 +62,7 @@ local lease = WorldObserver.factInterest:declare("YourModId", "featureKey", {
 
 ```lua
 local sub = WorldObserver.observations.items()
+  :distinct("item", 10)
   :subscribe(function(observation)
     local item = observation.item
     print(("[WO] itemId=%s type=%s loc=(%s,%s,%s) square=%s source=%s"):format(
@@ -61,6 +99,11 @@ If the item was discovered inside a container (depth=1 only):
 Optional engine objects (when enabled in config):
 - `InventoryItem`
 - `WorldItem`
+
+Notes:
+- WO currently observes world items on the ground plus direct container contents (depth=1).
+- Container expansion is capped per square by default (see `facts.items.record.maxContainerItemsPerSquare`).
+- This is not a full “inventory observation” stream.
 
 ## Extending the record (advanced)
 
@@ -110,5 +153,8 @@ Meaningful knobs:
 - Probe scopes (`near`, `vision`): `radius`, `staleness`, `cooldown`, `highlight`.
 - `playerSquare`: `cooldown`, `highlight`.
 
-Notes:
-- Items are world items on the ground plus direct container contents (depth=1).
+## Why you might see nothing
+
+- You didn’t declare interest (no lease → no probing).
+- There are no items on the ground in the scanned area (try `scope="playerSquare"` while standing on items).
+- Your `cooldown`/`:distinct(...)` settings filter out repeats.

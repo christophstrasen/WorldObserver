@@ -16,8 +16,14 @@ local WorldObserver = require("WorldObserver")
 
 WorldObserver.debug.describeFacts("squares")
 WorldObserver.debug.describeFacts("zombies")
+WorldObserver.debug.describeFacts("rooms")
+WorldObserver.debug.describeFacts("items")
+WorldObserver.debug.describeFacts("deadBodies")
 WorldObserver.debug.describeStream("squares")
 WorldObserver.debug.describeStream("zombies")
+WorldObserver.debug.describeStream("rooms")
+WorldObserver.debug.describeStream("items")
+WorldObserver.debug.describeStream("deadBodies")
 ```
 
 If streams are registered but you see no emissions, double-check that you declared interest and that your lease did not expire:
@@ -68,6 +74,9 @@ What to expect (today):
 Supported combinations per interest type:
 - [Squares](../observations/squares.md)
 - [Zombies](../observations/zombies.md)
+- [Rooms](../observations/rooms.md)
+- [Items](../observations/items.md)
+- [Dead bodies](../observations/dead_bodies.md)
 
 ## 4) Turn on runtime diagnostics (budget + backlog + drops)
 
@@ -82,7 +91,9 @@ require("LQR/util/log").setLevel("info")
 Then attach diagnostics (engine-only; requires `Events.*`):
 
 ```lua
-local handle = WorldObserver.debug.attachRuntimeDiagnostics({ factTypes = { "squares", "zombies" } })
+local handle = WorldObserver.debug.attachRuntimeDiagnostics({
+  factTypes = { "squares", "zombies", "rooms", "items", "deadBodies" },
+})
 -- later:
 -- handle.stop()
 ```
@@ -105,7 +116,7 @@ WorldObserver.debug.describeIngestScheduler()
 
 ## 6) Making probe logs more verbose (optional)
 
-Squares probes support live console toggles for their logging knobs:
+Square sweep probes support live console toggles for their logging knobs.
 
 ```lua
 _G.WORLDOBSERVER_CONFIG_OVERRIDES = {
@@ -116,6 +127,35 @@ _G.WORLDOBSERVER_CONFIG_OVERRIDES = {
 Notes:
 - This is meant for short-lived local debugging (expect lots of output).
 - Not all config is live-reloaded; treat this as a debug convenience, not a stable “tuning API”.
+
+### Collector/fan-out stats (Step 8)
+
+If you want to see how much each interest type contributes (collector calls + emitted records), enable:
+
+```lua
+_G.WORLDOBSERVER_CONFIG_OVERRIDES = {
+  facts = {
+    squares = { probe = { logCollectorStats = true, logCollectorStatsEveryMs = 2000 } },
+  },
+}
+```
+
+If you’re only running `items`/`deadBodies` (no `squares` stream), set it on `items` instead:
+
+```lua
+_G.WORLDOBSERVER_CONFIG_OVERRIDES = {
+  facts = {
+    items = { probe = { logCollectorStats = true, logCollectorStatsEveryMs = 2000 } },
+  },
+}
+```
+
+You’ll see periodic lines like:
+- `[probe collectors] tickScan=... tickVisit=... tickVisible=... items calls=... records=... | squares calls=... records=...`
+
+Notes:
+- The square sweep sensor is shared: when you only run `items` / `deadBodies`, the probe cfg can come from those types instead of `squares`.
+- If you don’t see the collector line, ensure you enabled it on the type that is currently driving the sweep (typically the highest “probePriority” among active consumers).
 
 ## 7) Tuning: what actually reduces work vs reduces spam
 
@@ -129,6 +169,11 @@ Practical rules:
 - Use `:distinct("<dimension>", seconds)` to reduce downstream work in your subscription pipeline.
 - Increase `staleness` if you can accept older information (lets WO probe less often).
 - Reduce `radius` when you can focus spatially (reduces square probing work).
+
+Items note:
+- Observing items can “fan out” because WO can optionally include direct container contents (depth=1).
+- If you don’t need container contents, set `facts.items.record.includeContainerItems = false`.
+- If you do need them but want a guardrail, use `facts.items.record.maxContainerItemsPerSquare` to cap work per square.
 
 Zombie note:
 - For `type = "zombies", scope = "allLoaded"`, the probe still has to scan the loaded zombie list.

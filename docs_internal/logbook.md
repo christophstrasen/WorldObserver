@@ -383,56 +383,31 @@
 ## day14 – Rooms facts, cell room list probing, and stable room IDs
 
 ### Highlights
-- Added a new room fact family backed by `IsoRoom` snapshots and a corresponding observation stream:
-  - Event-driven scope: `type="rooms", scope="onSeeNewRoom"` via `Events.OnSeeNewRoom`.
-  - Probe-driven scope: `type="rooms", scope="allLoaded"` via `getCell():getRoomList()` with a time-sliced cursor.
-- Simplified rooms acquisition deliberately: removed any “drive-by”/piggyback probing through squares; rooms now come only from `onSeeNewRoom` + `allLoaded`.
-- Standardized room record timestamping on `sourceTime` (ms) and kept room records as small snapshots (ids, counts, flags, bounds where available).
-- Introduced `helpers/java_list.lua` for defensive Java-backed list access (`size`/`get`) across Kahlua quirks (including non-indexable values that stringify like `[]`).
-- Fixed a real-world room identity problem:
-  - Engine room/roomDef ids can exceed Lua number precision, causing collisions and confusing dedup/highlight behavior.
-  - Room records now use a stable string `roomId` derived from the **first room square** coordinates: `x123y456z7`.
-  - `roomDefId` remains as optional metadata (best-effort), not a key.
-- Improved smoke usability:
-  - Extended `examples/smoke_console_showcase.lua` to include rooms with `rooms.allLoaded` interest.
-- Improved moddability of record schemas:
-  - Added additive “record extender” hooks for squares/rooms/zombies so multiple mods can safely add fields without copying/overriding the base builders.
-  - Aligned zombies with the existing `make<Family>Record` patch seam pattern so probes dispatch through `Zombies.makeZombieRecord`.
-  - Documented the extension patterns for modders in `docs/guides/extending_records.md` and added unit coverage in `tests/unit/record_extenders_spec.lua`.
+- Rooms fact family: `type="rooms"` with `scope="onSeeNewRoom"` (event) and `scope="allLoaded"` (time-sliced `getCell():getRoomList()` probe); room records use `sourceTime` and stay snapshot-small.
+- Fixed room identity collisions by switching to a stable string `roomId` derived from the first room square coords (`x123y456z7`); keep engine ids as best-effort metadata only.
+- Added `helpers/java_list.lua` for defensive Java-backed list access in Kahlua (including “empty but non-indexable” values that stringify like `[]`).
+- Shared square-sweep “internal sensor” pattern:
+  - `facts/sensors/square_sweep.lua` time-slices square scanning once and fans out to collectors for `squares`, `items`, and `deadBodies` (no duplicate sweeps).
+  - Probe log labels use `-` (display) instead of the earlier `DOUBLECOLON` encoding.
+- New ground-entity fact families on the shared sweep:
+  - `type="items"` and `type="deadBodies"` with `scope="playerSquare" | "near" | "vision"`.
+  - Items emit ground items plus direct container contents (depth=1) with a guardrail cap `facts.items.record.maxContainerItemsPerSquare` (default 200).
+  - Dead bodies use `IsoDeadBody:getObjectID()` identity (e.g. `DeadBody-1` observed in-engine).
+- Reduced duplication: introduced `facts/ground_entities.lua` (shared collector scaffolding) and `facts/targets.lua` (shared player target resolution); centralized highlight parsing via `Highlight.resolveColorAlpha(...)`.
+- Step 8 guardrails: square sweep now tracks cheap per-tick counters + optional collector fan-out logging (`logCollectorStats` / `logCollectorStatsEveryMs`) and honors live overrides under the active fact type.
+- Moddability + docs + tests:
+  - Record extender hooks now cover squares/rooms/zombies/items/deadBodies; documented in `docs/guides/extending_records.md`.
+  - Added/updated observation docs (`docs/observations/items.md`, `docs/observations/dead_bodies.md`) and updated `docs/guides/debugging_and_performance.md`.
+  - Follow-up hardening + UX: fixed square-sweep collector gating (no cross-type emits without interest) and updated smoke scripts (`smoke_console_showcase` starts squares near+vision; `smoke_squares` fixed + re-enabled vision interest).
+  - Hardened `helpers/java_list.lua` against `tostring(...)` throwing (engine edge case) and added a contract test asserting all `interest/definitions.lua` types are wired as facts + observations.
+  - Headless tests pass (`busted tests`: 99 successes).
 
 ### Lessons
-- Avoid using large engine “IDs” as Lua numbers for keys: once values exceed IEEE-754 safe integer range, collisions become subtle and hard to diagnose.
-- For identity keys, prefer **stable, domain-derived strings** (like coordinate-based ids) over best-effort engine ids when running in Lua/Kahlua.
-- Java/Kahlua interop needs explicit guardrails: an “empty list” can be present but non-indexable (`[]`), so even method lookups must be defensive.
+- Never use large engine IDs as Lua numeric keys; prefer stable, domain-derived string keys for identity.
+- Kahlua/Java interop needs guardrails (non-indexable “lists”, presence checks, and method lookups can all be sharp edges).
+- A shared sweep sensor is “the eyes”: once it exists, new near/vision facts are mostly collectors + records, and performance tuning becomes measurable via counters.
 
 ### Next steps
-- Consider a small optional debug mode to report rooms where `getSquares()` is unavailable (`[]`) so we can understand when/why certain rooms can’t be highlighted or keyed.
-- Decide whether the “first square” rule should be upgraded to “minimum square” (order-independent) if we ever see unstable ordering in `getSquares()` in practice.
-
-### Addendum — Interest refactor: shared square sweep + items + dead bodies
-
-### Highlights
-- Introduced an explicit “internal sensor” pattern via a shared square sweep driver:
-  - `facts/sensors/square_sweep.lua` now time-slices square scanning once and calls registered collectors per interest type (`squares`, `items`, `deadBodies`), avoiding duplicated sweeps.
-  - Updated probe log labels to use `-` instead of the earlier `DOUBLECOLON` encoding (display label only; internal keys unchanged).
-- Added new fact types using the shared driver:
-  - `type="items"` with `scope="playerSquare" | "near" | "vision"`:
-    - Emits ground items plus direct container contents (depth=1).
-    - Uses `getID()`/`getObjectID()` from the most stable available object; warns+skips when missing.
-  - `type="deadBodies"` with `scope="playerSquare" | "near" | "vision"`:
-    - Uses `IsoDeadBody:getObjectID()` as the identity (string like `DeadBody-1` observed in-engine).
-    - Record builder supports optional `includeIsoDeadBody`.
-- Extended moddability:
-  - Added record extender hooks for items and dead bodies (in addition to squares/rooms/zombies), plus unit coverage.
-- Documentation + smoke workflows:
-  - Added observation docs: `docs/observations/items.md` and `docs/observations/dead_bodies.md` and linked them from `docs/observations/index.md`.
-  - Updated `docs/guides/interest.md` and `docs_internal/interest_combinations.md` to include `items`/`deadBodies` types and `rooms.onPlayerChangeRoom`.
-  - Extended `examples/smoke_console_showcase.lua` with `startItems/stopItems` and `startDeadBodies/stopDeadBodies`.
-
-### Lessons
-- Kahlua Lua differs from vanilla Lua in sharp corners; avoid relying on `next(...)` as a presence test and prefer `pairs`-based guards for “has any entries”.
-- A shared square sweep driver is a big win for architectural runway: “vision/near” becomes a *shared sensing scope* that can emit multiple record families without multiplying scan cost.
-
-### Next steps
-- Step 8: add lightweight sensor/collector counters (squares scanned, collectors invoked, records emitted) so performance tuning stays empirical.
-- Revisit removal/expiry semantics for “entities on ground” only if we find real mod use cases that need explicit “removed” signals; otherwise keep streams observation-only.
+- Optional: add debug reporting for rooms where `getSquares()` is unavailable (`[]`) so highlight/key failures are diagnosable.
+- Confirm the “first square” rule is stable; upgrade to “minimum square” if ordering ever proves non-deterministic.
+- Keep ground-entity streams observation-only unless real mod use-cases require explicit removal/expiry events.

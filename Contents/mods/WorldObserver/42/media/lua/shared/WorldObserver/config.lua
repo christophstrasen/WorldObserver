@@ -172,6 +172,7 @@ local function defaultBuildDefaults()
 					includeInventoryItem = false,
 					includeWorldItem = false,
 					includeContainerItems = true,
+					maxContainerItemsPerSquare = 200,
 				},
 				probe = {
 					enabled = true,

@@ -3,12 +3,9 @@ local Log = require("LQR/util/log").withTag("WO.FACTS.items")
 
 local Record = require("WorldObserver/facts/items/record")
 local SquareSweep = require("WorldObserver/facts/sensors/square_sweep")
-local Cooldown = require("WorldObserver/facts/cooldown")
-local InterestEffective = require("WorldObserver/facts/interest_effective")
-local Highlight = require("WorldObserver/helpers/highlight")
+local GroundEntities = require("WorldObserver/facts/ground_entities")
 local JavaList = require("WorldObserver/helpers/java_list")
 local SafeCall = require("WorldObserver/helpers/safe_call")
-local Time = require("WorldObserver/helpers/time")
 
 local INTEREST_TYPE_ITEMS = "items"
 local INTEREST_SCOPE_PLAYER_SQUARE = "playerSquare"
@@ -36,6 +33,10 @@ Items._defaults.recordOpts = Items._defaults.recordOpts or {
 	includeInventoryItem = false,
 	includeWorldItem = false,
 	includeContainerItems = true,
+	-- Defensive cap: avoid pathological container expansion on a single square.
+	-- This limits only *contained* items; ground items on the square are still visited.
+	-- Set to 0/nil to disable the cap.
+	maxContainerItemsPerSquare = 200,
 }
 
 -- Default item record builder.
@@ -46,34 +47,6 @@ if Items.makeItemRecord == nil then
 	end
 end
 Items._defaults.makeItemRecord = Items._defaults.makeItemRecord or Items.makeItemRecord
-
-local function nowMillis()
-	return Time.gameMillis() or math.floor(os.time() * 1000)
-end
-
-local function resolvePlayer(target)
-	if type(target) ~= "table" or target.kind ~= "player" then
-		return nil
-	end
-	local id = tonumber(target.id) or 0
-	local getSpecificPlayer = _G.getSpecificPlayer
-	if type(getSpecificPlayer) == "function" then
-		local ok, player = pcall(getSpecificPlayer, id)
-		if ok and player ~= nil then
-			return player
-		end
-	end
-	if id == 0 then
-		local getPlayer = _G.getPlayer
-		if type(getPlayer) == "function" then
-			local ok, player = pcall(getPlayer)
-			if ok and player ~= nil then
-				return player
-			end
-		end
-	end
-	return nil
-end
 
 local function resolveItemContainer(item)
 	return SafeCall.safeCall(item, "getItemContainer") or SafeCall.safeCall(item, "getInventory")
@@ -88,7 +61,9 @@ local function iterContainerItems(container, fn)
 	for i = 1, count do
 		local item = JavaList.get(list, i)
 		if item ~= nil then
-			fn(item)
+			if fn(item) == false then
+				break
+			end
 		end
 	end
 end
@@ -119,97 +94,71 @@ local function collectItemsOnSquare(square, opts, visitor)
 		return
 	end
 	local includeContainerItems = opts and opts.includeContainerItems ~= false
+	local maxContainerItems = opts and tonumber(opts.maxContainerItemsPerSquare) or nil
+	if type(maxContainerItems) == "number" and maxContainerItems <= 0 then
+		maxContainerItems = nil
+	end
+	local remainingContainerItems = maxContainerItems
+
 	iterWorldItems(square, function(item, worldItem)
 		visitor(item, worldItem, nil)
 
-		if includeContainerItems then
+		if includeContainerItems and remainingContainerItems ~= 0 then
 			local container = resolveItemContainer(item)
 			if container ~= nil then
 				-- Depth=1 only: do not traverse nested containers.
 				iterContainerItems(container, function(contained)
+					if remainingContainerItems ~= nil then
+						if remainingContainerItems <= 0 then
+							return false
+						end
+						remainingContainerItems = remainingContainerItems - 1
+					end
 					visitor(contained, nil, { containerItem = item, containerWorldItem = worldItem })
+					return true
 				end)
 			end
 		end
 	end)
 end
 
-local function emitItemWithCooldown(state, emitFn, record, nowMs, cooldownMs)
-	if type(emitFn) ~= "function" or type(record) ~= "table" or record.itemId == nil then
-		return false
-	end
-	state.lastEmittedMs = state.lastEmittedMs or {}
-	if not Cooldown.shouldEmit(state.lastEmittedMs, record.itemId, nowMs, cooldownMs) then
-		return false
-	end
-	emitFn(record)
-	Cooldown.markEmitted(state.lastEmittedMs, record.itemId, nowMs)
-	return true
-end
-
-local function resolveHighlightParams(pref, fallbackColor)
-	local color = fallbackColor
-	local alpha = 0.9
-	if type(pref) == "table" then
-		color = pref
-		if type(color[4]) == "number" then
-			alpha = color[4]
-		end
-	end
-	return color, alpha
-end
-
-local function itemsCollector(ctx, cursor, square, _playerIndex, nowMs, effective)
-	local items = ctx.items
-	if not (items and type(items.makeItemRecord) == "function") then
-		return false
-	end
-
-	local state = ctx.state or {}
-	state._itemsCollector = state._itemsCollector or {}
-	local emittedByKey = state._itemsCollector.lastEmittedMs or {}
-	state._itemsCollector.lastEmittedMs = emittedByKey
-
-	local cooldownSeconds = tonumber(effective and effective.cooldown) or 0
-	local cooldownMs = math.max(0, cooldownSeconds * 1000)
-	local recordOpts = ctx.recordOpts or Items._defaults.recordOpts
-
-	local emittedAny = false
-	local highlighted = false
-	collectItemsOnSquare(square, recordOpts, function(item, worldItem, containerInfo)
-		local record = items.makeItemRecord(item, square, cursor.source, {
-			nowMs = nowMs,
+-- Adapter for the shared ground-entities helpers:
+-- keep the original `collectItemsOnSquare` visitor shape (item, worldItem, containerInfo) for local readability,
+-- but provide the normalized `(entity, extra)` callback that GroundEntities expects.
+local function collectItemsOnSquareForGroundEntities(square, recordOpts, visitor)
+	return collectItemsOnSquare(square, recordOpts, function(item, worldItem, containerInfo)
+		visitor(item, {
 			worldItem = worldItem,
 			containerItem = containerInfo and containerInfo.containerItem or nil,
 			containerWorldItem = containerInfo and containerInfo.containerWorldItem or nil,
-			includeInventoryItem = recordOpts.includeInventoryItem,
-			includeWorldItem = recordOpts.includeWorldItem,
 		})
-		if type(record) ~= "table" or record.itemId == nil then
-			return
-		end
-		if not Cooldown.shouldEmit(emittedByKey, record.itemId, nowMs, cooldownMs) then
-			return
-		end
-		if type(ctx.emitFn) == "function" then
-			ctx.emitFn(record)
-			Cooldown.markEmitted(emittedByKey, record.itemId, nowMs)
-			emittedAny = true
-		end
-		if not highlighted and not ctx.headless then
-			local highlightPref = effective and effective.highlight or nil
-			if highlightPref == true or type(highlightPref) == "table" then
-				local color, alpha = resolveHighlightParams(highlightPref, cursor.color)
-				Highlight.highlightFloor(square, Highlight.durationMsFromCooldownSeconds(cooldownSeconds), {
-					color = color,
-					alpha = alpha,
-				})
-				highlighted = true
-			end
-		end
 	end)
-	return emittedAny
 end
+
+local itemsCollector = GroundEntities.buildSquareCollector({
+	interestType = INTEREST_TYPE_ITEMS,
+	idField = "itemId",
+	collectorStateKey = "_itemsCollector",
+	getRecordOpts = function(ctx)
+		return (ctx and ctx.recordOpts) or Items._defaults.recordOpts
+	end,
+	collectOnSquare = collectItemsOnSquareForGroundEntities,
+	makeRecord = function(ctx, item, square, source, nowMs, recordOpts, extra)
+		local items = ctx and ctx.items
+		if not (items and type(items.makeItemRecord) == "function") then
+			return nil
+		end
+		extra = extra or {}
+		return items.makeItemRecord(item, square, source, {
+			nowMs = nowMs,
+			worldItem = extra.worldItem,
+			containerItem = extra.containerItem,
+			containerWorldItem = extra.containerWorldItem,
+			includeInventoryItem = recordOpts and recordOpts.includeInventoryItem,
+			includeWorldItem = recordOpts and recordOpts.includeWorldItem,
+		})
+	end,
+})
 
 if Items._internal.registerItemsCollector == nil then
 	function Items._internal.registerItemsCollector()
@@ -218,103 +167,36 @@ if Items._internal.registerItemsCollector == nil then
 end
 Items._internal.registerItemsCollector()
 
-local function ensureBuckets(ctx)
-	local buckets = {}
-	if ctx.interestRegistry and ctx.interestRegistry.effectiveBuckets then
-		buckets = ctx.interestRegistry:effectiveBuckets(INTEREST_TYPE_ITEMS)
-	elseif ctx.interestRegistry and ctx.interestRegistry.effective then
-		local merged = ctx.interestRegistry:effective(INTEREST_TYPE_ITEMS)
-		if merged then
-			buckets = { { bucketKey = merged.bucketKey or "default", merged = merged } }
-		end
-	end
-	return buckets
-end
-
 local function tickPlayerSquare(ctx)
-	ctx = ctx or {}
-	local state = ctx.state or {}
-	ctx.state = state
-
-	local listenerCfg = ctx.listenerCfg or {}
-	local listenerEnabled = listenerCfg.enabled ~= false
-	state._playerSquareBuckets = state._playerSquareBuckets or {}
-
-	local activeBuckets = {}
-	if listenerEnabled then
-		for _, bucket in ipairs(ensureBuckets(ctx)) do
-			local merged = bucket.merged
-			if type(merged) == "table" and merged.scope == INTEREST_SCOPE_PLAYER_SQUARE then
-				local bucketKey = bucket.bucketKey or INTEREST_SCOPE_PLAYER_SQUARE
-				local target = merged.target
-				local effective = InterestEffective.ensure(state, ctx.interestRegistry, ctx.runtime, INTEREST_TYPE_ITEMS, {
-					label = INTEREST_SCOPE_PLAYER_SQUARE,
-					allowDefault = false,
-					log = Log,
-					bucketKey = bucketKey,
-					merged = merged,
-				})
-				if effective then
-					effective.highlight = merged.highlight
-					effective.target = target
-					activeBuckets[bucketKey] = { effective = effective, target = target }
-				end
+	-- playerSquare is a "listener-like" driver: it runs only when scope=playerSquare is declared.
+	-- We keep it per-type (instead of a shared sensor) because it does constant-time work (current square only).
+	GroundEntities.tickPlayerSquare(ctx, {
+		log = Log,
+		interestType = INTEREST_TYPE_ITEMS,
+		scope = INTEREST_SCOPE_PLAYER_SQUARE,
+		bucketsStateKey = "_playerSquareBuckets",
+		idField = "itemId",
+		playerHighlightColor = PLAYER_SQUARE_HIGHLIGHT_COLOR,
+		getRecordOpts = function(innerCtx)
+			return (innerCtx and innerCtx.recordOpts) or Items._defaults.recordOpts
+		end,
+		collectOnSquare = collectItemsOnSquareForGroundEntities,
+		makeRecord = function(innerCtx, item, square, source, nowMs, recordOpts, extra)
+			extra = extra or {}
+			local items = innerCtx and innerCtx.items
+			if not (items and type(items.makeItemRecord) == "function") then
+				return nil
 			end
-		end
-	else
-		state._effectiveInterestByType = state._effectiveInterestByType or {}
-		if type(state._effectiveInterestByType[INTEREST_TYPE_ITEMS]) == "table" then
-			state._effectiveInterestByType[INTEREST_TYPE_ITEMS][INTEREST_SCOPE_PLAYER_SQUARE] = nil
-		end
-	end
-
-	for key in pairs(state._playerSquareBuckets) do
-		if not activeBuckets[key] then
-			state._playerSquareBuckets[key] = nil
-		end
-	end
-
-	for bucketKey, entry in pairs(activeBuckets) do
-		local bucketState = state._playerSquareBuckets[bucketKey] or {}
-		state._playerSquareBuckets[bucketKey] = bucketState
-
-		local target = entry.target
-		local player = resolvePlayer(target)
-		if player == nil then
-			bucketState.lastEmittedMs = nil
-		else
-			local square = SafeCall.safeCall(player, "getCurrentSquare")
-			if square ~= nil then
-				local nowMs = nowMillis()
-				local cooldownMs = math.max(0, (tonumber(entry.effective.cooldown) or 0) * 1000)
-				local recordOpts = ctx.recordOpts or Items._defaults.recordOpts
-				local highlighted = false
-				collectItemsOnSquare(square, recordOpts, function(item, worldItem, containerInfo)
-					local record = Items.makeItemRecord(item, square, "player", {
-						nowMs = nowMs,
-						worldItem = worldItem,
-						containerItem = containerInfo and containerInfo.containerItem or nil,
-						containerWorldItem = containerInfo and containerInfo.containerWorldItem or nil,
-						includeInventoryItem = recordOpts.includeInventoryItem,
-						includeWorldItem = recordOpts.includeWorldItem,
-					})
-					if emitItemWithCooldown(bucketState, ctx.emitFn, record, nowMs, cooldownMs) then
-						if not highlighted and not ctx.headless then
-							local highlightPref = entry.effective.highlight
-							if highlightPref == true or type(highlightPref) == "table" then
-								local color, alpha = resolveHighlightParams(highlightPref, PLAYER_SQUARE_HIGHLIGHT_COLOR)
-								Highlight.highlightFloor(square, Highlight.durationMsFromCooldownSeconds(entry.effective.cooldown), {
-									color = color,
-									alpha = alpha,
-								})
-							end
-						end
-						highlighted = true
-					end
-				end)
-			end
-		end
-	end
+			return items.makeItemRecord(item, square, source, {
+				nowMs = nowMs,
+				worldItem = extra.worldItem,
+				containerItem = extra.containerItem,
+				containerWorldItem = extra.containerWorldItem,
+				includeInventoryItem = recordOpts and recordOpts.includeInventoryItem,
+				includeWorldItem = recordOpts and recordOpts.includeWorldItem,
+			})
+		end,
+	})
 end
 
 local ITEMS_TICK_HOOK_ID = "facts.items.tick"
@@ -368,10 +250,13 @@ if Items.register == nil then
 		local listenerEnabled = listenerCfg.enabled ~= false
 		local recordOpts = Items._defaults.recordOpts
 		if type(itemsCfg.record) == "table" then
+			local maxContainerItems = itemsCfg.record.maxContainerItemsPerSquare
 			recordOpts = {
 				includeInventoryItem = itemsCfg.record.includeInventoryItem == true,
 				includeWorldItem = itemsCfg.record.includeWorldItem == true,
 				includeContainerItems = itemsCfg.record.includeContainerItems ~= false,
+				maxContainerItemsPerSquare = maxContainerItems ~= nil and tonumber(maxContainerItems)
+					or Items._defaults.recordOpts.maxContainerItemsPerSquare,
 			}
 		end
 

@@ -1,11 +1,11 @@
 -- smoke_squares.lua — console-friendly smoke test for WorldObserver squares.
 -- Usage in PZ console:
 --[[ @AI agent dont change this
-	_G.WORLDOBSERVER_CONFIG_OVERRIDES = { facts = { squares = { probe = { infoLogEveryMs = 500, logEachSweep = true } } } }
-   smokes = require("examples/smoke_squares")
-   handles = smoke.start({ distinctSeconds = 20, withHelpers = true })
-   handles:stop()
-	]]
+		_G.WORLDOBSERVER_CONFIG_OVERRIDES = { facts = { squares = { probe = { infoLogEveryMs = 500, logEachSweep = true } } } }
+	   smoke = require("examples/smoke_squares")
+	   handles = smoke.start({ distinctSeconds = 20, withHelpers = true })
+	   handles:stop()
+		]]
 --
 -- Notes:
 -- - This smoke test declares two interests (probes): `squares` scope=near and scope=vision.
@@ -19,18 +19,18 @@ local SmokeSquares = {}
 local INTEREST_NEAR = {
 	type = "squares",
 	scope = "near",
-	staleness = { desired = 1, tolerable = 5 },
-	radius = { desired = 10, tolerable = 4 },
-	cooldown = { desired = 20, tolerable = 40 },
+	staleness = { desired = 2, tolerable = 5 },
+	radius = { desired = 8, tolerable = 5 },
+	cooldown = { desired = 5, tolerable = 10 },
 	highlight = true,
 }
 
 local INTEREST_VISION = {
 	type = "squares",
 	scope = "vision",
-	staleness = { desired = 5, tolerable = 10 },
-	radius = { desired = 35, tolerable = 15 },
-	cooldown = { desired = 40, tolerable = 60 },
+	staleness = { desired = 2, tolerable = 5 },
+	radius = { desired = 20, tolerable = 10 },
+	cooldown = { desired = 5, tolerable = 10 },
 	highlight = true,
 }
 
@@ -45,7 +45,7 @@ function SmokeSquares.start(opts)
 
 	-- Declare upstream interest (keep it explicit and readable).
 	local modId = "examples/smoke_squares"
-	local nearLease = WorldObserver.factInterest:declare(modId, "near", INTEREST_NEAR, LEASE_OPTS)
+	--local nearLease = WorldObserver.factInterest:declare(modId, "near", INTEREST_NEAR, LEASE_OPTS)
 	local visionLease = WorldObserver.factInterest:declare(modId, "vision", INTEREST_VISION, LEASE_OPTS)
 
 	-- Build stream.
@@ -79,10 +79,14 @@ function SmokeSquares.start(opts)
 				Log.info("[smoke] squares subscription stopped")
 			end
 			if nearLease and nearLease.stop then
-				pcall(nearLease.stop)
+				pcall(function()
+					nearLease:stop()
+				end)
 			end
 			if visionLease and visionLease.stop then
-				pcall(visionLease.stop)
+				pcall(function()
+					visionLease:stop()
+				end)
 			end
 		end,
 	}

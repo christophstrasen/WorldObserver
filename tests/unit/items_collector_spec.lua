@@ -126,4 +126,99 @@ describe("items collector", function()
 		Items._internal.itemsCollector(ctx, cursor, square, nil, 1000, effective)
 		assert.equals(3, #emitted)
 	end)
+
+	it("caps container expansion per square", function()
+		local containedA = {
+			getID = function()
+				return 201
+			end,
+			getFullType = function()
+				return "Base.Nails"
+			end,
+			getType = function()
+				return "Nails"
+			end,
+		}
+		local containedB = {
+			getID = function()
+				return 202
+			end,
+			getFullType = function()
+				return "Base.Screws"
+			end,
+			getType = function()
+				return "Screws"
+			end,
+		}
+		local containedC = {
+			getID = function()
+				return 203
+			end,
+			getFullType = function()
+				return "Base.Hammer"
+			end,
+			getType = function()
+				return "Hammer"
+			end,
+		}
+		local container = {
+			getItems = function()
+				return { containedA, containedB, containedC }
+			end,
+		}
+		local containerItem = {
+			getID = function()
+				return 111
+			end,
+			getFullType = function()
+				return "Base.Toolbox"
+			end,
+			getType = function()
+				return "Toolbox"
+			end,
+			getItemContainer = function()
+				return container
+			end,
+		}
+		local worldItem = {
+			getID = function()
+				return 100
+			end,
+			getItem = function()
+				return containerItem
+			end,
+		}
+		local square = {
+			getX = function()
+				return 1
+			end,
+			getY = function()
+				return 2
+			end,
+			getZ = function()
+				return 0
+			end,
+			getWorldObjects = function()
+				return { worldItem }
+			end,
+		}
+
+		local emitted = {}
+		local ctx = {
+			items = Items,
+			state = {},
+			emitFn = function(record)
+				emitted[#emitted + 1] = record
+			end,
+			headless = true,
+			recordOpts = { includeContainerItems = true, maxContainerItemsPerSquare = 1 },
+		}
+		local cursor = { source = "probe", color = { 1, 1, 1 }, alpha = 1 }
+		local effective = { cooldown = 0 }
+
+		Items._internal.itemsCollector(ctx, cursor, square, nil, 1000, effective)
+		assert.equals(2, #emitted)
+		assert.equals(100, emitted[1].itemId)
+		assert.equals(201, emitted[2].itemId)
+	end)
 end)

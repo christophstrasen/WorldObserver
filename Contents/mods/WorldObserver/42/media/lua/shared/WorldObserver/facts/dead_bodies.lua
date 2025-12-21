@@ -3,12 +3,9 @@ local Log = require("LQR/util/log").withTag("WO.FACTS.deadBodies")
 
 local Record = require("WorldObserver/facts/dead_bodies/record")
 local SquareSweep = require("WorldObserver/facts/sensors/square_sweep")
-local Cooldown = require("WorldObserver/facts/cooldown")
-local InterestEffective = require("WorldObserver/facts/interest_effective")
-local Highlight = require("WorldObserver/helpers/highlight")
+local GroundEntities = require("WorldObserver/facts/ground_entities")
 local JavaList = require("WorldObserver/helpers/java_list")
 local SafeCall = require("WorldObserver/helpers/safe_call")
-local Time = require("WorldObserver/helpers/time")
 
 local INTEREST_TYPE_DEAD_BODIES = "deadBodies"
 local INTEREST_SCOPE_PLAYER_SQUARE = "playerSquare"
@@ -45,34 +42,6 @@ if DeadBodies.makeDeadBodyRecord == nil then
 end
 DeadBodies._defaults.makeDeadBodyRecord = DeadBodies._defaults.makeDeadBodyRecord or DeadBodies.makeDeadBodyRecord
 
-local function nowMillis()
-	return Time.gameMillis() or math.floor(os.time() * 1000)
-end
-
-local function resolvePlayer(target)
-	if type(target) ~= "table" or target.kind ~= "player" then
-		return nil
-	end
-	local id = tonumber(target.id) or 0
-	local getSpecificPlayer = _G.getSpecificPlayer
-	if type(getSpecificPlayer) == "function" then
-		local ok, player = pcall(getSpecificPlayer, id)
-		if ok and player ~= nil then
-			return player
-		end
-	end
-	if id == 0 then
-		local getPlayer = _G.getPlayer
-		if type(getPlayer) == "function" then
-			local ok, player = pcall(getPlayer)
-			if ok and player ~= nil then
-				return player
-			end
-		end
-	end
-	return nil
-end
-
 local function visitDeadBody(seen, body, visitor)
 	if body == nil then
 		return
@@ -100,83 +69,38 @@ local function collectDeadBodiesOnSquare(square, visitor)
 		return
 	end
 	local seen = {}
-	visitDeadBody(seen, SafeCall.safeCall(square, "getDeadBody"), visitor)
-	iterDeadBodyList(SafeCall.safeCall(square, "getDeadBodys"), seen, visitor)
-	iterDeadBodyList(SafeCall.safeCall(square, "getDeadBodies"), seen, visitor)
-end
-
-local function emitDeadBodyWithCooldown(state, emitFn, record, nowMs, cooldownMs)
-	if type(emitFn) ~= "function" or type(record) ~= "table" or record.deadBodyId == nil then
-		return false
-	end
-	state.lastEmittedMs = state.lastEmittedMs or {}
-	if not Cooldown.shouldEmit(state.lastEmittedMs, record.deadBodyId, nowMs, cooldownMs) then
-		return false
-	end
-	emitFn(record)
-	Cooldown.markEmitted(state.lastEmittedMs, record.deadBodyId, nowMs)
-	return true
-end
-
-local function resolveHighlightParams(pref, fallbackColor)
-	local color = fallbackColor
-	local alpha = 0.9
-	if type(pref) == "table" then
-		color = pref
-		if type(color[4]) == "number" then
-			alpha = color[4]
-		end
-	end
-	return color, alpha
-end
-
-local function deadBodiesCollector(ctx, cursor, square, _playerIndex, nowMs, effective)
-	local deadBodies = ctx.deadBodies
-	if not (deadBodies and type(deadBodies.makeDeadBodyRecord) == "function") then
-		return false
-	end
-
-	local state = ctx.state or {}
-	state._deadBodiesCollector = state._deadBodiesCollector or {}
-	local emittedByKey = state._deadBodiesCollector.lastEmittedMs or {}
-	state._deadBodiesCollector.lastEmittedMs = emittedByKey
-
-	local cooldownSeconds = tonumber(effective and effective.cooldown) or 0
-	local cooldownMs = math.max(0, cooldownSeconds * 1000)
-	local recordOpts = ctx.recordOpts or DeadBodies._defaults.recordOpts
-
-	local emittedAny = false
-	local highlighted = false
-	collectDeadBodiesOnSquare(square, function(body)
-		local record = deadBodies.makeDeadBodyRecord(body, square, cursor.source, {
-			nowMs = nowMs,
-			includeIsoDeadBody = recordOpts.includeIsoDeadBody,
-		})
-		if type(record) ~= "table" or record.deadBodyId == nil then
-			return
-		end
-		if not Cooldown.shouldEmit(emittedByKey, record.deadBodyId, nowMs, cooldownMs) then
-			return
-		end
-		if type(ctx.emitFn) == "function" then
-			ctx.emitFn(record)
-			Cooldown.markEmitted(emittedByKey, record.deadBodyId, nowMs)
-			emittedAny = true
-		end
-		if not highlighted and not ctx.headless then
-			local highlightPref = effective and effective.highlight or nil
-			if highlightPref == true or type(highlightPref) == "table" then
-				local color, alpha = resolveHighlightParams(highlightPref, cursor.color)
-				Highlight.highlightFloor(square, Highlight.durationMsFromCooldownSeconds(cooldownSeconds), {
-					color = color,
-					alpha = alpha,
-				})
-				highlighted = true
-			end
-		end
+	visitDeadBody(seen, SafeCall.safeCall(square, "getDeadBody"), function(body)
+		visitor(body, nil)
 	end)
-	return emittedAny
+	iterDeadBodyList(SafeCall.safeCall(square, "getDeadBodys"), seen, function(body)
+		visitor(body, nil)
+	end)
+	iterDeadBodyList(SafeCall.safeCall(square, "getDeadBodies"), seen, function(body)
+		visitor(body, nil)
+	end)
 end
+
+local deadBodiesCollector = GroundEntities.buildSquareCollector({
+	interestType = INTEREST_TYPE_DEAD_BODIES,
+	idField = "deadBodyId",
+	collectorStateKey = "_deadBodiesCollector",
+	getRecordOpts = function(ctx)
+		return (ctx and ctx.recordOpts) or DeadBodies._defaults.recordOpts
+	end,
+	collectOnSquare = function(square, _recordOpts, visitor)
+		return collectDeadBodiesOnSquare(square, visitor)
+	end,
+	makeRecord = function(ctx, body, square, source, nowMs, recordOpts, _extra)
+		local deadBodies = ctx and ctx.deadBodies
+		if not (deadBodies and type(deadBodies.makeDeadBodyRecord) == "function") then
+			return nil
+		end
+		return deadBodies.makeDeadBodyRecord(body, square, source, {
+			nowMs = nowMs,
+			includeIsoDeadBody = recordOpts and recordOpts.includeIsoDeadBody,
+		})
+	end,
+})
 
 if DeadBodies._internal.registerDeadBodiesCollector == nil then
 	function DeadBodies._internal.registerDeadBodiesCollector()
@@ -187,100 +111,33 @@ if DeadBodies._internal.registerDeadBodiesCollector == nil then
 end
 DeadBodies._internal.registerDeadBodiesCollector()
 
-local function ensureBuckets(ctx)
-	local buckets = {}
-	if ctx.interestRegistry and ctx.interestRegistry.effectiveBuckets then
-		buckets = ctx.interestRegistry:effectiveBuckets(INTEREST_TYPE_DEAD_BODIES)
-	elseif ctx.interestRegistry and ctx.interestRegistry.effective then
-		local merged = ctx.interestRegistry:effective(INTEREST_TYPE_DEAD_BODIES)
-		if merged then
-			buckets = { { bucketKey = merged.bucketKey or "default", merged = merged } }
-		end
-	end
-	return buckets
-end
-
 local function tickPlayerSquare(ctx)
-	ctx = ctx or {}
-	local state = ctx.state or {}
-	ctx.state = state
-
-	local listenerCfg = ctx.listenerCfg or {}
-	local listenerEnabled = listenerCfg.enabled ~= false
-	state._playerDeadBodyBuckets = state._playerDeadBodyBuckets or {}
-
-	local activeBuckets = {}
-	if listenerEnabled then
-		for _, bucket in ipairs(ensureBuckets(ctx)) do
-			local merged = bucket.merged
-			if type(merged) == "table" and merged.scope == INTEREST_SCOPE_PLAYER_SQUARE then
-				local bucketKey = bucket.bucketKey or INTEREST_SCOPE_PLAYER_SQUARE
-				local target = merged.target
-				local effective = InterestEffective.ensure(state, ctx.interestRegistry, ctx.runtime, INTEREST_TYPE_DEAD_BODIES, {
-					label = INTEREST_SCOPE_PLAYER_SQUARE,
-					allowDefault = false,
-					log = Log,
-					bucketKey = bucketKey,
-					merged = merged,
-				})
-				if effective then
-					effective.highlight = merged.highlight
-					effective.target = target
-					activeBuckets[bucketKey] = { effective = effective, target = target }
-				end
+	-- playerSquare is a "listener-like" driver: it runs only when scope=playerSquare is declared.
+	-- We keep it per-type (instead of a shared sensor) because it does constant-time work (current square only).
+	GroundEntities.tickPlayerSquare(ctx, {
+		log = Log,
+		interestType = INTEREST_TYPE_DEAD_BODIES,
+		scope = INTEREST_SCOPE_PLAYER_SQUARE,
+		bucketsStateKey = "_playerDeadBodyBuckets",
+		idField = "deadBodyId",
+		playerHighlightColor = PLAYER_SQUARE_HIGHLIGHT_COLOR,
+		getRecordOpts = function(innerCtx)
+			return (innerCtx and innerCtx.recordOpts) or DeadBodies._defaults.recordOpts
+		end,
+		collectOnSquare = function(square, _recordOpts, visitor)
+			return collectDeadBodiesOnSquare(square, visitor)
+		end,
+		makeRecord = function(innerCtx, body, square, source, nowMs, recordOpts, _extra)
+			local deadBodies = innerCtx and innerCtx.deadBodies
+			if not (deadBodies and type(deadBodies.makeDeadBodyRecord) == "function") then
+				return nil
 			end
-		end
-	else
-		state._effectiveInterestByType = state._effectiveInterestByType or {}
-		if type(state._effectiveInterestByType[INTEREST_TYPE_DEAD_BODIES]) == "table" then
-			state._effectiveInterestByType[INTEREST_TYPE_DEAD_BODIES][INTEREST_SCOPE_PLAYER_SQUARE] = nil
-		end
-	end
-
-	for key in pairs(state._playerDeadBodyBuckets) do
-		if not activeBuckets[key] then
-			state._playerDeadBodyBuckets[key] = nil
-		end
-	end
-
-	for bucketKey, entry in pairs(activeBuckets) do
-		local bucketState = state._playerDeadBodyBuckets[bucketKey] or {}
-		state._playerDeadBodyBuckets[bucketKey] = bucketState
-
-		local target = entry.target
-		local player = resolvePlayer(target)
-		if player == nil then
-			bucketState.lastEmittedMs = nil
-		else
-			local square = SafeCall.safeCall(player, "getCurrentSquare")
-			if square ~= nil then
-				local nowMs = nowMillis()
-				local cooldownMs = math.max(0, (tonumber(entry.effective.cooldown) or 0) * 1000)
-				local recordOpts = ctx.recordOpts or DeadBodies._defaults.recordOpts
-				local highlighted = false
-				collectDeadBodiesOnSquare(square, function(body)
-					local record = DeadBodies.makeDeadBodyRecord(body, square, "player", {
-						nowMs = nowMs,
-						includeIsoDeadBody = recordOpts.includeIsoDeadBody,
-					})
-					if emitDeadBodyWithCooldown(bucketState, ctx.emitFn, record, nowMs, cooldownMs) then
-						if not highlighted and not ctx.headless then
-							local highlightPref = entry.effective.highlight
-							if highlightPref == true or type(highlightPref) == "table" then
-								local color, alpha = resolveHighlightParams(highlightPref, PLAYER_SQUARE_HIGHLIGHT_COLOR)
-								Highlight.highlightFloor(
-									square,
-									Highlight.durationMsFromCooldownSeconds(entry.effective.cooldown),
-									{ color = color, alpha = alpha }
-								)
-							end
-						end
-						highlighted = true
-					end
-				end)
-			end
-		end
-	end
+			return deadBodies.makeDeadBodyRecord(body, square, source, {
+				nowMs = nowMs,
+				includeIsoDeadBody = recordOpts and recordOpts.includeIsoDeadBody,
+			})
+		end,
+	})
 end
 
 local DEAD_BODIES_TICK_HOOK_ID = "facts.deadBodies.tick"

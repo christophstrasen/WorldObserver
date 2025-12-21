@@ -52,6 +52,16 @@ Notes:
 
 Interest `type` selects the “fact plan” behind the scenes (listener vs probe and what it scans).
 
+### Summary (types and scopes)
+
+| type | scopes | acquisition | target |
+|------|--------|-------------|--------|
+| `squares` | `near`, `vision`, `onLoad` | probe + event | player/square (probe scopes) |
+| `zombies` | `allLoaded` | probe | n/a |
+| `rooms` | `allLoaded`, `onSeeNewRoom`, `onPlayerChangeRoom` | probe + event | player (onPlayerChangeRoom only) |
+| `items` | `playerSquare`, `near`, `vision` | playerSquare driver + probe | player/square (probe scopes) |
+| `deadBodies` | `playerSquare`, `near`, `vision` | playerSquare driver + probe | player/square (probe scopes) |
+
 ### Squares
 
 - `type = "squares"` with `scope = "near"`

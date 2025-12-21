@@ -20,7 +20,11 @@ local function resolveMethod(list, methodName)
 		-- Some engine values stringify like "[]" but are not indexable in Kahlua.
 		return nil
 	end
-	local listStr = tostring(list)
+	-- Kahlua can throw from tostring() for some engine-backed values; guard it.
+	local okStr, listStr = pcall(tostring, list)
+	if not okStr or type(listStr) ~= "string" then
+		return nil
+	end
 	if listStr == "[]" then
 		-- Empty or non-indexable engine list; avoid Kahlua "non-table" index errors.
 		return nil

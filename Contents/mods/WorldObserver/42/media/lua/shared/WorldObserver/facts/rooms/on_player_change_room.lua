@@ -6,6 +6,7 @@ local InterestEffective = require("WorldObserver/facts/interest_effective")
 local Highlight = require("WorldObserver/helpers/highlight")
 local JavaList = require("WorldObserver/helpers/java_list")
 local SafeCall = require("WorldObserver/helpers/safe_call")
+local Targets = require("WorldObserver/facts/targets")
 
 local moduleName = ...
 local OnPlayerChange = {}
@@ -56,30 +57,6 @@ local function highlightRoomSquares(room, cooldownSeconds, highlightPref)
 			Highlight.highlightFloor(square, durationMs, { color = color, alpha = alpha })
 		end
 	end
-end
-
-local function resolvePlayer(target)
-	if type(target) ~= "table" or target.kind ~= "player" then
-		return nil
-	end
-	local id = tonumber(target.id) or 0
-	local getSpecificPlayer = _G.getSpecificPlayer
-	if type(getSpecificPlayer) == "function" then
-		local ok, player = pcall(getSpecificPlayer, id)
-		if ok and player ~= nil then
-			return player
-		end
-	end
-	if id == 0 then
-		local getPlayer = _G.getPlayer
-		if type(getPlayer) == "function" then
-			local ok, player = pcall(getPlayer)
-			if ok and player ~= nil then
-				return player
-			end
-		end
-	end
-	return nil
 end
 
 local function resolveRoomForPlayer(player)
@@ -173,7 +150,7 @@ if OnPlayerChange.ensure == nil then
 			state._playerRoomBuckets[bucketKey] = bucketState
 
 			local target = entry.target
-			local player = resolvePlayer(target)
+			local player = Targets.resolvePlayer(target)
 			if player == nil then
 				bucketState.lastRoomRef = nil
 				bucketState.lastRoomId = nil
@@ -209,9 +186,8 @@ if OnPlayerChange.ensure == nil then
 	end
 end
 
-OnPlayerChange._internal.resolvePlayer = resolvePlayer
+OnPlayerChange._internal.resolvePlayer = Targets.resolvePlayer
 OnPlayerChange._internal.resolveRoomForPlayer = resolveRoomForPlayer
 OnPlayerChange._internal.emitWithCooldown = emitWithCooldown
 
 return OnPlayerChange
-

@@ -4,4 +4,9 @@
 
 
 
- what kind of public facing documentation we should develop. There are many aspects of the WorldObserver that sh
+You asked me earlier: "For record extenders: should we optimize for minimum LoC (shared extender engine) or maximum local readability (keep per-record duplication)?"  and I answered "readability first - I will check it and then give you feedback."
+
+Can we review this now please? SHow me the places in our code that I should review.
+Also make a suggestion and give an example or two how the mimimum LoC version could look like and consult me about the consequences and potential tradeoffs.
+
+

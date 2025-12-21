@@ -76,6 +76,7 @@ end
 
 local function resolveSharedProbeCfg(consumers)
 	local selected = nil
+	local selectedType = nil
 	local priority = nil
 	for _, entry in pairs(consumers or {}) do
 		if isConsumerActive(entry) and entry.probeCfg ~= nil then
@@ -83,10 +84,18 @@ local function resolveSharedProbeCfg(consumers)
 			if priority == nil or entryPriority > priority then
 				priority = entryPriority
 				selected = entry.probeCfg
+				selectedType = entry.interestType or entry.id
 			end
 		end
 	end
-	return selected
+	return selected, selectedType
+end
+
+local function bumpCounter(map, key, delta)
+	if not map or key == nil then
+		return
+	end
+	map[key] = (map[key] or 0) + (delta or 1)
 end
 
 local function buildCollectorContexts(state, consumers)
@@ -95,15 +104,31 @@ local function buildCollectorContexts(state, consumers)
 		if isConsumerActive(entry) then
 			local collectorId = entry.collectorId or entry.id
 			if collectorId ~= nil then
+				local interestType = entry.interestType or entry.id or collectorId
 				local ctx = {}
 				for key, value in pairs(entry.context or {}) do
 					ctx[key] = value
 				end
-				ctx.emitFn = entry.emitFn
+				local originalEmit = entry.emitFn
+				ctx.emitFn = function(record)
+					-- Diagnostics hook: count records emitted per interest type.
+					-- Why: collectors can emit multiple records per visited square, and that "fan-out" matters
+					-- for performance budgeting and for understanding how much work a given interest type causes.
+					local diag = state and state._squareSweepDiagTick
+					if type(diag) == "table" and type(diag.recordsEmittedByType) == "table" then
+						bumpCounter(diag.recordsEmittedByType, interestType, 1)
+					end
+					if originalEmit then
+						return originalEmit(record)
+					end
+					return nil
+				end
 				ctx.headless = entry.headless == true
 				ctx.runtime = entry.runtime
 				ctx.interestRegistry = entry.interestRegistry
 				ctx.state = state
+				ctx._collectorId = collectorId
+				ctx._interestType = interestType
 				contexts[collectorId] = ctx
 			end
 		end
@@ -187,12 +212,14 @@ local function sharedTick()
 	if #interestTypes == 0 then
 		return
 	end
+	local sharedProbeCfg, sharedProbeType = resolveSharedProbeCfg(consumers)
 	SquareSweep.tick({
 		state = runner.state,
 		runtime = base.runtime,
 		interestRegistry = base.interestRegistry,
 		headless = base.headless,
-		probeCfg = resolveSharedProbeCfg(consumers) or {},
+		probeCfg = sharedProbeCfg or {},
+		probeCfgOverrideType = sharedProbeType,
 		collectorContexts = collectorContexts,
 		interestTypes = interestTypes,
 	})
@@ -866,15 +893,18 @@ local function computeProbeLagSignals(cursor, nowMs, previousEffective)
 	}
 end
 
-local function resolveProbeLoggingCfg(probeCfg)
+local function resolveProbeLoggingCfg(probeCfg, overrideType)
 	probeCfg = probeCfg or {}
 	local infoEveryMs = tonumber(probeCfg.infoLogEveryMs)
 	local logEachSweep = probeCfg.logEachSweep == true
+	local logCollectorStats = probeCfg.logCollectorStats == true
+	local collectorStatsEveryMs = tonumber(probeCfg.logCollectorStatsEveryMs)
 
 	-- Live debug overrides: in-game the WorldObserver module is typically loaded long before a user runs
 	-- console snippets, so relying on module-load config overrides is unreliable. For probe logging knobs,
 	-- read `_G.WORLDOBSERVER_CONFIG_OVERRIDES` at runtime so smoke scripts can toggle verbosity without reloads.
-	local probeOverrides = Config.readNested(Config.getOverrides(), { "facts", "squares", "probe" })
+	local targetType = tostring(overrideType or "squares")
+	local probeOverrides = Config.readNested(Config.getOverrides(), { "facts", targetType, "probe" })
 	if type(probeOverrides) == "table" then
 		if probeOverrides.infoLogEveryMs ~= nil then
 			infoEveryMs = tonumber(probeOverrides.infoLogEveryMs)
@@ -882,12 +912,21 @@ local function resolveProbeLoggingCfg(probeCfg)
 		if probeOverrides.logEachSweep ~= nil then
 			logEachSweep = probeOverrides.logEachSweep == true
 		end
+		if probeOverrides.logCollectorStats ~= nil then
+			logCollectorStats = probeOverrides.logCollectorStats == true
+		end
+		if probeOverrides.logCollectorStatsEveryMs ~= nil then
+			collectorStatsEveryMs = tonumber(probeOverrides.logCollectorStatsEveryMs)
+		end
 	end
 
 	if infoEveryMs == nil then
 		infoEveryMs = 10000
 	end
-	return infoEveryMs, logEachSweep
+	if collectorStatsEveryMs == nil then
+		collectorStatsEveryMs = infoEveryMs
+	end
+	return infoEveryMs, logEachSweep, logCollectorStats, collectorStatsEveryMs
 end
 
 local function resolveCollectors(ctx)
@@ -917,11 +956,10 @@ local function resolveCollectorEffective(registry, collectorId, effective, colle
 		return effective
 	end
 	local typeById = registry and registry.typeById or nil
-	local interestType = typeById and typeById[collectorId] or nil
-	if interestType and collectorEffectives[interestType] ~= nil then
-		return collectorEffectives[interestType]
-	end
-	return effective
+	local interestType = (typeById and typeById[collectorId]) or collectorId
+	-- Shared mode: only run a collector when its own interest type is active for this bucket.
+	-- Returning nil tells the caller to skip invoking the collector.
+	return collectorEffectives[interestType]
 end
 
 local function runCollectors(ctx, cursor, square, playerIndex, nowMs, effective, collectorEffectives)
@@ -929,6 +967,7 @@ local function runCollectors(ctx, cursor, square, playerIndex, nowMs, effective,
 	if not registry then
 		return false
 	end
+	local diag = ctx and ctx.state and ctx.state._squareSweepDiagTick or nil
 	local order = registry.order or {}
 	local emittedAny = false
 	for i = 1, (registry.orderCount or #order) do
@@ -937,14 +976,29 @@ local function runCollectors(ctx, cursor, square, playerIndex, nowMs, effective,
 		if fn then
 			local collectorCtx, shouldRun = resolveCollectorContext(ctx, id)
 			if shouldRun then
+				local interestType = (registry.typeById and registry.typeById[id]) or id
 				local collectorEffective = resolveCollectorEffective(registry, id, effective, collectorEffectives)
-				local ok, emitted = pcall(fn, collectorCtx, cursor, square, playerIndex, nowMs, collectorEffective)
-			if not ok then
-				Log:warn("square sweep collector failed id=%s err=%s", tostring(id), tostring(emitted))
-			elseif emitted == true then
-				emittedAny = true
+				if collectorEffectives ~= nil and collectorEffective == nil then
+					-- Shared mode: this collector's interest type is not active for this bucket.
+					-- Skip it so we don't emit cross-type records without an explicit interest declaration.
+				else
+					if type(diag) == "table" and type(diag.collectorCallsByType) == "table" then
+						bumpCounter(diag.collectorCallsByType, interestType, 1)
+					end
+					local ok, emitted = pcall(fn, collectorCtx, cursor, square, playerIndex, nowMs, collectorEffective)
+					if not ok then
+						Log:warn("square sweep collector failed id=%s err=%s", tostring(id), tostring(emitted))
+						if type(diag) == "table" and type(diag.collectorErrorsByType) == "table" then
+							bumpCounter(diag.collectorErrorsByType, interestType, 1)
+						end
+					elseif emitted == true then
+						emittedAny = true
+						if type(diag) == "table" and type(diag.collectorEmitsByType) == "table" then
+							bumpCounter(diag.collectorEmitsByType, interestType, 1)
+						end
+					end
+				end
 			end
-		end
 		end
 	end
 	return emittedAny
@@ -1069,6 +1123,21 @@ if SquareSweep.tick == nil then
 		state._probeTickSeq = (state._probeTickSeq or 0) + 1
 		local tickSeq = state._probeTickSeq
 
+		-- Diagnostics (Step 8 guardrails): cheap per-tick counters that help reason about cost and fan-out.
+		-- They are always collected but only logged when enabled in probe cfg / overrides.
+		local diagTick = {
+			tickSeq = tickSeq,
+			nowMs = nil,
+			squaresScanned = 0,
+			squaresVisited = 0,
+			squaresVisible = 0,
+			collectorCallsByType = {},
+			collectorEmitsByType = {},
+			recordsEmittedByType = {},
+			collectorErrorsByType = {},
+		}
+		state._squareSweepDiagTick = diagTick
+
 		local hasCollectorContexts = type(ctx.collectorContexts) == "table"
 		if type(ctx.emitFn) ~= "function" and not hasCollectorContexts then
 			Log:warn("[probe] emit function unavailable; skipping tick")
@@ -1076,6 +1145,7 @@ if SquareSweep.tick == nil then
 		end
 
 		local nowMs = resolveNowMs(ctx.runtime)
+		diagTick.nowMs = nowMs
 		local effectiveByType = state._effectiveInterestByType or {}
 		local active = {}
 		local bucketMetas = {}
@@ -1345,7 +1415,8 @@ if SquareSweep.tick == nil then
 		end
 
 		local probeCfg = ctx.probeCfg or {}
-		local infoEveryMs, logEachSweep = resolveProbeLoggingCfg(probeCfg)
+		local infoEveryMs, logEachSweep, logCollectorStats, collectorStatsEveryMs =
+			resolveProbeLoggingCfg(probeCfg, ctx.probeCfgOverrideType)
 		local baseMaxSquaresPerTick = tonumber(probeCfg.maxPerRun) or 50
 		if baseMaxSquaresPerTick <= 0 then
 			return
@@ -1408,14 +1479,17 @@ if SquareSweep.tick == nil then
 			end
 			processed = processed + 1
 			cursor.tickScanned = (cursor.tickScanned or 0) + 1
+			diagTick.squaresScanned = (diagTick.squaresScanned or 0) + 1
 
 			local square, playerIndex = cursorNextSquare(cursor, selected.centers, nowMs, tickSeq)
 			if square then
 				cursor.tickVisited = (cursor.tickVisited or 0) + 1
+				diagTick.squaresVisited = (diagTick.squaresVisited or 0) + 1
 				local emitted = false
 				if cursor.isVision then
 					if isSquareVisible(square, playerIndex) then
 						cursor.tickVisible = (cursor.tickVisible or 0) + 1
+						diagTick.squaresVisible = (diagTick.squaresVisible or 0) + 1
 						emitted = runCollectors(ctx, cursor, square, playerIndex, nowMs, effective, selected.collectorEffectives)
 					end
 				else
@@ -1485,6 +1559,44 @@ if SquareSweep.tick == nil then
 				)
 			end
 		end
+
+		-- Optional summary: log how much each collector contributes to work and fan-out.
+		if logCollectorStats and collectorStatsEveryMs and collectorStatsEveryMs > 0 then
+			state._squareSweepLastCollectorLogMs = state._squareSweepLastCollectorLogMs or 0
+			if (nowMs - state._squareSweepLastCollectorLogMs) >= collectorStatsEveryMs then
+				state._squareSweepLastCollectorLogMs = nowMs
+				local parts = {}
+				local types = {}
+				for interestType in pairs(diagTick.collectorCallsByType or {}) do
+					types[#types + 1] = interestType
+				end
+				table.sort(types)
+				for _, interestType in ipairs(types) do
+					local calls = diagTick.collectorCallsByType[interestType] or 0
+					local emits = diagTick.collectorEmitsByType[interestType] or 0
+					local records = diagTick.recordsEmittedByType[interestType] or 0
+					local errs = diagTick.collectorErrorsByType[interestType] or 0
+					parts[#parts + 1] = string.format(
+						"%s calls=%d emits=%d records=%d errs=%d",
+						tostring(interestType),
+						calls,
+						emits,
+						records,
+						errs
+					)
+				end
+				Log:info(
+					"[probe collectors] tickScan=%s tickVisit=%s tickVisible=%s %s",
+					tostring(diagTick.squaresScanned or 0),
+					tostring(diagTick.squaresVisited or 0),
+					tostring(diagTick.squaresVisible or 0),
+					#parts > 0 and table.concat(parts, " | ") or "n/a"
+				)
+			end
+		end
+
+		-- Keep the last snapshot around for introspection (e.g. Debug tooling) without requiring logs.
+		state._squareSweepDiagLast = diagTick
 	end
 end
 
@@ -1497,6 +1609,7 @@ SquareSweep._internal.cursorNextSquare = cursorNextSquare
 SquareSweep._internal.cursorCanScanThisTick = cursorCanScanThisTick
 SquareSweep._internal.computeProbeLagSignals = computeProbeLagSignals
 SquareSweep._internal.resolveCollectors = resolveCollectors
+SquareSweep._internal.resolveCollectorEffective = resolveCollectorEffective
 SquareSweep._internal.runCollectors = runCollectors
 
 return SquareSweep

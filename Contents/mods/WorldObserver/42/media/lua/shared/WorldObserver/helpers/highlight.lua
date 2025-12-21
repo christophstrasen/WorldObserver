@@ -48,6 +48,31 @@ if Highlight.durationMsFromCadenceSeconds == nil then
 	end
 end
 
+-- Patch seam: only define when nil so mods can override.
+-- Why: multiple fact plans accept `highlight = true | { r,g,b[,a], ... }` and need consistent parsing.
+if Highlight.resolveColorAlpha == nil then
+	--- Resolve highlight color/alpha from a preference value.
+	--- @param pref any `true` or a table like `{ r, g, b, [a] }`
+	--- @param fallbackColor table|nil
+	--- @param fallbackAlpha number|nil
+	--- @return table color
+	--- @return number alpha
+	function Highlight.resolveColorAlpha(pref, fallbackColor, fallbackAlpha)
+		local color = fallbackColor
+		local alpha = tonumber(fallbackAlpha) or DEFAULT_ALPHA
+		if type(color) ~= "table" then
+			color = DEFAULT_COLOR
+		end
+		if type(pref) == "table" then
+			color = pref
+			if type(pref[4]) == "number" then
+				alpha = pref[4]
+			end
+		end
+		return color, alpha
+	end
+end
+
 if Highlight.highlightFloor == nil then
 	--- Highlight a square's floor if available.
 	--- @param square any

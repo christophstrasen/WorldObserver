@@ -277,10 +277,15 @@ Engine objects can be included optionally (config) or rehydrated best-effort lat
   - update `examples/smoke_console_showcase.lua` to start/stop the new streams and leases.
 
 ### Step 8 — Performance + diagnostics (guardrails)
-- Add lightweight counters in the sensor:
-  - squares scanned, visible squares, collectors invoked, records emitted per collector.
-- Ensure diagnostics can be enabled without high log spam.
-- Consider a hard cap per square for container expansion (defensive).
+- Implemented lightweight counters in the shared square sweep sensor:
+  - squares scanned/visited/visible (per tick),
+  - collector calls/“emitted any” calls,
+  - record emits per collector (counted at `emitFn`).
+- Added a low-spam toggle:
+  - `probe.logCollectorStats = true` and `probe.logCollectorStatsEveryMs = ...` prints a compact summary line.
+  - Live overrides now follow the *active* fact type driving the sweep (e.g. `facts.items.probe` when only items are running).
+- Added a defensive container expansion cap for items:
+  - `facts.items.record.maxContainerItemsPerSquare` (default 200) bounds depth=1 container fan-out per scanned square.
 
 ## Open questions (intentionally deferred)
 

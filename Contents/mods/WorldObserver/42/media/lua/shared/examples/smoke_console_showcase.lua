@@ -3,15 +3,15 @@
 --[[ @AI agent dont change this
 	show = require("examples/smoke_console_showcase")
 	show.startRooms()
-	show.stoprooms()
 	show.startSquares()
-	show.stopSquares()
 	show.startZombies()
-	show.stopZombies()
 	show.startItems()
-	show.stopItems()
 	show.startDeadBodies()
 	show.stopDeadBodies()
+	show.stoprooms()
+	show.stopSquares()
+	show.stopItems()
+	show.stopZombies()
 ]]
 --
 
@@ -20,7 +20,16 @@ Log.setLevel("info")
 
 local Showcase = {}
 
-local SQUARES_INTEREST = {
+local SQUARES_INTEREST_NEAR = {
+	type = "squares",
+	scope = "near",
+	staleness = { desired = 2, tolerable = 5 },
+	radius = { desired = 8, tolerable = 5 },
+	cooldown = { desired = 5, tolerable = 10 },
+	highlight = true,
+}
+
+local SQUARES_INTEREST_VISION = {
 	type = "squares",
 	scope = "vision",
 	staleness = { desired = 2, tolerable = 5 },
@@ -109,8 +118,14 @@ function Showcase.startSquares()
 		Showcase.stopSquares()
 	end
 	local WorldObserver = require("WorldObserver")
-	local lease =
-		WorldObserver.factInterest:declare("examples/smoke_console_showcase", "squares.vision", SQUARES_INTEREST)
+	local leases = {
+		near = WorldObserver.factInterest:declare("examples/smoke_console_showcase", "squares.near", SQUARES_INTEREST_NEAR),
+		vision = WorldObserver.factInterest:declare(
+			"examples/smoke_console_showcase",
+			"squares.vision",
+			SQUARES_INTEREST_VISION
+		),
+	}
 	local stream = WorldObserver.observations.squares():distinct("square", 5)
 	local sub = stream:subscribe(function(observation)
 		local sq = observation.square
@@ -123,8 +138,8 @@ function Showcase.startSquares()
 			tostring(sq.z)
 		)
 	end)
-	squaresHandle = { sub = sub, lease = lease }
-	Log.info("[showcase] squares vision started")
+	squaresHandle = { sub = sub, leases = leases }
+	Log.info("[showcase] squares near+vision started")
 end
 
 function Showcase.stopSquares()
@@ -132,9 +147,13 @@ function Showcase.stopSquares()
 		return
 	end
 	squaresHandle.sub:unsubscribe()
-	squaresHandle.lease:stop()
+	for _, lease in pairs(squaresHandle.leases or {}) do
+		if lease and lease.stop then
+			lease:stop()
+		end
+	end
 	squaresHandle = nil
-	Log.info("[showcase] squares vision stopped")
+	Log.info("[showcase] squares near+vision stopped")
 end
 
 function Showcase.startZombies()
@@ -223,11 +242,7 @@ function Showcase.startItems()
 			"items.playerSquare",
 			ITEMS_INTEREST_PLAYER_SQUARE
 		),
-		near = WorldObserver.factInterest:declare(
-			"examples/smoke_console_showcase",
-			"items.near",
-			ITEMS_INTEREST_NEAR
-		),
+		near = WorldObserver.factInterest:declare("examples/smoke_console_showcase", "items.near", ITEMS_INTEREST_NEAR),
 		vision = WorldObserver.factInterest:declare(
 			"examples/smoke_console_showcase",
 			"items.vision",

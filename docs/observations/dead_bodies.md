@@ -9,15 +9,52 @@ Quickstart first (recommended):
 
 WorldObserver does no dead body probing unless at least one mod declares interest.
 
+### Option A: playerSquare (lowest noise; good for testing)
+
+Emits dead bodies on the square the player currently stands on.
+
+```lua
+local WorldObserver = require("WorldObserver")
+
+local lease = WorldObserver.factInterest:declare("YourModId", "deadBodies.playerSquare", {
+  type = "deadBodies",
+  scope = "playerSquare",
+  cooldown = { desired = 0 },
+  highlight = true,
+})
+```
+
+### Option B: near (probe around a target)
+
 ```lua
 local WorldObserver = require("WorldObserver")
 
 local lease = WorldObserver.factInterest:declare("YourModId", "featureKey", {
   type = "deadBodies",
   scope = "near",
+  target = { player = { id = 0 } }, -- optional; defaults to player 0
   radius = { desired = 8 },
   staleness = { desired = 2 },
   cooldown = { desired = 5 },
+  highlight = true,
+})
+```
+
+### Option C: vision (probe; visible squares only)
+
+Like `near`, but only emits dead bodies on squares currently visible to the player.
+
+```lua
+local WorldObserver = require("WorldObserver")
+
+local lease = WorldObserver.factInterest:declare("YourModId", "deadBodies.vision", {
+  type = "deadBodies",
+  scope = "vision",
+  target = { player = { id = 0 } },
+  radius = { desired = 10 },
+  staleness = { desired = 5 },
+  cooldown = { desired = 10 },
+  highlight = true,
 })
 ```
 
@@ -25,6 +62,7 @@ local lease = WorldObserver.factInterest:declare("YourModId", "featureKey", {
 
 ```lua
 local sub = WorldObserver.observations.deadBodies()
+  :distinct("deadBody", 10)
   :subscribe(function(observation)
     local body = observation.deadBody
     print(("[WO] deadBodyId=%s loc=(%s,%s,%s) square=%s source=%s"):format(
@@ -45,7 +83,7 @@ Remember to stop:
 ## Record fields (what `observation.deadBody` contains)
 
 Common fields on the dead body record:
-- `deadBodyId` (from `getObjectID`; if missing the record is skipped)
+- `deadBodyId` (from `IsoDeadBody:getObjectID()`; if missing the record is skipped)
 - `x`, `y`, `z`
 - `squareId`
 - `source` (which producer saw it)
@@ -53,6 +91,9 @@ Common fields on the dead body record:
 
 Optional engine object (when enabled in config):
 - `IsoDeadBody`
+
+Notes:
+- `deadBodyId` is a string in practice (example observed in-engine: `DeadBody-1`).
 
 ## Extending the record (advanced)
 
@@ -85,3 +126,9 @@ Supported combinations for `type = "deadBodies"`:
 Meaningful knobs:
 - Probe scopes (`near`, `vision`): `radius`, `staleness`, `cooldown`, `highlight`.
 - `playerSquare`: `cooldown`, `highlight`.
+
+## Why you might see nothing
+
+- You didn’t declare interest (no lease → no probing).
+- There are no dead bodies in the scanned area (you may need to find/kill something first).
+- Your `cooldown`/`:distinct(...)` settings filter out repeats.
