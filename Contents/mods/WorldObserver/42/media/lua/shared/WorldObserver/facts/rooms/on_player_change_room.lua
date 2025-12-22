@@ -30,7 +30,7 @@ local function nowMillis()
 	return Time.gameMillis() or math.floor(os.time() * 1000)
 end
 
-local function highlightRoomSquares(room, cooldownSeconds, highlightPref)
+local function highlightRoomSquares(room, effective, highlightPref)
 	if room == nil then
 		return
 	end
@@ -47,7 +47,7 @@ local function highlightRoomSquares(room, cooldownSeconds, highlightPref)
 			alpha = color[4]
 		end
 	end
-	local durationMs = Highlight.durationMsFromCooldownSeconds(cooldownSeconds)
+	local durationMs = Highlight.durationMsFromEffectiveCadence(effective)
 
 	local count = JavaList.size(squares)
 	if count <= 0 then
@@ -174,7 +174,7 @@ if OnPlayerChange.ensure == nil then
 									end
 									local highlightPref = entry.effective.highlight
 									if highlightPref == true or type(highlightPref) == "table" then
-										highlightRoomSquares(room, entry.effective.cooldown, highlightPref)
+										highlightRoomSquares(room, entry.effective, highlightPref)
 									end
 								end)
 							end

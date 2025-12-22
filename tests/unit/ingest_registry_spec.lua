@@ -60,7 +60,7 @@ describe("FactRegistry with ingest", function()
 		registry:onSubscribe("testfacts")
 
 		-- No OnTick in tests; drain once manually.
-		registry:drainOnceForTests()
+		registry:drainSchedulerOnceForTests()
 
 		local snap = registry:getIngestMetrics("testfacts")
 		assert.is.truthy(snap)
@@ -163,7 +163,7 @@ describe("FactRegistry with ingest", function()
 		}, runtime)
 
 		local hookCalled = false
-		registry:tickHook_add("unitTestHook", function()
+		registry:attachTickHook("unitTestHook", function()
 			hookCalled = true
 		end)
 

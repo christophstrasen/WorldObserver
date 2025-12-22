@@ -44,7 +44,7 @@ local SquaresFacts = require("WorldObserver/facts/squares")
 					register = function(_, _name, opts)
 						registered = opts
 					end,
-					tickHook_add = function(_, _id, fn)
+					attachTickHook = function(_, _id, fn)
 						storedTick = fn
 					end,
 				}
@@ -194,7 +194,7 @@ local SquaresFacts = require("WorldObserver/facts/squares")
 						called.opts = opts
 						return { stop = function() end }
 					end,
-					durationMsFromCooldownSeconds = function()
+					durationMsFromEffectiveCadence = function()
 						return 1000
 					end,
 					highlightFloor = function(square, durationMs, opts)

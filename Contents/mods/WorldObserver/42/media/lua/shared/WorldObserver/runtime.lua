@@ -42,7 +42,7 @@ end
 			spikeStreakMax = 0,
 			sumMs = 0,
 			maxMs = 0,
-			probeSum = 0,
+			producerSum = 0,
 			drainSum = 0,
 			otherSum = 0,
 			pendingSum = 0,
@@ -270,15 +270,15 @@ function Runtime.new(opts)
 		if type(tickMs) ~= "number" or tickMs < 0 then
 			return
 		end
-		local probeMs = tonumber(opts.probeMs) or 0
-		if probeMs < 0 then
-			probeMs = 0
+		local producerMs = tonumber(opts.producerMs or opts.probeMs) or 0
+		if producerMs < 0 then
+			producerMs = 0
 		end
 		local drainMs = tonumber(opts.drainMs) or 0
 		if drainMs < 0 then
 			drainMs = 0
 		end
-		local otherMs = tickMs - probeMs - drainMs
+		local otherMs = tickMs - producerMs - drainMs
 		if otherMs < 0 then
 			otherMs = 0
 		end
@@ -292,13 +292,13 @@ function Runtime.new(opts)
 			local win = c.window
 
 			self._status.tick = self._status.tick or {}
-			self._status.tick.probeLastMs = probeMs
+			self._status.tick.producerLastMs = producerMs
 			self._status.tick.drainLastMs = drainMs
 		self._status.tick.otherLastMs = otherMs
 
 		win.ticks = (win.ticks or 0) + 1
 		win.sumMs = (win.sumMs or 0) + tickMs
-		win.probeSum = (win.probeSum or 0) + probeMs
+		win.producerSum = (win.producerSum or 0) + producerMs
 		win.drainSum = (win.drainSum or 0) + drainMs
 		win.otherSum = (win.otherSum or 0) + otherMs
 		win.pendingSum = (win.pendingSum or 0) + ingestPending
@@ -330,7 +330,7 @@ function Runtime.new(opts)
 			end
 
 		local avgMs = win.sumMs / win.ticks
-		local avgProbeMs = (win.probeSum or 0) / win.ticks
+		local avgProducerMs = (win.producerSum or 0) / win.ticks
 		local avgDrainMs = (win.drainSum or 0) / win.ticks
 		local avgOtherMs = (win.otherSum or 0) / win.ticks
 		local mode = self._status.mode or "normal"
@@ -377,7 +377,7 @@ function Runtime.new(opts)
 		-- Why: transition/report payloads should be self-contained and reflect the same window that triggered them.
 		self._status.window = self._status.window or {}
 		self._status.window.avgTickMs = avgMs
-		self._status.window.avgProbeMs = avgProbeMs
+		self._status.window.avgProducerMs = avgProducerMs
 		self._status.window.avgDrainMs = avgDrainMs
 		self._status.window.avgOtherMs = avgOtherMs
 		-- tickSpikeMs is the per-window maximum; maxTickMs is kept as a compatibility alias.
@@ -396,7 +396,7 @@ function Runtime.new(opts)
 
 		self._status.tick = self._status.tick or {}
 		self._status.tick.woAvgTickMs = avgMs
-		self._status.tick.woWindowAvgProbeMs = avgProbeMs
+		self._status.tick.woWindowAvgProducerMs = avgProducerMs
 		self._status.tick.woWindowAvgDrainMs = avgDrainMs
 		self._status.tick.woWindowAvgOtherMs = avgOtherMs
 		-- woTickSpikeMs is the per-window maximum; woMaxTickMs is kept as a compatibility alias.

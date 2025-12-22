@@ -113,7 +113,7 @@ function GroundEntities.buildSquareCollector(opts)
 				local highlightPref = effective and effective.highlight or nil
 				if shouldHighlight(highlightPref) then
 					local color, alpha = Highlight.resolveColorAlpha(highlightPref, cursor and cursor.color or nil, 0.9)
-					Highlight.highlightFloor(square, Highlight.durationMsFromCooldownSeconds(cooldownSeconds), {
+					Highlight.highlightFloor(square, Highlight.durationMsFromEffectiveCadence(effective), {
 						color = color,
 						alpha = alpha,
 					})
@@ -229,7 +229,7 @@ function GroundEntities.tickPlayerSquare(ctx, opts)
 						local highlightPref = entry.effective.highlight
 						if shouldHighlight(highlightPref) then
 							local color, alpha = Highlight.resolveColorAlpha(highlightPref, playerHighlightColor, 0.9)
-							Highlight.highlightFloor(square, Highlight.durationMsFromCooldownSeconds(entry.effective.cooldown), {
+							Highlight.highlightFloor(square, Highlight.durationMsFromEffectiveCadence(entry.effective), {
 								color = color,
 								alpha = alpha,
 							})

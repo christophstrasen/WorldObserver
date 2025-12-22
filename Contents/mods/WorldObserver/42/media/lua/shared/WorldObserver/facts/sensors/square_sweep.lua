@@ -3,7 +3,7 @@
 -- Intent:
 -- - Provide a reusable square sweep driver that other fact plans can collect from.
 -- - Preserve the existing squares probe behavior (near + vision) while we refactor.
-local Log = require("LQR/util/log").withTag("WO.FACTS.squares")
+local Log = require("LQR/util/log").withTag("WO.FACTS.squareSweep")
 local Config = require("WorldObserver/config")
 local Time = require("WorldObserver/helpers/time")
 local InterestEffective = require("WorldObserver/facts/interest_effective")
@@ -24,7 +24,7 @@ end
 SquareSweep._internal = SquareSweep._internal or {}
 SquareSweep._collectors = SquareSweep._collectors or { order = {}, orderCount = 0, byId = {}, typeById = {} }
 SquareSweep._consumers = SquareSweep._consumers or {}
-SquareSweep._runner = SquareSweep._runner or { state = {}, tickHookRegistered = false, tickHookId = nil, factRegistry = nil }
+SquareSweep._runner = SquareSweep._runner or { state = {}, tickHookAttached = false, tickHookId = nil, factRegistry = nil }
 
 if SquareSweep.registerCollector == nil then
 	--- Register a square sweep collector.
@@ -253,19 +253,19 @@ if SquareSweep.registerConsumer == nil then
 
 		local runner = SquareSweep._runner
 		local factRegistry = opts.factRegistry or (runner and runner.factRegistry) or nil
-		if factRegistry and type(factRegistry.tickHook_add) == "function" then
-			if runner and not runner.tickHookRegistered then
-				local ok, err = pcall(factRegistry.tickHook_add, factRegistry, SQUARE_SWEEP_TICK_HOOK_ID, sharedTick)
+		if factRegistry and type(factRegistry.attachTickHook) == "function" then
+			if runner and not runner.tickHookAttached then
+				local ok, err = pcall(factRegistry.attachTickHook, factRegistry, SQUARE_SWEEP_TICK_HOOK_ID, sharedTick)
 				if ok then
-					runner.tickHookRegistered = true
+					runner.tickHookAttached = true
 					runner.tickHookId = SQUARE_SWEEP_TICK_HOOK_ID
 					runner.factRegistry = factRegistry
 				elseif not isHeadless() then
-					Log:warn("Square sweep tick hook not registered (err=%s)", tostring(err))
+					Log:warn("Square sweep tick hook not attached (err=%s)", tostring(err))
 				end
 			end
 		elseif not isHeadless() then
-			Log:warn("Square sweep tick hook not registered (FactRegistry.tickHook_add unavailable)")
+			Log:warn("Square sweep tick hook not attached (FactRegistry.attachTickHook unavailable)")
 		end
 		return true
 	end
@@ -281,7 +281,7 @@ if SquareSweep.unregisterConsumer == nil then
 		SquareSweep._consumers[id] = nil
 
 		local runner = SquareSweep._runner
-		if runner and runner.tickHookRegistered then
+		if runner and runner.tickHookAttached then
 			local hasActive = false
 			for _, entry in pairs(SquareSweep._consumers or {}) do
 				if isConsumerActive(entry) then
@@ -289,9 +289,9 @@ if SquareSweep.unregisterConsumer == nil then
 					break
 				end
 			end
-			if not hasActive and runner.factRegistry and type(runner.factRegistry.tickHook_remove) == "function" then
-				pcall(runner.factRegistry.tickHook_remove, runner.factRegistry, runner.tickHookId or SQUARE_SWEEP_TICK_HOOK_ID)
-				runner.tickHookRegistered = false
+			if not hasActive and runner.factRegistry and type(runner.factRegistry.detachTickHook) == "function" then
+				pcall(runner.factRegistry.detachTickHook, runner.factRegistry, runner.tickHookId or SQUARE_SWEEP_TICK_HOOK_ID)
+				runner.tickHookAttached = false
 				runner.tickHookId = nil
 			end
 		end
@@ -1249,6 +1249,7 @@ if SquareSweep.tick == nil then
 						effective.target = target
 						effective.scope = mergedScope
 						effective.bucketKey = bucketKey
+						effective.spriteNames = merged and merged.spriteNames
 					end
 
 					-- Vision requires a player target, because visibility checks need a player index.
@@ -1354,6 +1355,7 @@ if SquareSweep.tick == nil then
 										effective.target = merged.target
 										effective.scope = merged.scope or scope
 										effective.bucketKey = bucketKey
+										effective.spriteNames = merged.spriteNames
 										collectorEffectives[interestType] = effective
 									end
 								end

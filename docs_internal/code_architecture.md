@@ -20,7 +20,7 @@ These are “guardrails” that keep WorldObserver safe, extensible, and debugga
 WorldObserver must never introduce unbounded per-frame work. Large world scans must be time-sliced and/or capped, and should run inside the registry tick window so they are measured and controlled.
 
 Concrete hooks:
-- Register time-sliced work via `FactRegistry:tickHook_add(...)`: `Contents/mods/WorldObserver/42/media/lua/shared/WorldObserver/facts/registry.lua:58`
+- Register time-sliced work via `FactRegistry:attachTickHook(...)`: `Contents/mods/WorldObserver/42/media/lua/shared/WorldObserver/facts/registry.lua:58`
 - Shared square scanning is capped/budgeted: `Contents/mods/WorldObserver/42/media/lua/shared/WorldObserver/facts/sensors/square_sweep.lua:1`
 
 ### Backpressure boundary at ingest
@@ -82,6 +82,8 @@ Keep the boundary clean:
 - LQR should not depend on WorldObserver or Project Zomboid APIs (no `WorldObserver.*`, no `Events.*`, no Iso types).
 - WorldObserver owns interest, runtime control, probes/listeners, record schemas, and engine compatibility shims.
 - LQR owns generic stream/query mechanics (schemas, operators, ingest buffering/scheduler) and stays host-agnostic.
+
+For the canonical definition of ingest buffering and scheduler semantics (buffer modes, lanes, drops, metrics), refer to LQR’s documentation: https://github.com/christophstrasen/LQR/blob/main/docs/concepts/ingest_buffering.md
 
 Dependency direction:
 - WorldObserver → LQR (`external/LQR/`), never the other way around.
@@ -284,7 +286,7 @@ Example:
 
 Probes are for “the engine doesn’t tell us” cases. The key design constraints:
 - they must be time-sliced (bounded work per tick),
-- they must run inside the registry tick window (`FactRegistry:tickHook_add`) so runtime budgets can account for them, and
+- they must run inside the registry tick window (`FactRegistry:attachTickHook`) so runtime budgets can account for them, and
 - interest knobs should be honest about what they control:
   - **Best case:** a knob reduces *upstream probe cost* (less scanning per tick, or less scanning per second).
   - **Sometimes unavoidable:** a knob only reduces *emission volume* after scanning (we still do the scan, but we emit fewer records).

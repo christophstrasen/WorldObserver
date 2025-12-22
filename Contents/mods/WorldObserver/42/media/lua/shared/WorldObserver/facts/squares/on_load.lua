@@ -44,7 +44,7 @@ local function emitWithCooldown(state, emitFn, record, nowMs, cooldownMs, onEmit
 	return true
 end
 
-local function registerListener(ctx)
+local function attachListenerOnce(ctx)
 	local state = ctx.state or {}
 	if state.loadGridsquareHandler then
 		return true
@@ -80,7 +80,7 @@ local function registerListener(ctx)
 			end
 			Highlight.highlightFloor(
 				square,
-				Highlight.durationMsFromCooldownSeconds(effective.cooldown),
+				Highlight.durationMsFromEffectiveCadence(effective),
 				{ color = ONLOAD_HIGHLIGHT_COLOR, alpha = 0.9 }
 			)
 		end)
@@ -88,12 +88,12 @@ local function registerListener(ctx)
 
 handler.Add(fn)
 state.loadGridsquareHandler = fn
-	Log:info("LoadGridsquare listener registered")
+	Log:info("LoadGridsquare listener attached")
 	return true
 end
 
 if OnLoad.ensure == nil then
-	--- Ensure the LoadGridsquare listener is registered/unregistered based on declared interest.
+	--- Ensure the LoadGridsquare listener is attached/detached based on declared interest.
 	--- @param ctx table
 	--- @return boolean active
 	function OnLoad.ensure(ctx)
@@ -129,9 +129,9 @@ if OnLoad.ensure == nil then
 
 		local wantsListener = listenerEnabled and effective ~= nil
 		if wantsListener then
-			local okListener = registerListener(ctx)
+			local okListener = attachListenerOnce(ctx)
 			if not okListener and not ctx.headless then
-				Log:warn("OnLoadGridsquare listener not registered (Events unavailable)")
+				Log:warn("OnLoadGridsquare listener not attached (Events unavailable)")
 			end
 			return state.loadGridsquareHandler ~= nil
 		end
@@ -143,7 +143,7 @@ if OnLoad.ensure == nil then
 				pcall(handler.Remove, handler, state.loadGridsquareHandler)
 				state.loadGridsquareHandler = nil
 				if not ctx.headless then
-					Log:info("LoadGridsquare listener unregistered (no onLoad interest)")
+					Log:info("LoadGridsquare listener detached (no onLoad interest)")
 				end
 			end
 		end
@@ -151,7 +151,7 @@ if OnLoad.ensure == nil then
 	end
 end
 
-OnLoad._internal.registerListener = registerListener
+OnLoad._internal.attachListenerOnce = attachListenerOnce
 OnLoad._internal.emitWithCooldown = emitWithCooldown
 OnLoad._internal.highlightFloor = Highlight.highlightFloor
 

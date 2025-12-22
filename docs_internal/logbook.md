@@ -419,3 +419,40 @@
 - Confirm the “first square” rule is stable; upgrade to “minimum square” if ordering ever proves non-deterministic.
 - Keep ground-entity streams observation-only unless real mod use-cases require explicit removal/expiry events.
 - Consider adding a simple contributor “IDE checks” note (EmmyLua + Luacheck expectations) to reduce churn.
+
+## day15 – Sprite observations, smoke UX, naming consistency, and highlight semantics
+
+### Highlights
+- Added the `sprites` observation family with two acquisition paths:
+  - square-based near/vision sweeps (via the shared square sweep sensor), and
+  - event-based `MapObjects.OnLoadWithSprite` for “as chunks load” discovery.
+- Locked in a stable sprite identity key based on the compound tuple `(spriteName, spriteId, x, y, z, objectIndex)` and removed reliance on `getKeyId()`.
+- Added smoke tooling for sprite debugging:
+  - `examples/smoke_sprites_mapobjects.lua` (direct `MapObjects.OnLoadWithSprite`, no WorldObserver),
+  - `examples/smoke_sprites.lua` (WorldObserver-based; explicitly `start()` then `enableOnLoad()` / `enableSquare()`; prints via `_G.print` for reliable console output).
+- Fixed a real PZ/Kahlua incompatibility: removed use of non-guaranteed Lua stdlib functions (`next()` caused a crash) and replaced emptiness checks with safe alternatives.
+- Performed a naming cleanup to streamline “runtime plumbing” vocabulary:
+  - standardized on `attach*` / `detach*` for tick hooks and one-shot hook helpers,
+  - removed underscore-prefixed “private” names where they leaked into public discussion, and
+  - updated code, tests, and docs to match.
+- Clarified the WO vs LQR responsibility split in docs:
+  - WorldObserver owns “when/how to ingest” (fact plans, budgets, runtime controller heuristics),
+  - LQR owns “what ingest means” (buffer/scheduler semantics), with a direct link to https://github.com/christophstrasen/LQR/blob/main/docs/concepts/ingest_buffering.md.
+- Standardized highlight decay semantics across the whole codebase:
+  - implemented a single cadence rule (`max(staleness, cooldown) / 2`) in `WorldObserver/helpers/highlight.lua`,
+  - refactored all fact plans to call the same helper (`Highlight.durationMsFromEffectiveCadence(...)`),
+  - added a dedicated busted spec to prevent regressions.
+- Improved log readability by renaming the shared square sweep logger tag to `WO.FACTS.squareSweep` (it previously looked like “squares facts” even when scanning for other types).
+- Expanded `docs_internal` maintenance structure:
+  - created `docs_internal/index.md` as a “start here” map,
+  - moved proposal/design docs into `docs_internal/drafts/`,
+  - added `docs_internal/testing.md` to formalize the de-facto test patterns used across the suite.
+
+### Lessons
+- Smoke scripts are part of the user-facing API: they must read top-to-bottom with explicit “do X” steps (no hidden auto-enables).
+- PZ/Kahlua is not “Lua 5.1 complete”: treat the stdlib as a compatibility surface and prefer explicit, engine-safe patterns.
+- Highlight duration is user-perceived correctness: it should be derived from the observation cadence, not an arbitrary cap, and must be consistent across all fact families.
+
+### Next steps
+- Add a small “sprite discovery helper” for smoke runs (e.g. dump a sample of nearby sprite names) so users don’t need to guess sprite strings.
+- Consider adding optional wildcard/predicate filtering for sprite names to avoid maintaining long explicit lists.

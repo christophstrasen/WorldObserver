@@ -217,6 +217,36 @@ local function defaultBuildDefaults()
 					autoBudgetMinMillisPerTick = nil,
 				},
 			},
+			sprites = {
+				headless = headless,
+				listener = {
+					enabled = true,
+					priority = 5,
+				},
+				ingest = {
+					enabled = true,
+					mode = "latestByKey",
+					capacity = 5000,
+					ordering = "fifo",
+					priority = 1,
+				},
+				record = {
+					includeIsoObject = true,
+					includeIsoSquare = true,
+				},
+				probe = {
+					enabled = true,
+					maxPerRun = 50,
+					maxPerRunHardCap = 200,
+					maxMillisPerTick = 0.75,
+					infoLogEveryMs = 10000,
+					autoBudget = true,
+					autoBudgetReserveMs = 0.5,
+					autoBudgetHeadroomFactor = 1.0,
+					autoBudgetMaxMillisPerTick = nil,
+					autoBudgetMinMillisPerTick = nil,
+				},
+			},
 		},
 		ingest = {
 			scheduler = {

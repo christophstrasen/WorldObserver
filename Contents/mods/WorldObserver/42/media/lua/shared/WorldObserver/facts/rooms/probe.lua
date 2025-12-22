@@ -71,7 +71,7 @@ local function emitWithCooldown(state, emitFn, record, nowMs, cooldownMs)
 	return true
 end
 
-local function highlightRoomSquares(room, cooldownSeconds, highlightPref)
+local function highlightRoomSquares(room, effective, highlightPref)
 	if room == nil then
 		return
 	end
@@ -96,7 +96,7 @@ local function highlightRoomSquares(room, cooldownSeconds, highlightPref)
 		return
 	end
 
-	local durationMs = Highlight.durationMsFromCooldownSeconds(cooldownSeconds)
+	local durationMs = Highlight.durationMsFromEffectiveCadence(effective)
 	for i = 1, count do
 		local square = JavaList.get(squares, i)
 		if square ~= nil then
@@ -209,7 +209,7 @@ if Probe.tick == nil then
 				if record then
 					if emitWithCooldown(state, ctx.emitFn, record, nowMs, cooldownMs) then
 						if highlightEnabled then
-							highlightRoomSquares(room, effective.cooldown, highlightPref)
+							highlightRoomSquares(room, effective, highlightPref)
 						end
 					end
 				end

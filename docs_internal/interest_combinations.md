@@ -89,6 +89,25 @@ Defaults:
 - If `scope` is missing, it defaults to `"near"`.
 - If `target` is missing, it defaults to `{ player = { id = 0 } }`.
 
+## Sprites
+
+### type = "sprites" (probe-driven + event-driven)
+
+| scope            | target key | target shape                                  | Notes |
+|------------------|------------|-----------------------------------------------|-------|
+| near             | player     | `target = { player = { id = 0 } }`            | Probe around player; filters to `spriteNames`. |
+| near             | square     | `target = { square = { x, y, z } }`           | Probe around a fixed square; filters to `spriteNames`. |
+| vision           | player     | `target = { player = { id = 0 } }`            | Probe; only emits sprites visible to the player. |
+| onLoadWithSprite | n/a        | n/a                                           | Event-driven: emits when matching sprites load. |
+
+Knobs:
+- Probe scopes (`near`, `vision`): `radius`, `staleness`, `cooldown`, `highlight`, `spriteNames`.
+- Event scope (`onLoadWithSprite`): `cooldown`, `highlight`, `spriteNames`.
+
+Defaults:
+- If `scope` is missing, it defaults to `"near"`.
+- For probe scopes (`near`, `vision`), missing `target` defaults to `{ player = { id = 0 } }`.
+
 ## Unsupported (not yet implemented)
 
 - `type = "squares"` with scope `inside`, `outside`, or `allLoaded`.

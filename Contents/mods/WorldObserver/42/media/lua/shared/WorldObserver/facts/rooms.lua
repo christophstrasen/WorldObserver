@@ -91,14 +91,14 @@ local function tickRooms(ctx)
 	end
 end
 
-local function registerTickHook(state, emitFn, ctx)
-	if state.roomsTickHookRegistered then
+local function attachTickHookOnce(state, emitFn, ctx)
+	if state.roomsTickHookAttached then
 		return true
 	end
 	local factRegistry = ctx.factRegistry
-	if not factRegistry or type(factRegistry.tickHook_add) ~= "function" then
+	if not factRegistry or type(factRegistry.attachTickHook) ~= "function" then
 		if not ctx.headless then
-			Log:warn("Rooms tick hook not registered (FactRegistry.tickHook_add unavailable)")
+			Log:warn("Rooms tick hook not attached (FactRegistry.attachTickHook unavailable)")
 		end
 		return false
 	end
@@ -116,13 +116,13 @@ local function registerTickHook(state, emitFn, ctx)
 		})
 	end
 
-	factRegistry:tickHook_add(ROOMS_TICK_HOOK_ID, fn)
-	state.roomsTickHookRegistered = true
+	factRegistry:attachTickHook(ROOMS_TICK_HOOK_ID, fn)
+	state.roomsTickHookAttached = true
 	state.roomsTickHookId = ROOMS_TICK_HOOK_ID
 	return true
 end
 
-Rooms._internal.registerTickHook = registerTickHook
+Rooms._internal.attachTickHookOnce = attachTickHookOnce
 
 -- Patch seam: define only when nil so mods can override by reassigning `Rooms.register`.
 if Rooms.register == nil then
@@ -165,7 +165,7 @@ if Rooms.register == nil then
 			start = function(ctx)
 				local state = ctx.state or {}
 				local originalEmit = ctx.ingest or ctx.emit
-				local tickHookRegistered = registerTickHook(state, originalEmit, {
+				local tickHookAttached = attachTickHookOnce(state, originalEmit, {
 					factRegistry = registry,
 					headless = headless,
 					runtime = ctx.runtime,
@@ -179,7 +179,7 @@ if Rooms.register == nil then
 					local hasInterest = hasActiveLease(interestRegistry, INTEREST_TYPE_ROOMS)
 					Log:info(
 						"Rooms facts started (tickHook=%s cfgProbe=%s cfgListener=%s interest=%s)",
-						tostring(tickHookRegistered),
+						tostring(tickHookAttached),
 						tostring(probeCfg.enabled ~= false),
 						tostring(listenerCfg.enabled ~= false),
 						tostring(hasInterest)
@@ -208,10 +208,10 @@ if Rooms.register == nil then
 					end
 				end
 
-				if state.roomsTickHookRegistered then
-					if registry and type(registry.tickHook_remove) == "function" then
-						pcall(registry.tickHook_remove, registry, state.roomsTickHookId or ROOMS_TICK_HOOK_ID)
-						state.roomsTickHookRegistered = nil
+				if state.roomsTickHookAttached then
+					if registry and type(registry.detachTickHook) == "function" then
+						pcall(registry.detachTickHook, registry, state.roomsTickHookId or ROOMS_TICK_HOOK_ID)
+						state.roomsTickHookAttached = nil
 						state.roomsTickHookId = nil
 					else
 						fullyStopped = false

@@ -144,14 +144,14 @@ end
 
 local DEAD_BODIES_TICK_HOOK_ID = "facts.deadBodies.tick"
 
-local function registerTickHook(state, emitFn, ctx)
-	if state.deadBodiesTickHookRegistered then
+local function attachTickHookOnce(state, emitFn, ctx)
+	if state.deadBodiesTickHookAttached then
 		return true
 	end
 	local factRegistry = ctx.factRegistry
-	if not factRegistry or type(factRegistry.tickHook_add) ~= "function" then
+	if not factRegistry or type(factRegistry.attachTickHook) ~= "function" then
 		if not ctx.headless then
-			Log:warn("DeadBodies tick hook not registered (FactRegistry.tickHook_add unavailable)")
+			Log:warn("DeadBodies tick hook not attached (FactRegistry.attachTickHook unavailable)")
 		end
 		return false
 	end
@@ -168,8 +168,8 @@ local function registerTickHook(state, emitFn, ctx)
 		})
 	end
 
-	factRegistry:tickHook_add(DEAD_BODIES_TICK_HOOK_ID, fn)
-	state.deadBodiesTickHookRegistered = true
+	factRegistry:attachTickHook(DEAD_BODIES_TICK_HOOK_ID, fn)
+	state.deadBodiesTickHookAttached = true
 	state.deadBodiesTickHookId = DEAD_BODIES_TICK_HOOK_ID
 	return true
 end
@@ -177,7 +177,7 @@ end
 DeadBodies._internal.collectDeadBodiesOnSquare = collectDeadBodiesOnSquare
 DeadBodies._internal.deadBodiesCollector = deadBodiesCollector
 DeadBodies._internal.tickPlayerSquare = tickPlayerSquare
-DeadBodies._internal.registerTickHook = registerTickHook
+DeadBodies._internal.attachTickHookOnce = attachTickHookOnce
 
 -- Patch seam: define only when nil so mods can override by reassigning `DeadBodies.register`.
 if DeadBodies.register == nil then
@@ -212,9 +212,9 @@ if DeadBodies.register == nil then
 			start = function(ctx)
 				local state = ctx.state or {}
 				local originalEmit = ctx.ingest or ctx.emit
-				local tickHookRegistered = false
+				local tickHookAttached = false
 				if listenerEnabled then
-					tickHookRegistered = registerTickHook(state, originalEmit, {
+					tickHookAttached = attachTickHookOnce(state, originalEmit, {
 						factRegistry = registry,
 						headless = headless,
 						runtime = ctx.runtime,
@@ -261,7 +261,7 @@ if DeadBodies.register == nil then
 					end
 					Log:info(
 						"DeadBodies facts started (tickHook=%s sweep=%s cfgProbe=%s cfgListener=%s interestPlayerSquare=%s interestNear=%s interestVision=%s)",
-						tostring(tickHookRegistered),
+						tostring(tickHookAttached),
 						tostring(sweepRegistered),
 						tostring(probeEnabled),
 						tostring(listenerEnabled),
@@ -282,10 +282,10 @@ if DeadBodies.register == nil then
 					entry.buffer:clear()
 				end
 
-				if state.deadBodiesTickHookRegistered then
-					if registry and type(registry.tickHook_remove) == "function" then
-						pcall(registry.tickHook_remove, registry, state.deadBodiesTickHookId or DEAD_BODIES_TICK_HOOK_ID)
-						state.deadBodiesTickHookRegistered = nil
+				if state.deadBodiesTickHookAttached then
+					if registry and type(registry.detachTickHook) == "function" then
+						pcall(registry.detachTickHook, registry, state.deadBodiesTickHookId or DEAD_BODIES_TICK_HOOK_ID)
+						state.deadBodiesTickHookAttached = nil
 						state.deadBodiesTickHookId = nil
 					else
 						fullyStopped = false

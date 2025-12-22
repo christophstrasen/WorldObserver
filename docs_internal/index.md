@@ -16,6 +16,7 @@ Internal documentation for contributors and maintainers.
 ## Workflow and support
 
 - `docs_internal/development.md` — dev workflow, tests, workshop sync, smoke tests.
+- `docs_internal/testing.md` — de-facto testing patterns for contributors (busted, stubs, record/collector/observation specs).
 - `docs_internal/interest_combinations.md` — supported `type/scope/target` combinations (what code should accept).
 
 ## History and raw notes
@@ -34,4 +35,3 @@ All proposal/design documents live in `docs_internal/drafts/`:
 - `docs_internal/drafts/using_ingest_system.md` — ingest integration plan (historical).
 - `docs_internal/drafts/zombie_observations.md` — next-slice plan (zombies).
 - `docs_internal/drafts/refactor_interest_definitions_and_sensors.md` — refactor runway brief.
-

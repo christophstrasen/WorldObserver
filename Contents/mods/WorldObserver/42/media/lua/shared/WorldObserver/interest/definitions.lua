@@ -96,4 +96,23 @@ Definitions.types.deadBodies = Definitions.types.deadBodies or {
 	bucketKey = "squaresTarget",
 }
 
+Definitions.types.sprites = Definitions.types.sprites or {
+	defaultScope = "near",
+	strictScopes = true,
+	allowedScopes = { near = true, vision = true, onLoadWithSprite = true },
+	eventScopes = { onLoadWithSprite = true },
+	allowTarget = true,
+	allowTargetScopes = { near = true, vision = true },
+	defaultTarget = { kind = "player", id = 0 },
+	ignoreFields = {
+		onLoadWithSprite = { target = true, radius = true, staleness = true, zRange = true },
+		near = { zRange = true },
+		vision = { zRange = true },
+	},
+	zeroKnobs = {
+		onLoadWithSprite = { staleness = true, radius = true, zRange = true },
+	},
+	bucketKey = "squaresTarget",
+}
+
 return Definitions

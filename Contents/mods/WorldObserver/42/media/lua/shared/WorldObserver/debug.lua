@@ -141,11 +141,11 @@ local function describeRuntimeStatus(payload, factRegistry)
 	local drainMaxItems = budgets.schedulerMaxItemsPerTick
 	local tickSpikeMs = tonumber(tick.woTickSpikeMs) or tonumber(tick.woMaxTickMs) or 0
 
-	local probeLastMs = tonumber(tick.probeLastMs) or 0
+	local producerLastMs = tonumber(tick.producerLastMs) or 0
 	local drainLastMs = tonumber(tick.drainLastMs) or 0
 	local otherLastMs = tonumber(tick.otherLastMs) or 0
 
-	local avgProbeMs = tonumber(tick.woWindowAvgProbeMs) or tonumber(window.avgProbeMs) or 0
+	local avgProducerMs = tonumber(tick.woWindowAvgProducerMs) or tonumber(window.avgProducerMs) or 0
 	local avgDrainMs = tonumber(tick.woWindowAvgDrainMs) or tonumber(window.avgDrainMs) or 0
 	local avgOtherMs = tonumber(tick.woWindowAvgOtherMs) or tonumber(window.avgOtherMs) or 0
 	local avgFillWin = tonumber(tick.woWindowAvgFill) or 0
@@ -160,11 +160,11 @@ local function describeRuntimeStatus(payload, factRegistry)
 		tostring(status.mode),
 		pressure,
 		tostring(windowReason),
-		avgProbeMs,
+		avgProducerMs,
 		avgDrainMs,
 		avgOtherMs,
 		tonumber(tick.woAvgTickMs) or 0,
-		probeLastMs,
+		producerLastMs,
 		drainLastMs,
 		otherLastMs,
 		tonumber(tick.lastMs) or 0,

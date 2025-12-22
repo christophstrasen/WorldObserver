@@ -71,7 +71,7 @@ function FactRegistry.new(config, runtime, hooks)
 		_globalSubscribers = 0,
 		_types = {},
 		_scheduler = nil,
-		_drainHookRegistered = false,
+		onTickHookAttached = false,
 		_tickHooks = {},
 		_ingestDiag = {
 			ticks = 0,
@@ -88,11 +88,11 @@ function FactRegistry.new(config, runtime, hooks)
 	return self
 end
 
---- Register a callback to run on every WorldObserver OnTick (inside the drain hook's timing window).
+--- Register a callback to run on every WorldObserver OnTick (inside the registry OnTick hook's timing window).
 --- Why: lets upstream producers (e.g. probes) time-slice their work while still contributing to the same runtime budgets.
 --- @param id string
 --- @param fn function
-function FactRegistry:tickHook_add(id, fn)
+function FactRegistry:attachTickHook(id, fn)
 	assert(type(id) == "string" and id ~= "", "tick hook id must be a non-empty string")
 	assert(type(fn) == "function", "tick hook fn must be a function")
 	self._tickHooks = self._tickHooks or {}
@@ -101,7 +101,7 @@ end
 
 --- Remove a previously registered tick hook.
 --- @param id string
-function FactRegistry:tickHook_remove(id)
+function FactRegistry:detachTickHook(id)
 	if type(id) ~= "string" or id == "" then
 		return
 	end
@@ -255,19 +255,19 @@ local function ensureScheduler(self)
 	return self._scheduler
 end
 
-local function ensureDrainHook(self)
-	if self._drainHookRegistered then
+local function attachOnTickHookOnce(self)
+	if self.onTickHookAttached then
 		return
 	end
 	local events = _G.Events
 	if not events or not events.OnTick or type(events.OnTick.Add) ~= "function" then
 		if not isHeadless() then
-			Log:warn("Ingest scheduler drain hook not registered (Events unavailable)")
+			Log:warn("FactRegistry OnTick hook not attached (Events unavailable)")
 		end
 		return
 	end
 
-	local function runTickHooks()
+	local function runTickHooksOnce()
 		local hooks = self._tickHooks
 		if not hooks then
 			return
@@ -297,7 +297,7 @@ local function ensureDrainHook(self)
 		local drainMs = 0
 
 		local tickHooksStart = tickStart
-		runTickHooks()
+		runTickHooksOnce()
 		if runtime and type(tickHooksStart) == "number" then
 			local tickHooksEnd = useCpuClock and runtime:nowCpu() or runtime:nowWall()
 			if type(tickHooksEnd) == "number" and tickHooksEnd >= tickHooksStart then
@@ -307,7 +307,7 @@ local function ensureDrainHook(self)
 
 		if self._scheduler then
 			local drainStart = runtime and (useCpuClock and runtime:nowCpu() or runtime:nowWall()) or nil
-			self:_drainSchedulerOnce()
+			self:drainSchedulerOnce()
 			if runtime and type(drainStart) == "number" then
 				local drainEnd = useCpuClock and runtime:nowCpu() or runtime:nowWall()
 				if type(drainEnd) == "number" and drainEnd >= drainStart then
@@ -325,7 +325,7 @@ local function ensureDrainHook(self)
 				-- Feed the controller every tick; it will aggregate into windows.
 				runtime:controller_tick({
 					tickMs = tickMs,
-					probeMs = tickHooksMs,
+					producerMs = tickHooksMs,
 					drainMs = drainMs,
 					ingestPending = self._controllerIngestPending or 0,
 					ingestDropped = self._controllerIngestDroppedDelta or 0,
@@ -337,7 +337,7 @@ local function ensureDrainHook(self)
 			end
 		end
 	end)
-	self._drainHookRegistered = true
+	self.onTickHookAttached = true
 end
 
 	function FactRegistry:onSubscribe(name)
@@ -351,7 +351,7 @@ end
 				entry.buffer = entry.buffer or buildBuffer(self, name, entry)
 				if entry.buffer then
 					local scheduler = ensureScheduler(self)
-					ensureDrainHook(self)
+					attachOnTickHookOnce(self)
 					if scheduler and not entry.bufferAttached then
 					local priority = (entry.config.ingest and entry.config.ingest.priority) or 1
 					scheduler:addBuffer(entry.buffer, { priority = priority })
@@ -392,7 +392,7 @@ end
 			end
 		end
 		if hasTickHooks then
-			ensureDrainHook(self)
+			attachOnTickHookOnce(self)
 		end
 	end
 
@@ -453,7 +453,7 @@ function FactRegistry:emit(name, record)
 	entry.rxSubject:onNext(record)
 end
 
-function FactRegistry:_drainSchedulerOnce()
+function FactRegistry:drainSchedulerOnce()
 	if not self._scheduler then
 		return
 	end
@@ -654,8 +654,8 @@ function FactRegistry:_drainSchedulerOnce()
 end
 
 ---Helper to drain the scheduler once (intended for headless/tests).
-function FactRegistry:drainOnceForTests()
-	self:_drainSchedulerOnce()
+function FactRegistry:drainSchedulerOnceForTests()
+	self:drainSchedulerOnce()
 end
 
 --- Clear all ingest buffers (pending items) without tearing down subscriptions.

@@ -79,6 +79,12 @@ local DEFAULTS = {
 		cooldown = { desired = 10, tolerable = 20 },
 		highlight = nil,
 	},
+	["sprites"] = {
+		staleness = { desired = 10, tolerable = 20 },
+		radius = { desired = 8, tolerable = 5 },
+		cooldown = { desired = 10, tolerable = 20 },
+		highlight = nil,
+	},
 }
 
 local function cloneTable(tbl)
@@ -195,6 +201,41 @@ local function normalizeTarget(target)
 	}
 end
 
+local function normalizeSpriteNames(value)
+	if type(value) == "string" then
+		return { value }
+	end
+	if type(value) ~= "table" then
+		return nil
+	end
+	local out = {}
+	local seen = {}
+	if value[1] ~= nil then
+		for i = 1, #value do
+			local name = value[i]
+			if type(name) == "string" and name ~= "" and not seen[name] then
+				out[#out + 1] = name
+				seen[name] = true
+			end
+		end
+	else
+		for k, v in pairs(value) do
+			if v == true and type(k) == "string" and k ~= "" and not seen[k] then
+				out[#out + 1] = k
+				seen[k] = true
+			elseif type(v) == "string" and v ~= "" and not seen[v] then
+				out[#out + 1] = v
+				seen[v] = true
+			end
+		end
+	end
+	if out[1] == nil then
+		return nil
+	end
+	table.sort(out)
+	return out
+end
+
 local function normalizeScope(scope, fallback)
 	if type(scope) == "string" and scope ~= "" then
 		return scope
@@ -228,6 +269,9 @@ local function bucketKeyForTarget(scope, target, modId)
 	scope = normalizeScope(scope, "near")
 	if scope == "onLoad" then
 		return "onLoad"
+	end
+	if scope == "onLoadWithSprite" then
+		return "onLoadWithSprite"
 	end
 	local kind = target and target.kind or "player"
 	if kind == "player" then
@@ -340,6 +384,7 @@ local function normalizeSpec(spec, defaults, modId)
 		type = canonicalType,
 		scope = scope,
 		target = target,
+		spriteNames = normalizeSpriteNames(spec.spriteNames),
 		staleness = staleness,
 		radius = radius,
 		zRange = zRange,
@@ -399,6 +444,7 @@ local function mergeSpecs(leases)
 				bucketKey = bucketKey,
 				scope = normalized.scope,
 				target = normalized.target,
+				spriteNames = cloneTable(normalized.spriteNames),
 				staleness = cloneTable(normalized.staleness),
 				radius = cloneTable(normalized.radius),
 				zRange = cloneTable(normalized.zRange),
@@ -407,6 +453,21 @@ local function mergeSpecs(leases)
 			}
 			buckets[bucketKey] = target
 		else
+			if type(normalized.spriteNames) == "table" then
+				target.spriteNames = target.spriteNames or {}
+				local seen = {}
+				for i = 1, #target.spriteNames do
+					seen[target.spriteNames[i]] = true
+				end
+				for i = 1, #normalized.spriteNames do
+					local name = normalized.spriteNames[i]
+					if type(name) == "string" and name ~= "" and not seen[name] then
+						target.spriteNames[#target.spriteNames + 1] = name
+						seen[name] = true
+					end
+				end
+				table.sort(target.spriteNames)
+			end
 			bandUnion(target, "staleness", normalized.staleness)
 			bandUnion(target, "radius", normalized.radius)
 			bandUnion(target, "zRange", normalized.zRange)

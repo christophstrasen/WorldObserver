@@ -203,14 +203,14 @@ end
 
 local ITEMS_TICK_HOOK_ID = "facts.items.tick"
 
-local function registerTickHook(state, emitFn, ctx)
-	if state.itemsTickHookRegistered then
+local function attachTickHookOnce(state, emitFn, ctx)
+	if state.itemsTickHookAttached then
 		return true
 	end
 	local factRegistry = ctx.factRegistry
-	if not factRegistry or type(factRegistry.tickHook_add) ~= "function" then
+	if not factRegistry or type(factRegistry.attachTickHook) ~= "function" then
 		if not ctx.headless then
-			Log:warn("Items tick hook not registered (FactRegistry.tickHook_add unavailable)")
+			Log:warn("Items tick hook not attached (FactRegistry.attachTickHook unavailable)")
 		end
 		return false
 	end
@@ -227,8 +227,8 @@ local function registerTickHook(state, emitFn, ctx)
 		})
 	end
 
-	factRegistry:tickHook_add(ITEMS_TICK_HOOK_ID, fn)
-	state.itemsTickHookRegistered = true
+	factRegistry:attachTickHook(ITEMS_TICK_HOOK_ID, fn)
+	state.itemsTickHookAttached = true
 	state.itemsTickHookId = ITEMS_TICK_HOOK_ID
 	return true
 end
@@ -236,7 +236,7 @@ end
 Items._internal.collectItemsOnSquare = collectItemsOnSquare
 Items._internal.itemsCollector = itemsCollector
 Items._internal.tickPlayerSquare = tickPlayerSquare
-Items._internal.registerTickHook = registerTickHook
+Items._internal.attachTickHookOnce = attachTickHookOnce
 
 -- Patch seam: define only when nil so mods can override by reassigning `Items.register`.
 if Items.register == nil then
@@ -276,9 +276,9 @@ if Items.register == nil then
 			start = function(ctx)
 				local state = ctx.state or {}
 				local originalEmit = ctx.ingest or ctx.emit
-				local tickHookRegistered = false
+				local tickHookAttached = false
 				if listenerEnabled then
-					tickHookRegistered = registerTickHook(state, originalEmit, {
+					tickHookAttached = attachTickHookOnce(state, originalEmit, {
 						factRegistry = registry,
 						headless = headless,
 						runtime = ctx.runtime,
@@ -325,7 +325,7 @@ if Items.register == nil then
 					end
 					Log:info(
 						"Items facts started (tickHook=%s sweep=%s cfgProbe=%s cfgListener=%s interestPlayerSquare=%s interestNear=%s interestVision=%s)",
-						tostring(tickHookRegistered),
+						tostring(tickHookAttached),
 						tostring(sweepRegistered),
 						tostring(probeEnabled),
 						tostring(listenerEnabled),
@@ -346,10 +346,10 @@ if Items.register == nil then
 					entry.buffer:clear()
 				end
 
-				if state.itemsTickHookRegistered then
-					if registry and type(registry.tickHook_remove) == "function" then
-						pcall(registry.tickHook_remove, registry, state.itemsTickHookId or ITEMS_TICK_HOOK_ID)
-						state.itemsTickHookRegistered = nil
+				if state.itemsTickHookAttached then
+					if registry and type(registry.detachTickHook) == "function" then
+						pcall(registry.detachTickHook, registry, state.itemsTickHookId or ITEMS_TICK_HOOK_ID)
+						state.itemsTickHookAttached = nil
 						state.itemsTickHookId = nil
 					else
 						fullyStopped = false

@@ -28,7 +28,7 @@ local function nowMillis()
 	return Time.gameMillis() or math.floor(os.time() * 1000)
 end
 
-local function highlightRoomSquares(room, cooldownSeconds, highlightPref)
+local function highlightRoomSquares(room, effective, highlightPref)
 	if room == nil then
 		return
 	end
@@ -51,7 +51,7 @@ local function highlightRoomSquares(room, cooldownSeconds, highlightPref)
 			alpha = color[4]
 		end
 	end
-	local durationMs = Highlight.durationMsFromCooldownSeconds(cooldownSeconds)
+	local durationMs = Highlight.durationMsFromEffectiveCadence(effective)
 
 	-- Note: highlighting all squares can be expensive for large rooms; this is best-effort by request.
 	local count = JavaList.size(squares)
@@ -82,7 +82,7 @@ local function emitWithCooldown(state, emitFn, record, nowMs, cooldownMs, onEmit
 	return true
 end
 
-local function registerListener(ctx)
+local function attachListenerOnce(ctx)
 	local state = ctx.state or {}
 	if state.onSeeNewRoomHandler then
 		return true
@@ -115,19 +115,19 @@ local function registerListener(ctx)
 			end
 			local highlightPref = effective.highlight
 			if highlightPref == true or type(highlightPref) == "table" then
-				highlightRoomSquares(room, effective.cooldown, highlightPref)
+				highlightRoomSquares(room, effective, highlightPref)
 			end
 		end)
 	end
 
 	handler.Add(fn)
 	state.onSeeNewRoomHandler = fn
-	Log:info("OnSeeNewRoom listener registered")
+	Log:info("OnSeeNewRoom listener attached")
 	return true
 end
 
 if OnSee.ensure == nil then
-	--- Ensure the OnSeeNewRoom listener is registered/unregistered based on declared interest.
+	--- Ensure the OnSeeNewRoom listener is attached/detached based on declared interest.
 	--- @param ctx table
 	--- @return boolean active
 	function OnSee.ensure(ctx)
@@ -163,9 +163,9 @@ if OnSee.ensure == nil then
 
 		local wantsListener = listenerEnabled and effective ~= nil
 		if wantsListener then
-			local okListener = registerListener(ctx)
+			local okListener = attachListenerOnce(ctx)
 			if not okListener and not ctx.headless then
-				Log:warn("OnSeeNewRoom listener not registered (Events unavailable)")
+				Log:warn("OnSeeNewRoom listener not attached (Events unavailable)")
 			end
 			return state.onSeeNewRoomHandler ~= nil
 		end
@@ -177,7 +177,7 @@ if OnSee.ensure == nil then
 				pcall(handler.Remove, handler, state.onSeeNewRoomHandler)
 				state.onSeeNewRoomHandler = nil
 				if not ctx.headless then
-					Log:info("OnSeeNewRoom listener unregistered (no onSeeNewRoom interest)")
+					Log:info("OnSeeNewRoom listener detached (no onSeeNewRoom interest)")
 				end
 			end
 		end
@@ -185,7 +185,7 @@ if OnSee.ensure == nil then
 	end
 end
 
-OnSee._internal.registerListener = registerListener
+OnSee._internal.attachListenerOnce = attachListenerOnce
 OnSee._internal.emitWithCooldown = emitWithCooldown
 
 return OnSee

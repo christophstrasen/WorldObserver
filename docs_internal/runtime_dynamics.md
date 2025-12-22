@@ -13,14 +13,22 @@ Related docs:
 - Ingest usage notes: `docs_internal/drafts/using_ingest_system.md`
 - Interest semantics: `docs_internal/drafts/fact_interest.md`, `docs/guides/interest.md`
 
+Boundary note (WO vs LQR): think of LQR ingest as the “conveyor belt + rules of movement”, and WorldObserver as the “factory manager”.
+
+When a WorldObserver producer (probe/listener/collector) calls `ctx.ingest(record)`, WorldObserver hands that record to an LQR ingest buffer that was configured for that fact type (mode/key/capacity/lanes). From that moment on, **LQR owns the semantics**: how records are compacted (e.g. `latestByKey`), how lanes are scheduled, when and how drops happen, and what the ingest metrics mean.
+
+WorldObserver’s job is everything around that: deciding *when* to produce/ingest records, measuring how much time producers and draining cost per tick, and reacting to pressure by shaping budgets and quality (for example, adjusting the drain budget per tick or degrading probe quality when we can’t keep up).
+
+If you need to change “what `latestByKey` means”, lane rules, drop behavior, or metric definitions, the canonical reference is LQR’s ingest doc: https://github.com/christophstrasen/LQR/blob/main/docs/concepts/ingest_buffering.md. If you need to change “when we ingest/drain” or “how we react to ingest pressure”, this document (and the WorldObserver runtime/controller code) is the right place.
+
 ## 1) The feedback loop (one picture)
 
 Everything hinges on the fact registry’s OnTick hook, which measures work and feeds the runtime controller:
 
 ```
 Events.OnTick
-  ├─ FactRegistry runTickHooks()          (probe work; time-sliced)
-  ├─ FactRegistry:_drainSchedulerOnce()   (drain buffered facts → streams)
+  ├─ FactRegistry runTickHooksOnce()      (producer work; time-sliced)
+  ├─ FactRegistry:drainSchedulerOnce()    (drain buffered facts → streams)
   └─ Runtime:recordTick + Runtime:controller_tick(...)
           │
           ├─ sets Runtime.status.window + Runtime.status.tick (window aggregates)
@@ -34,7 +42,7 @@ Next tick:
 
 Key entrypoints:
 - Measurement + controller feeding: `Contents/mods/WorldObserver/42/media/lua/shared/WorldObserver/facts/registry.lua`
-  - `ensureDrainHook()` (OnTick hook)
+  - `attachOnTickHookOnce()` (OnTick hook)
 - Controller logic: `Contents/mods/WorldObserver/42/media/lua/shared/WorldObserver/runtime.lua`
   - `recordTick()`, `controller_tick()`, `status_get()`
 
@@ -42,16 +50,16 @@ Key entrypoints:
 
 The controller should react to **WorldObserver’s own cost**, not raw FPS. We measure inside the registry’s OnTick hook:
 
-- `FactRegistry:tickHook_add(id, fn)` registers per-tick producer work (probes/sensors) into a shared timing window.
-- `ensureDrainHook()` attaches `Events.OnTick.Add(fn)` and measures:
-  - `tickHooksMs` (“probeMs”) = time spent in all tick hooks this frame
+- `FactRegistry:attachTickHook(id, fn)` registers per-tick producer work (probes/sensors) into a shared timing window.
+- `attachOnTickHookOnce()` attaches `Events.OnTick.Add(fn)` and measures:
+  - `tickHooksMs` (“producerMs”) = time spent in all tick hooks this frame
   - `drainMs` = time spent draining ingest buffers this frame
   - `tickMs` = total measured time for WO in this frame (hooks + drain + overhead)
 
 Files and functions:
 - `Contents/mods/WorldObserver/42/media/lua/shared/WorldObserver/facts/registry.lua`
-  - `tickHook_add()`
-  - `ensureDrainHook()` (creates the timing window and calls `runtime:controller_tick({...})`)
+  - `attachTickHook()`
+  - `attachOnTickHookOnce()` (creates the timing window and calls `runtime:controller_tick({...})`)
 
 Clocks:
 - The registry prefers `runtime:nowCpu()` (CPU-time-ish) when available, else `runtime:nowWall()`.
@@ -67,14 +75,14 @@ Facts are ingested into per-type buffers and drained by one global scheduler. Dr
 
 Each tick, before draining, the registry applies a runtime-derived override:
 
-- `FactRegistry:_drainSchedulerOnce()` reads:
+- `FactRegistry:drainSchedulerOnce()` reads:
   - `runtime:status_get().budgets.schedulerMaxItemsPerTick`
 - If present, it sets `scheduler.maxItemsPerTick` to that value for this tick.
 - Otherwise it falls back to the configured baseline (`ingest.scheduler.maxItemsPerTick`).
 
 File:
 - `Contents/mods/WorldObserver/42/media/lua/shared/WorldObserver/facts/registry.lua`
-  - `_drainSchedulerOnce()`
+  - `drainSchedulerOnce()`
 
 ### 3.2 How the controller chooses that drain budget
 
@@ -217,7 +225,7 @@ If you are extending probes/sensors, prefer using `status.window` and `status.ti
 ## 8) Contributor cautions
 
 - Keep engine callbacks and probes cheap: always use `ctx.ingest(record)` (buffered) instead of doing downstream work in-place.
-- When adding per-tick work, register it via `FactRegistry:tickHook_add(...)` so it’s included in budgets/diagnostics.
+- When adding per-tick work, register it via `FactRegistry:attachTickHook(...)` so it’s included in budgets/diagnostics.
 - Prefer time-sliced scans (small per-tick caps) over large loops; the controller can’t “undo” a single bad frame.
 - Avoid holding engine objects long-term; store stable ids/coords and use best-effort hydration.
 

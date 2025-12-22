@@ -18,7 +18,7 @@ Highlight._state = Highlight._state or {
 	active = {},
 	activeCount = 0,
 	onTickFn = nil,
-	onTickRegistered = false,
+	onTickAttached = false,
 }
 
 local DEFAULT_COLOR = { 0.2, 0.5, 1.0 }
@@ -29,24 +29,45 @@ local function nowMillis()
 	return Time.gameMillis()
 end
 
+local function secondsFrom(value)
+	if type(value) == "table" then
+		-- Accept both "effective" numeric knobs and merged band tables.
+		return tonumber(value.desired) or tonumber(value.tolerable) or tonumber(value[1]) or 0
+	end
+	return tonumber(value) or 0
+end
+
 -- Patch seam: only define when nil so mods can override.
 if Highlight.durationMsFromCooldownSeconds == nil then
 	function Highlight.durationMsFromCooldownSeconds(cooldownSeconds)
-		local ms = math.max(0, (tonumber(cooldownSeconds) or 0) * 1000)
-		-- Keep highlights brief to avoid long-lived overlays from slow cooldowns.
-		return math.max(250, math.min(5000, ms))
+		-- Use the same cadence rule as everywhere else: max(staleness,cooldown)/2.
+		-- For cooldown-only callers, this is simply cooldown/2.
+		return Highlight.durationMsFromCadenceSeconds(nil, cooldownSeconds)
 	end
 end
 
 if Highlight.durationMsFromCadenceSeconds == nil then
 	function Highlight.durationMsFromCadenceSeconds(stalenessSeconds, cooldownSeconds)
-		local staleness = tonumber(stalenessSeconds) or 0
-		local cooldown = tonumber(cooldownSeconds) or 0
+		local staleness = secondsFrom(stalenessSeconds)
+		local cooldown = secondsFrom(cooldownSeconds)
 		local cadence = math.max(staleness, cooldown)
 		if cadence <= 0 then
 			return 0
 		end
 		return math.floor((cadence * 1000) / 2)
+	end
+end
+
+if Highlight.durationMsFromEffectiveCadence == nil then
+	--- Resolve highlight duration from an effective interest spec (staleness/cooldown in seconds).
+	--- Uses the cadence rule: max(staleness,cooldown)/2.
+	--- @param effective table|nil
+	--- @return number durationMs
+	function Highlight.durationMsFromEffectiveCadence(effective)
+		if type(effective) ~= "table" then
+			return 0
+		end
+		return Highlight.durationMsFromCadenceSeconds(effective.staleness, effective.cooldown)
 	end
 end
 
@@ -144,8 +165,8 @@ local function clearHighlight(entry)
 	callSetHighlighted(target, false, entry.blink)
 end
 
-local function maybeDetachTick(state)
-	if not state.onTickRegistered then
+local function detachOnTickHookIfIdle(state)
+	if not state.onTickAttached then
 		return
 	end
 	if state.activeCount > 0 then
@@ -160,13 +181,13 @@ local function maybeDetachTick(state)
 			pcall(tick.Remove, state.onTickFn)
 		end
 	end
-	state.onTickRegistered = false
+	state.onTickAttached = false
 	state.onTickFn = nil
 end
 
 local function tickOnce(state)
 	if state.activeCount <= 0 then
-		maybeDetachTick(state)
+		detachOnTickHookIfIdle(state)
 		return
 	end
 
@@ -203,12 +224,12 @@ local function tickOnce(state)
 	end
 
 	if state.activeCount <= 0 then
-		maybeDetachTick(state)
+		detachOnTickHookIfIdle(state)
 	end
 end
 
-local function ensureTickHook(state)
-	if state.onTickRegistered then
+local function attachOnTickHookOnce(state)
+	if state.onTickAttached then
 		return true
 	end
 
@@ -224,7 +245,7 @@ local function ensureTickHook(state)
 	end
 
 	state.onTickFn = onTick
-	state.onTickRegistered = true
+	state.onTickAttached = true
 	tick.Add(onTick)
 	return true
 end
@@ -271,7 +292,7 @@ if Highlight.highlightTarget == nil then
 		end
 
 		applyHighlight(entry, startAlpha)
-		ensureTickHook(state)
+		attachOnTickHookOnce(state)
 
 		return {
 			stop = function()
@@ -282,7 +303,7 @@ if Highlight.highlightTarget == nil then
 					state.activeCount = math.max(0, (state.activeCount or 1) - 1)
 				end
 				if state.activeCount <= 0 then
-					maybeDetachTick(state)
+					detachOnTickHookIfIdle(state)
 				end
 			end,
 		}

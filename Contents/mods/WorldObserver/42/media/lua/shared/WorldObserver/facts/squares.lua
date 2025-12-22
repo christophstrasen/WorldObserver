@@ -84,19 +84,6 @@ if Squares.makeSquareRecord == nil then
 end
 Squares._defaults.makeSquareRecord = Squares._defaults.makeSquareRecord or Squares.makeSquareRecord
 
-local function highlightDurationMsFromCadenceSeconds(stalenessSeconds, cooldownSeconds)
-	-- Visual feedback should roughly match the fastest possible *emit cadence*.
-	-- If cooldown is larger than staleness, emits (and therefore highlights) cannot happen faster than cooldown anyway.
-	-- Using the max makes highlights persist long enough to look “continuous” at the true cadence, without overstaying.
-	local staleness = tonumber(stalenessSeconds) or 0
-	local cooldown = tonumber(cooldownSeconds) or 0
-	local cadence = math.max(staleness, cooldown)
-	if cadence <= 0 then
-		return 0
-	end
-	return math.floor((cadence * 1000) / 2)
-end
-
 local function squareCollector(ctx, cursor, square, _playerIndex, nowMs, effective)
 	local squares = ctx.squares
 	if not (squares and type(squares.makeSquareRecord) == "function") then
@@ -119,7 +106,7 @@ local function squareCollector(ctx, cursor, square, _playerIndex, nowMs, effecti
 	end
 
 	if not ctx.headless and effective and effective.highlight == true then
-		local highlightMs = highlightDurationMsFromCadenceSeconds(effective.staleness, effective.cooldown)
+		local highlightMs = Highlight.durationMsFromEffectiveCadence(effective)
 		if highlightMs > 0 then
 			local okFloor, floor = pcall(square.getFloor, square)
 			if okFloor and floor then
@@ -162,14 +149,14 @@ local function tickSquares(ctx)
 	})
 end
 
-local function registerTickHook(state, emitFn, ctx)
-	if state.squaresTickHookRegistered then
+local function attachTickHookOnce(state, emitFn, ctx)
+	if state.squaresTickHookAttached then
 		return true
 	end
 	local factRegistry = ctx.factRegistry
-	if not factRegistry or type(factRegistry.tickHook_add) ~= "function" then
+	if not factRegistry or type(factRegistry.attachTickHook) ~= "function" then
 		if not ctx.headless then
-			Log:warn("Squares tick hook not registered (FactRegistry.tickHook_add unavailable)")
+			Log:warn("Squares tick hook not attached (FactRegistry.attachTickHook unavailable)")
 		end
 		return false
 	end
@@ -186,8 +173,8 @@ local function registerTickHook(state, emitFn, ctx)
 		})
 	end
 
-	factRegistry:tickHook_add(SQUARES_TICK_HOOK_ID, fn)
-	state.squaresTickHookRegistered = true
+	factRegistry:attachTickHook(SQUARES_TICK_HOOK_ID, fn)
+	state.squaresTickHookAttached = true
 	state.squaresTickHookId = SQUARES_TICK_HOOK_ID
 	return true
 end
@@ -207,7 +194,7 @@ Squares._internal.probeTick = function(state, emitFn, headless, runtime, interes
 		probeCfg = probeCfg or {},
 	})
 end
-Squares._internal.registerTickHook = registerTickHook
+Squares._internal.attachTickHookOnce = attachTickHookOnce
 
 -- Patch seam: define only when nil so mods can override by reassigning `Squares.register` and so reloads
 	-- (tests/console via `package.loaded`) don't clobber an existing patch.
@@ -246,7 +233,7 @@ Squares._internal.registerTickHook = registerTickHook
 			start = function(ctx)
 				local state = ctx.state or {}
 				local originalEmit = ctx.ingest or ctx.emit
-				local tickHookRegistered = Squares._internal.registerTickHook(state, originalEmit, {
+				local tickHookAttached = Squares._internal.attachTickHookOnce(state, originalEmit, {
 					factRegistry = registry,
 					headless = headless,
 					runtime = ctx.runtime,
@@ -277,7 +264,7 @@ Squares._internal.registerTickHook = registerTickHook
 						local hasVisionInterest = hasSquaresScopeInterest(interestRegistry, "vision")
 						Log:info(
 							"Squares facts started (tickHook=%s sweep=%s cfgProbe=%s cfgListener=%s interestOnLoad=%s interestNear=%s interestVision=%s)",
-							tostring(tickHookRegistered),
+							tostring(tickHookAttached),
 							tostring(sweepRegistered),
 							tostring(probeEnabled),
 							tostring(listenerEnabled),
@@ -309,10 +296,10 @@ Squares._internal.registerTickHook = registerTickHook
 					end
 				end
 
-				if state.squaresTickHookRegistered then
-					if registry and type(registry.tickHook_remove) == "function" then
-						pcall(registry.tickHook_remove, registry, state.squaresTickHookId or SQUARES_TICK_HOOK_ID)
-						state.squaresTickHookRegistered = nil
+				if state.squaresTickHookAttached then
+					if registry and type(registry.detachTickHook) == "function" then
+						pcall(registry.detachTickHook, registry, state.squaresTickHookId or SQUARES_TICK_HOOK_ID)
+						state.squaresTickHookAttached = nil
 						state.squaresTickHookId = nil
 					else
 						fullyStopped = false

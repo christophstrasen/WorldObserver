@@ -20,12 +20,66 @@ IsoCell:getZombieList()
 
 # SpriteObservations
 
-https://demiurgequantified.github.io/ProjectZomboidJavaDocs/zombie/Lua/MapObjects.html
-at init call MapObjects.OnLoadWithSprite with either a sprite name or list of sprite names and a function to call when that sprite loads in
+Primary API: `MapObjects` (B42 JavaDocs)
+- https://demiurgequantified.github.io/ProjectZomboidJavaDocs/zombie/Lua/MapObjects.html
 
-the only argument to the function will be the created object
-you can also use OnNewWithSprite which will only trigger once per object but i don't recommend this for mods because it won't trigger on objects that were loaded before your mod was activated, you can just use mod data or something if you don't want to affect the same object twice
-they also take a priority number as an argument, this is used to resolve the order to call functions in when a sprite has more than one function registered, i have literally never cared about this and you probably won't either so just put your favourite number
+### What exists (from JavaDocs signatures)
+
+- `MapObjects.OnLoadWithSprite(spriteName: String, fn: LuaClosure, priority: int)`
+- `MapObjects.OnLoadWithSprite(spriteNames: KahluaTable, fn: LuaClosure, priority: int)`
+- `MapObjects.OnNewWithSprite(spriteName: String, fn: LuaClosure, priority: int)`
+- `MapObjects.OnNewWithSprite(spriteNames: KahluaTable, fn: LuaClosure, priority: int)`
+
+Related (likely internal/debug/backfill hooks; semantics not documented here):
+- `MapObjects.loadGridSquare(square: IsoGridSquare)`
+- `MapObjects.newGridSquare(square: IsoGridSquare)`
+- `MapObjects.debugLoadSquare(x,y,z)` / `MapObjects.debugNewSquare(x,y,z)` / `MapObjects.debugLoadChunk(wx,wy)`
+- `MapObjects.Reset()`
+- `MapObjects.reroute(prototype, luaClosure)`
+
+### Practical usage notes
+
+- Register these at init (module load / early lifecycle) so you don’t miss already-loaded chunks.
+- The callback receives the created/loaded object (in practice, treat it as an `IsoObject` or a subtype).
+  - Useful methods to pull data:
+    - `IsoObject:getSprite():getName()` (sprite name)
+      - https://demiurgequantified.github.io/ProjectZomboidJavaDocs/zombie/iso/IsoObject.html#getSprite()
+      - https://demiurgequantified.github.io/ProjectZomboidJavaDocs/zombie/iso/sprite/IsoSprite.html#getName()
+    - `IsoObject:getSquare()` / `IsoObject:getX()/getY()/getZ()`
+    - `IsoObject:getObjectIndex()` (potentially useful for dedupe within a square load cycle)
+      - https://demiurgequantified.github.io/ProjectZomboidJavaDocs/zombie/iso/IsoObject.html#getObjectIndex()
+    - `IsoObject:getModData()` (persist a “processed” marker across loads)
+      - https://demiurgequantified.github.io/ProjectZomboidJavaDocs/zombie/iso/IsoObject.html#getModData()
+- `priority` is an ordering hint when multiple handlers exist for the same sprite; pick a constant (e.g. `1`) unless you have a reason to order.
+- `OnNewWithSprite` only triggers for newly created objects; it will not backfill objects that loaded before your handler registered.
+
+### “Observe all sprites?”
+
+`MapObjects` is sprite-filtered; JavaDocs show no wildcard “all sprites” registration.
+
+If you truly need broad capture, use a square-driven scan and read `obj:getSprite():getName()` per object:
+- Hook square load (`Events.LoadGridsquare` / `Events.OnLoadGridsquare` depending on API availability), or
+- Drive it from WorldObserver square facts and iterate `IsoGridSquare:getObjects()` when you have an `IsoGridSquare`.
+  - https://demiurgequantified.github.io/ProjectZomboidJavaDocs/zombie/iso/IsoGridSquare.html#getObjects()
+
+### Example (sketch)
+
+```lua
+-- Call early (init). Sprite names are exact.
+MapObjects.OnLoadWithSprite({ "fixtures_bathroom_01_0", "location_shop_mall_01_12" }, function(obj)
+  local sprite = obj:getSprite()
+  local spriteName = sprite and sprite:getName() or nil
+  local square = obj:getSquare()
+  local x = square and square:getX() or obj:getX()
+  local y = square and square:getY() or obj:getY()
+  local z = square and square:getZ() or obj:getZ()
+
+  -- De-dupe idea (implementation-specific): key by coords + objectIndex.
+  local key = tostring(x) .. ":" .. tostring(y) .. ":" .. tostring(z) .. ":" .. tostring(obj:getObjectIndex())
+  -- Mark in modData or a local table if needed.
+  -- local md = obj:getModData(); md.__myMod_seen = true
+end, 1)
+```
 
 # DeathObservations
 

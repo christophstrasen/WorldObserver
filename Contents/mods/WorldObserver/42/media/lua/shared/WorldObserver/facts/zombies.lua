@@ -64,14 +64,14 @@ local function tickZombies(ctx)
 	})
 end
 
-local function registerTickHook(state, emitFn, ctx)
-	if state.zombiesTickHookRegistered then
+local function attachTickHookOnce(state, emitFn, ctx)
+	if state.zombiesTickHookAttached then
 		return true
 	end
 	local factRegistry = ctx.factRegistry
-	if not factRegistry or type(factRegistry.tickHook_add) ~= "function" then
+	if not factRegistry or type(factRegistry.attachTickHook) ~= "function" then
 		if not ctx.headless then
-			Log:warn("Zombies tick hook not registered (FactRegistry.tickHook_add unavailable)")
+			Log:warn("Zombies tick hook not attached (FactRegistry.attachTickHook unavailable)")
 		end
 		return false
 	end
@@ -87,14 +87,14 @@ local function registerTickHook(state, emitFn, ctx)
 		})
 	end
 
-	factRegistry:tickHook_add(ZOMBIES_TICK_HOOK_ID, fn)
-	state.zombiesTickHookRegistered = true
+	factRegistry:attachTickHook(ZOMBIES_TICK_HOOK_ID, fn)
+	state.zombiesTickHookAttached = true
 	state.zombiesTickHookId = ZOMBIES_TICK_HOOK_ID
 	return true
 end
 
 Zombies._internal.tickZombies = tickZombies
-Zombies._internal.registerTickHook = registerTickHook
+Zombies._internal.attachTickHookOnce = attachTickHookOnce
 
 	-- Patch seam: define only when nil so mods can override by reassigning `Zombies.register`.
 	if Zombies.register == nil then
@@ -121,9 +121,9 @@ Zombies._internal.registerTickHook = registerTickHook
 			start = function(ctx)
 				local state = ctx.state or {}
 				local originalEmit = ctx.ingest or ctx.emit
-				local tickHookRegistered = false
+				local tickHookAttached = false
 				if probeEnabled then
-					tickHookRegistered = registerTickHook(state, originalEmit, {
+					tickHookAttached = attachTickHookOnce(state, originalEmit, {
 						factRegistry = registry,
 						headless = headless,
 						runtime = ctx.runtime,
@@ -136,7 +136,7 @@ Zombies._internal.registerTickHook = registerTickHook
 						local hasAllLoadedInterest = hasActiveLease(interestRegistry, INTEREST_TYPE_ZOMBIES)
 						Log:info(
 							"Zombies facts started (tickHook=%s cfgProbe=%s interestAllLoaded=%s)",
-							tostring(tickHookRegistered),
+							tostring(tickHookAttached),
 							tostring(probeEnabled),
 							tostring(hasAllLoadedInterest)
 						)
@@ -153,10 +153,10 @@ Zombies._internal.registerTickHook = registerTickHook
 					entry.buffer:clear()
 				end
 
-				if state.zombiesTickHookRegistered then
-					if registry and type(registry.tickHook_remove) == "function" then
-						pcall(registry.tickHook_remove, registry, state.zombiesTickHookId or ZOMBIES_TICK_HOOK_ID)
-						state.zombiesTickHookRegistered = nil
+				if state.zombiesTickHookAttached then
+					if registry and type(registry.detachTickHook) == "function" then
+						pcall(registry.detachTickHook, registry, state.zombiesTickHookId or ZOMBIES_TICK_HOOK_ID)
+						state.zombiesTickHookAttached = nil
 						state.zombiesTickHookId = nil
 					else
 						fullyStopped = false

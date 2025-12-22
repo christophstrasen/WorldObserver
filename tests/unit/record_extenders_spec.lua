@@ -13,6 +13,7 @@ local RoomRecord = require("WorldObserver/facts/rooms/record")
 local ZombieRecord = require("WorldObserver/facts/zombies/record")
 local ItemRecord = require("WorldObserver/facts/items/record")
 local DeadBodyRecord = require("WorldObserver/facts/dead_bodies/record")
+local SpriteRecord = require("WorldObserver/facts/sprites/record")
 
 describe("record extenders", function()
 	local idCounter = 0
@@ -228,5 +229,55 @@ describe("record extenders", function()
 		assert.is_true(record.extra.extended)
 
 		DeadBodyRecord.unregisterDeadBodyRecordExtender(id)
+	end)
+
+	it("extends sprite records", function()
+		local id = newId("sprite")
+		local ok = SpriteRecord.registerSpriteRecordExtender(id, function(record)
+			record.extra = record.extra or {}
+			record.extra.extended = true
+		end)
+		assert.is_true(ok)
+
+		local square = {
+			getX = function()
+				return 1
+			end,
+			getY = function()
+				return 2
+			end,
+			getZ = function()
+				return 0
+			end,
+			getID = function()
+				return 55
+			end,
+		}
+		local sprite = {
+			getName = function()
+				return "fixtures_bathroom_01_0"
+			end,
+			getID = function()
+				return 120000
+			end,
+		}
+		local isoObject = {
+			getSprite = function()
+				return sprite
+			end,
+			getSquare = function()
+				return square
+			end,
+			getObjectIndex = function()
+				return 4
+			end,
+		}
+
+		local record = SpriteRecord.makeSpriteRecord(isoObject, square, "probe", { nowMs = 123 })
+		assert.is_table(record)
+		assert.is_table(record.extra)
+		assert.is_true(record.extra.extended)
+
+		SpriteRecord.unregisterSpriteRecordExtender(id)
 	end)
 end)
