@@ -85,8 +85,10 @@ Options we already have in-repo:
 - Keep work bounded (caps + time-slicing) and run inside the registry tick window when applicable.
 - Ensure every new record has a stable id suitable for compaction/dedup (derive when engine ids are unsafe in Lua).
 - Prefer record extenders for new fields; avoid breaking record shapes unless necessary.
-- Update docs for user-facing behavior changes (`docs/`) and internal notes for design changes (`docs_internal/`).
-- Run `busted tests` before submitting.
+- No new warnings in the log related to WorldObserver `[WO]`
+- New EmmyLua warnings outside `tests/unit`
+- Updated docs for user-facing behavior changes (`docs/`).
+- `busted tests` ran fine before committing (automatic if you use the pre-commit hook).
 
 ## Lean governance
 

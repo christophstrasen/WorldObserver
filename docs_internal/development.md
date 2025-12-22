@@ -40,6 +40,14 @@ Recommended tools:
   ```
 
 - `rsync` and `inotifywait` (from `inotify-tools`) for the workshop sync script.
+- Optional: [`pre-commit`](https://pre-commit.com/) if you want hooks to run `busted tests` before committing:
+
+  ```bash
+  pip install pre-commit
+  pre-commit install
+  ```
+
+  This repo ships a `.pre-commit-config.yaml` that runs the WorldObserver test suite; make sure `busted` is on PATH first.
 
 ---
 

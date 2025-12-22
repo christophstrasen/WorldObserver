@@ -27,8 +27,6 @@ This joins the square stream with the zombie stream so you can react to zombies 
 
 ```lua
 local WorldObserver = require("WorldObserver")
-local LQR = require("LQR")
-local Query = LQR.Query
 local Time = require("WorldObserver/helpers/time")
 
 -- Interest declarations: keep them separate and explicit.
@@ -58,10 +56,11 @@ local squares = WorldObserver.observations.squares()
 
 local zombies = WorldObserver.observations.zombies()
   :distinct("zombie", 1)
+  :getLQR()
 
 -- NOTE: WorldObserver uses millisecond timestamps internally (in-game clock).
 -- For low-level LQR interval windows, `time` is therefore milliseconds here.
-local joined = Query.from(squares)
+local joined = squares:getLQR()
   :leftJoin(zombies)
   :using({ square = "squareId", zombie = "squareId" })
   :joinWindow({ time = 5 * 1000, field = "sourceTime", currentFn = Time.gameMillis })

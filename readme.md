@@ -14,9 +14,9 @@ The result is **signal over noise**: rather than processing raw world state, you
 
 ### Tradeoffs
 
-With "WO", as with most high-level frameworks, you sacrifice some control over scope and timing that hand-rolled world-sensing logic provides, in exchange for a more compact, convenient, and expressive way to work across many observations.
+With "WO", as with most high-level frameworks, you sacrifice some control over scope and timing that hand-rolled world-sensing logic provides, in exchange for a more compact, convenient, and expressive way to access a broad range of observations.
 
-Use it for features like *“corpse squares near the player”*, *“chef zombies in kitchens”*, or *“cars under attack”*—and other situations that require richer data and can tolerate asynchronous behavior.
+Use it for features like *“corpse squares near the player”*, *“chef zombies in kitchens”*, or *“cars under attack”*—and other situations that benefit from rich data and can tolerate asynchronous behavior.
 
 ### Good for the players
 
@@ -24,11 +24,11 @@ When multiple mods would otherwise perform heavy scanning in parallel, WorldObse
 
 ---
 
-## Quickstart (hello observation)
+## Quickstart
 
-This examples hows you how to
+This examples shows how you
 
-1) declare an interest lease (so WorldObserver knows what facts to gather)  
+1) declare an interest (so WorldObserver knows what facts to gather)  
 2) subscribe to a base observation stream  
 3) stop cleanly (unsubscribe + stop lease)
 
@@ -80,7 +80,7 @@ _G.WOHello = {
 
 - **Facts** are discovered by WorldObserver (listeners + probes) into which your mod declared an **interest**.
 - **Observation streams** then emit plain Lua tables (“observations”) such as `observation.square` or `observation.zombie` 
-- These can be used as-is or further refines by your mod turns into a **situations** and **actions**
+- These can be used as-is or further refined by your mod
 
 
 

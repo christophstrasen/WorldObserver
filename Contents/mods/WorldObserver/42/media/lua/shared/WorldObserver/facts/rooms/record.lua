@@ -216,7 +216,7 @@ if Record.makeRoomRecord == nil then
 		-- that may exceed Lua number precision.
 		local roomId = deriveRoomId(room)
 		if roomId == nil then
-			Log:warn("Skipped room record (missing roomId)")
+			Log:info("Skipped room record (missing roomId)")
 			return nil
 		end
 

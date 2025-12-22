@@ -38,6 +38,21 @@ local lease = WorldObserver.factInterest:declare("YourModId", "featureKey", {
 })
 ```
 
+### Option C: event-driven (player changes room)
+
+Uses `Events.OnPlayerChangeRoom` when available.
+
+```lua
+local WorldObserver = require("WorldObserver")
+
+local lease = WorldObserver.factInterest:declare("YourModId", "featureKey", {
+  type = "rooms",
+  scope = "onPlayerChangeRoom",
+  target = { player = { id = 0 } }, -- optional; defaults to player 0
+  cooldown = { desired = 0 },
+})
+```
+
 ## Subscribe
 
 ```lua
@@ -105,6 +120,7 @@ Supported combinations for `type = "rooms"`:
 | scope        | target key | target shape                    | Notes |
 |-------------|------------|----------------------------------|-------|
 | onSeeNewRoom | n/a        | n/a                              | Emits when a room is seen (engine event). |
+| onPlayerChangeRoom | player | `target = { player = { id = 0 } }` | Emits when the player changes rooms (engine event). |
 | allLoaded    | n/a        | n/a                              | Scans the room list in the active cell (singleplayer). |
 
 Meaningful knobs for `allLoaded`: `staleness`, `cooldown`, `highlight`.

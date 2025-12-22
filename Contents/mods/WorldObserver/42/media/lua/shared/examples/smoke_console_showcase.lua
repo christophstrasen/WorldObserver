@@ -15,8 +15,10 @@
 ]]
 --
 
+local DoHighlight = false
+
 local Log = require("LQR/util/log")
-Log.setLevel("info")
+Log.setLevel("warn")
 
 local Showcase = {}
 
@@ -26,7 +28,7 @@ local SQUARES_INTEREST_NEAR = {
 	staleness = { desired = 2, tolerable = 5 },
 	radius = { desired = 8, tolerable = 5 },
 	cooldown = { desired = 5, tolerable = 10 },
-	highlight = true,
+	highlight = DoHighlight,
 }
 
 local SQUARES_INTEREST_VISION = {
@@ -35,7 +37,7 @@ local SQUARES_INTEREST_VISION = {
 	staleness = { desired = 2, tolerable = 5 },
 	radius = { desired = 20, tolerable = 10 },
 	cooldown = { desired = 5, tolerable = 10 },
-	highlight = true,
+	highlight = DoHighlight,
 }
 
 local ZOMBIES_INTEREST = {
@@ -45,7 +47,7 @@ local ZOMBIES_INTEREST = {
 	radius = { desired = 25, tolerable = 35 },
 	zRange = { desired = 1, tolerable = 2 },
 	cooldown = { desired = 2, tolerable = 4 },
-	highlight = true,
+	highlight = DoHighlight,
 }
 
 local ROOMS_INTEREST = {
@@ -53,15 +55,14 @@ local ROOMS_INTEREST = {
 	scope = "allLoaded",
 	staleness = { desired = 5, tolerable = 10 },
 	cooldown = { desired = 10, tolerable = 20 },
-	--highlight = true,
-	highlight = { 0.9, 0.7, 0.2, debugRoomId = "1.06962295036315E16" },
+	highlight = DoHighlight,
 }
 
 local ITEMS_INTEREST_PLAYER_SQUARE = {
 	type = "items",
 	scope = "playerSquare",
 	cooldown = { desired = 0, tolerable = 0 },
-	highlight = true,
+	highlight = DoHighlight,
 }
 
 local ITEMS_INTEREST_NEAR = {
@@ -70,7 +71,7 @@ local ITEMS_INTEREST_NEAR = {
 	staleness = { desired = 2, tolerable = 6 },
 	radius = { desired = 8, tolerable = 5 },
 	cooldown = { desired = 5, tolerable = 10 },
-	highlight = true,
+	highlight = DoHighlight,
 }
 
 local ITEMS_INTEREST_VISION = {
@@ -79,14 +80,14 @@ local ITEMS_INTEREST_VISION = {
 	staleness = { desired = 5, tolerable = 10 },
 	radius = { desired = 10, tolerable = 6 },
 	cooldown = { desired = 10, tolerable = 20 },
-	highlight = true,
+	highlight = DoHighlight,
 }
 
 local DEAD_BODIES_INTEREST_PLAYER_SQUARE = {
 	type = "deadBodies",
 	scope = "playerSquare",
 	cooldown = { desired = 0, tolerable = 0 },
-	highlight = true,
+	highlight = DoHighlight,
 }
 
 local DEAD_BODIES_INTEREST_NEAR = {
@@ -95,7 +96,7 @@ local DEAD_BODIES_INTEREST_NEAR = {
 	staleness = { desired = 2, tolerable = 6 },
 	radius = { desired = 8, tolerable = 5 },
 	cooldown = { desired = 5, tolerable = 10 },
-	highlight = true,
+	highlight = DoHighlight,
 }
 
 local DEAD_BODIES_INTEREST_VISION = {
@@ -104,7 +105,7 @@ local DEAD_BODIES_INTEREST_VISION = {
 	staleness = { desired = 5, tolerable = 10 },
 	radius = { desired = 10, tolerable = 6 },
 	cooldown = { desired = 10, tolerable = 20 },
-	highlight = true,
+	highlight = DoHighlight,
 }
 
 local squaresHandle = nil
@@ -119,7 +120,11 @@ function Showcase.startSquares()
 	end
 	local WorldObserver = require("WorldObserver")
 	local leases = {
-		near = WorldObserver.factInterest:declare("examples/smoke_console_showcase", "squares.near", SQUARES_INTEREST_NEAR),
+		near = WorldObserver.factInterest:declare(
+			"examples/smoke_console_showcase",
+			"squares.near",
+			SQUARES_INTEREST_NEAR
+		),
 		vision = WorldObserver.factInterest:declare(
 			"examples/smoke_console_showcase",
 			"squares.vision",
@@ -230,6 +235,9 @@ function Showcase.stopRooms()
 	roomsHandle = nil
 	Log.info("[showcase] rooms allLoaded stopped")
 end
+
+-- Console sugar: keep the lower-case variant used in the usage snippet working.
+Showcase.stoprooms = Showcase.stopRooms
 
 function Showcase.startItems()
 	if itemsHandle then

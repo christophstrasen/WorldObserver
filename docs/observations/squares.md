@@ -37,7 +37,6 @@ Common fields on the square record:
 - `hasCorpse`
 - `source` (which producer saw it, e.g. `"probe"`)
 - `sourceTime` (ms, in-game clock)
-- `sourceTime` (ms, in-game clock)
 
 Best-effort engine object (do not rely on it always existing):
 - `IsoGridSquare` (live engine object, may be missing/stale)
