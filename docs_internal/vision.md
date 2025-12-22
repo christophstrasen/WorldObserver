@@ -1,15 +1,14 @@
 # WorldObserver – Vision
 
-WorldObserver is a new, LQR‑powered world observation layer for Lua‑based mods.
-It supersedes the earlier WorldScanner experiments and is aimed squarely at
-Lua‑coding mod authors (no GUI/config system on top).
+WorldObserver is a LQR‑powered world observation layer for Lua‑based mods.
+It is aimed squarely at Lua‑coding mod authors (no GUI/config system on top).
 
 The intent is to make it easy to **describe what you want to observe in the
 game world** – spatially, logically, and over time – while pushing all the
 looping, scanning, joining, and buffering work into a shared engine.
 
-This document is aspirational by design: it describes where we want to go, not
-necessarily what is implemented today.
+This document is aspirational by design: it describes where we want to go
+but should also be used to check where we are in reality
 
 ---
 

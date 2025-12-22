@@ -1,5 +1,7 @@
 # Refactor brief: data-driven interest definitions + shared sensors
 
+> **Stage:** Proposal & design
+
 Status: proposal / refactor runway
 
 This brief describes a refactor intended to make it safe and scalable to grow WorldObserver’s fact interest surface (more `type/scope/target` combinations) while avoiding duplicated scanning work.

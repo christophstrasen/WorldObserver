@@ -1,7 +1,9 @@
 # WorldObserver – MVP plan
 
+> **Stage:** Proposal & design
+
 Internal planning doc for the first concrete WorldObserver implementation
-slice. This complements `docs_internal/vision.md`, `docs_internal/api_proposal.md`,
+slice. This complements `docs_internal/vision.md`, `docs_internal/drafts/api_proposal.md`,
 and `docs_internal/fact_layer.md` and is allowed to be more opinionated and
 pragmatic.
 
@@ -41,7 +43,7 @@ then grow outwards.
 
 - **Config & debug surface**
   - A minimal debug/logging hook surface (even if only stubs) consistent with
-    `api_proposal.md` (e.g. `WorldObserver.debug.describeFacts("squares")` is
+    `docs_internal/drafts/api_proposal.md` (e.g. `WorldObserver.debug.describeFacts("squares")` is
     allowed to be a simple logger in MVP).
 
 - **Documentation & typing**
@@ -145,7 +147,7 @@ Notes:
 
 - MVP does not need to fully define “trash items” yet; it is enough that the
   field is present so mods can build their own “dirty square” predicates via
-  `stream:filter(...)` (see `docs_internal/api_proposal.md` for the recommended pattern).
+  `stream:filter(...)` (see `docs_internal/drafts/api_proposal.md` for the recommended pattern).
 - Additional derived fields (e.g. room IDs, zone tags) are deferred until we
   add more world types.
 
@@ -460,8 +462,8 @@ as hard guardrails unless explicitly revised in docs or during design chats:
 - **No extra config knobs without prior agreement**
   - MVP must **not add new configuration knobs** (especially user-facing
     ones) that have not:
-    - either been discussed in existing docs (`vision.md`, `api_proposal.md`,
-      `fact_layer.md`), or
+    - either been discussed in existing docs (`docs_internal/vision.md`, `docs_internal/drafts/api_proposal.md`,
+      `docs_internal/fact_layer.md`), or
     - been explicitly agreed while chatting during design.
 
 - **No shims or backward-compatibility promises**

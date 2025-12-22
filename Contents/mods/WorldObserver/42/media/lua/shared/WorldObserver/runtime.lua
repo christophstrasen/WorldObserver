@@ -125,7 +125,7 @@ function Runtime.new(opts)
 				degradedMaxItemsPerTick = opts.degradedMaxItemsPerTick,
 				baseDrainMaxItems = opts.baseDrainMaxItems,
 				drainAuto = opts.drainAuto,
-				-- Backlog heuristics (domain-provided; see docs_internal/runtime_controller.md).
+				-- Backlog heuristics (domain-provided; see docs_internal/drafts/runtime_controller.md).
 				backlogMinPending = opts.backlogMinPending,
 				backlogFillThreshold = opts.backlogFillThreshold,
 				backlogMinIngestRate15 = opts.backlogMinIngestRate15,

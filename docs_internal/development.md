@@ -134,4 +134,4 @@ High‑level steps:
 3. For development, also enable the LQR/lua‑reactivex dependency mods if you later split them into separate workshop entries; in the current layout they are shipped as part of WorldObserver’s Lua payload.
 4. Use in‑game logs and any debug helpers exposed on `WorldObserver.debug` to verify that observers and helpers behave as expected.
 
-Refer to `docs_internal/mvp.md` and `docs_internal/vision.md` for the current intended API surface and behavior while developing new features.
+Refer to `docs_internal/drafts/mvp.md` and `docs_internal/vision.md` for the current intended API surface and behavior while developing new features.

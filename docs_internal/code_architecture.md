@@ -5,11 +5,11 @@ It is written for contributors who plan to add new fact types, scopes, probes/li
 
 Related internal docs (deeper dives):
 - Fact layer + ingest boundary: `docs_internal/fact_layer.md`
-- Interest declarations + merging: `docs_internal/fact_interest.md`
-- Runtime controller model: `docs_internal/runtime_controller.md`
+- Interest declarations + merging: `docs_internal/drafts/fact_interest.md`
+- Runtime controller model: `docs_internal/drafts/runtime_controller.md`
 - Runtime dynamics (how the runtime shapes work): `docs_internal/runtime_dynamics.md`
 - Interest surface matrix: `docs_internal/interest_combinations.md`
-- Refactor brief (history + intent): `docs_internal/refactor_interest_definitions_and_sensors.md`
+- Refactor brief (history + intent): `docs_internal/drafts/refactor_interest_definitions_and_sensors.md`
 - Change log + lessons learned: `docs_internal/logbook.md`
 
 ## 0) Architecture principles (read first)

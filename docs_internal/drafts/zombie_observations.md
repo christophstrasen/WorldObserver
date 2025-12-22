@@ -1,5 +1,7 @@
 # Zombie observations (next fact family) — design + implementation plan
 
+> **Stage:** Proposal & design
+
 This document proposes how to add **ZombieObservations** as the next WorldObserver slice after squares.
 
 The goal is to ship a useful, budgeted, interest-driven `WorldObserver.observations:zombies()` stream (emitting
@@ -8,9 +10,9 @@ easier to add.
 
 Related docs:
 - Vision: `docs_internal/vision.md`
-- API proposal: `docs_internal/api_proposal.md`
+- API proposal: `docs_internal/drafts/api_proposal.md`
 - Fact layer reality: `docs_internal/fact_layer.md`
-- Fact interest & policy: `docs_internal/fact_interest.md`
+- Fact interest & policy: `docs_internal/drafts/fact_interest.md`
 - Research notes / relevant events: `docs_internal/research.md`
 
 ---

@@ -8,9 +8,9 @@ still capturing the longer-term direction.
 
 Related docs:
 - Vision: `docs_internal/vision.md`
-- Ingest integration plan: `docs_internal/using_ingest_system.md`
+- Ingest integration plan: `docs_internal/drafts/using_ingest_system.md`
 - LQR ingest docs: `external/LQR/docs/concepts/ingest_buffering.md`
-- Fact interest declarations (design brief): `docs_internal/fact_interest.md`
+- Fact interest declarations (design brief): `docs_internal/drafts/fact_interest.md`
 
 ---
 

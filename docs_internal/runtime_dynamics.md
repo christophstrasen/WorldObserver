@@ -8,10 +8,10 @@ This document explains how WorldObserver’s runtime “shapes” work at runtim
 This is contributor-facing and code-first. The goal is to help you follow the feedback loop in code and know where to tune it.
 
 Related docs:
-- Conceptual model (design draft): `docs_internal/runtime_controller.md`
+- Conceptual model (design draft): `docs_internal/drafts/runtime_controller.md`
 - Fact layer + ingest boundary: `docs_internal/fact_layer.md`
-- Ingest usage notes: `docs_internal/using_ingest_system.md`
-- Interest semantics: `docs_internal/fact_interest.md`, `docs/guides/interest.md`
+- Ingest usage notes: `docs_internal/drafts/using_ingest_system.md`
+- Interest semantics: `docs_internal/drafts/fact_interest.md`, `docs/guides/interest.md`
 
 ## 1) The feedback loop (one picture)
 
@@ -225,4 +225,3 @@ If you are extending probes/sensors, prefer using `status.window` and `status.ti
 
 1) Should we expose a public “runtime status” doc in `docs/guides/` (for modders), or keep these details internal for now?
 2) Do you want an explicit “how to debug overload” section that maps common symptoms to the relevant runtime/ingest fields?
-

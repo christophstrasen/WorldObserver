@@ -1,12 +1,14 @@
 # WorldObserver Runtime Controller (design draft)
 
+> **Stage:** Proposal & design
+
 This document describes a proposed **runtime performance controller** for WorldObserver.
 It is host-specific (Project Zomboid) and focuses on keeping frame time stable while continuing to do useful work in the background.
 
 Related docs:
 - Vision: `docs_internal/vision.md`
 - Fact layer + ingest wiring: `docs_internal/fact_layer.md`
-- Ingest integration plan: `docs_internal/using_ingest_system.md`
+- Ingest integration plan: `docs_internal/drafts/using_ingest_system.md`
 - LQR ingest docs: `external/LQR/docs/concepts/ingest_buffering.md`
 
 ---

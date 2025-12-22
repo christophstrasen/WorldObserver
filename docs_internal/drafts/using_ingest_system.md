@@ -1,5 +1,7 @@
 # Using `LQR/ingest` in WorldObserver (implementation plan)
 
+> **Stage:** Proposal & design
+
 This document is the implementation plan for integrating the new `LQR/ingest` system into WorldObserver’s fact layer.
 
 Related docs:

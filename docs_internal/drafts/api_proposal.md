@@ -1,5 +1,7 @@
 # WorldObserver – API proposal (MVP)
 
+> **Stage:** Proposal & design
+
 This document describes the intended **public WorldObserver Lua API** for the MVP.
 Anything not mentioned here (internal fact plans, probe implementations, LQR query
 builders, etc.) is considered implementation detail and may change without notice.

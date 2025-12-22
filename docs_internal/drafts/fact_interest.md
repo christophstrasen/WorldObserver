@@ -1,11 +1,13 @@
 # Fact interest declarations (design brief)
 
+> **Stage:** Proposal & design
+
 This document sketches how mods can **declare interest** in upstream fact acquisition so WorldObserver can coordinate
 shared probing work under a global budget.
 
 Related docs:
 - Fact layer reality: `docs_internal/fact_layer.md`
-- Runtime controller: `docs_internal/runtime_controller.md`
+- Runtime controller: `docs_internal/drafts/runtime_controller.md`
 - Vision: `docs_internal/vision.md`
 
 ---

@@ -24,7 +24,7 @@
   - Replaced outdated “observer” terminology with the new core concepts.
   - Added a “Before” story for how mods observe the world today, with LoC/complexity/risk estimates per step.
 
-- Created `docs_internal/api_proposal.md` scaffold and first decisions:
+- Created `docs_internal/drafts/api_proposal.md` scaffold and first decisions:
   - ObservationStreams are exposed as `WorldObserver.observations.<name>()`.
   - New ObservationStreams are registered via a small config: `build = …` plus `enabled_helpers = { square = "SquareObs", zombie = "ZombieObs", … }`.
   - Helper sets (square/zombie/spatial/time/etc.) are thin, reusable sugar attached based on `enabled_helpers`, assuming certain fields in the observation records; internal use of LQR join/group/distinct windows is hidden behind semantic helpers.
@@ -52,7 +52,7 @@
 ## day3 – MVP plan and schema details
 
 ### Highlights
-- Drafted a focused MVP implementation plan in `docs_internal/mvp.md`:
+- Drafted a focused MVP implementation plan in `docs_internal/drafts/mvp.md`:
   - Scoped MVP to a single, high-quality vertical slice for **squares only** (facts + `observations.squares()` + minimal helpers).
   - Defined a concrete module layout under `WorldObserver/` (`config.lua`, `facts/registry.lua`, `facts/squares.lua`, `observations/core.lua`, `observations/squares.lua`, `helpers/square.lua`, `debug.lua`) with `WorldObserver.lua` as the single public entry point.
   - Captured must-nots and guardrails (no Situation/Action API yet, no GUI/overlays, no auto-tuning, no persistence, no multiplayer guarantees, no extra config knobs without prior agreement, no backwards-compat shims).
@@ -60,7 +60,7 @@
 - Refined observation naming and row shapes:
   - Standardized on `observation` (singular) as the callback parameter for stream emissions (`observation.square`, `observation.room`, etc.).
   - Introduced a generic `Observation` row type (per-emission table) instead of `SquareObservationEmission`, keeping “Observation” as the primary concept.
-  - Clarified in `api_proposal.md` that core schemas (e.g. `SquareObservation`) are structured and documented, while custom schemas are “opaque but honest” and only constrained where they opt into helper sets or debug tooling.
+  - Clarified in `docs_internal/drafts/api_proposal.md` that core schemas (e.g. `SquareObservation`) are structured and documented, while custom schemas are “opaque but honest” and only constrained where they opt into helper sets or debug tooling.
 
 - Defined `SquareObservation` and time handling:
   - Specified the `SquareObservation` schema, including `squareId`, a best-effort `IsoGridSquare` reference, flags like `hasBloodSplat`/`hasTrashItems`, and `sourceTime` (from `timeCalendar:getTimeInMillis()`).
@@ -72,7 +72,7 @@
   - Decided that WorldObserver fact sources will:
     - stamp `sourceTime` in the fact layer when creating a `SquareObservation`, and
     - call `Schema.wrap("SquareObservation", observable, { idSelector = nextObservationId, sourceTimeField = "sourceTime" })` so LQR sees a monotonic per-observation `RxMeta.id` and a numeric `RxMeta.sourceTime`.
-  - Documented these decisions in both `mvp.md` and `api_proposal.md`, including implementation notes about separating domain IDs from LQR metadata.
+  - Documented these decisions in both `docs_internal/drafts/mvp.md` and `docs_internal/drafts/api_proposal.md`, including implementation notes about separating domain IDs from LQR metadata.
 
 - Added an advanced helper for custom schemas:
   - Planned and documented a public `WorldObserver.nextObservationId()` helper that returns a monotonically increasing integer unique within the current Lua VM.
@@ -84,12 +84,12 @@
 - Tightened naming and documentation consistency:
   - Switched consistently to `ObservationStream` (singular) as the type name, with “ObservationStreams” used only in prose.
   - Simplified EmmyLua class names for the `WorldObserver` entry point (`Observations`, `Config`, `Debug`) to keep annotations readable.
-  - Fixed minor typos and aligned `mvp.md` and `api_proposal.md` around shared concepts (observation row shape, time stamping, ID strategy).
+  - Fixed minor typos and aligned `docs_internal/drafts/mvp.md` and `docs_internal/drafts/api_proposal.md` around shared concepts (observation row shape, time stamping, ID strategy).
 
 ### Next steps
 - Implement the MVP module skeletons (`WorldObserver.lua`, `config.lua`, `facts/registry.lua`, `facts/squares.lua`, `observations/core.lua`, `observations/squares.lua`, `helpers/square.lua`, `debug.lua`) to match the agreed layouts and contracts.
 - Extend `LQR.Schema.wrap` with `sourceTimeField` / `sourceTimeSelector` and validate that time-based windows behave correctly against `sourceTime`.
-- Start adding engine-independent Busted tests for `facts.squares`, `observations.squares()`, and the first square helpers, following the patterns sketched in `mvp.md`.
+- Start adding engine-independent Busted tests for `facts.squares`, `observations.squares()`, and the first square helpers, following the patterns sketched in `docs_internal/drafts/mvp.md`.
 
 ## day4 – MVP skeleton implemented (untested in-game)
 
@@ -191,7 +191,7 @@
 - Restored and clarified corpse detection:
   - Re-introduced `SquareObservation.hasCorpse` as a materialized boolean and populated it primarily via `IsoGridSquare:getDeadBody()` at record creation time (fallback to `hasCorpse` when needed).
   - Updated square helpers to treat corpse detection as a patchable record-level predicate (`SquareHelpers.record.squareHasCorpse`) so it can be reused in stream helpers and in mod-defined predicates.
-  - Updated schema docs (`docs_internal/mvp.md`) and added a unit test ensuring `hasCorpse` is set when `getDeadBody()` returns a corpse.
+  - Updated schema docs (`docs_internal/drafts/mvp.md`) and added a unit test ensuring `hasCorpse` is set when `getDeadBody()` returns a corpse.
 
 - Tightened “patchable by default” policy in docs:
   - Added an explicit statement in `docs_internal/vision.md` and `.aicontext/context.md` that helper sets are patchable by default and should be defined behind nil-guards.
