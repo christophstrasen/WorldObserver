@@ -74,7 +74,7 @@ function SmokeItems.start(opts)
 		stream = stream:itemFullTypeIs(opts.itemFullType)
 	end
 	if opts.onlyContainerItems == true then
-		stream = stream:whereItem(function(itemRecord)
+		stream = stream:itemFilter(function(itemRecord)
 			return type(itemRecord) == "table" and itemRecord.containerItemId ~= nil
 		end)
 	end

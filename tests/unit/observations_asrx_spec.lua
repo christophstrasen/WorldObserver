@@ -7,6 +7,9 @@ package.path = table.concat({
 	"external/lua-reactivex/?/init.lua",
 	package.path,
 }, ";")
+_G.WORLDOBSERVER_HEADLESS = true
+_G.LQR_HEADLESS = true
+
 
 local ObservationsCore = require("WorldObserver/observations/core")
 local rx = require("reactivex")

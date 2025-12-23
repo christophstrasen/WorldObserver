@@ -7,6 +7,9 @@ package.path = table.concat({
 	"external/lua-reactivex/?/init.lua",
 	package.path,
 }, ";")
+_G.WORLDOBSERVER_HEADLESS = true
+_G.LQR_HEADLESS = true
+
 
 local Record = require("WorldObserver/facts/rooms/record")
 

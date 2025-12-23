@@ -20,7 +20,9 @@ ZombieHelpers.stream = ZombieHelpers.stream or {}
 local function zombieField(observation, fieldName)
 	local zombieRecord = observation[fieldName]
 	if zombieRecord == nil then
-		Log:warn("zombie helper called without field '%s' on observation", tostring(fieldName))
+		if _G.WORLDOBSERVER_HEADLESS ~= true then
+			Log:warn("zombie helper called without field '%s' on observation", tostring(fieldName))
+		end
 		return nil
 	end
 	return zombieRecord
@@ -92,9 +94,9 @@ end
 
 -- Stream sugar: apply a predicate to the zombie record directly.
 -- This avoids leaking LQR schema names (e.g. "ZombieObservation") into mod code.
-if ZombieHelpers.whereZombie == nil then
-	function ZombieHelpers.whereZombie(stream, fieldName, predicate)
-		assert(type(predicate) == "function", "whereZombie predicate must be a function")
+if ZombieHelpers.zombieFilter == nil then
+	function ZombieHelpers.zombieFilter(stream, fieldName, predicate)
+		assert(type(predicate) == "function", "zombieFilter predicate must be a function")
 		local target = fieldName or "zombie"
 		return stream:filter(function(observation)
 			local zombieRecord = zombieField(observation, target)
@@ -102,9 +104,9 @@ if ZombieHelpers.whereZombie == nil then
 		end)
 	end
 end
-if ZombieHelpers.stream.whereZombie == nil then
-	function ZombieHelpers.stream.whereZombie(stream, fieldName, ...)
-		return ZombieHelpers.whereZombie(stream, fieldName, ...)
+if ZombieHelpers.stream.zombieFilter == nil then
+	function ZombieHelpers.stream.zombieFilter(stream, fieldName, ...)
+		return ZombieHelpers.zombieFilter(stream, fieldName, ...)
 	end
 end
 

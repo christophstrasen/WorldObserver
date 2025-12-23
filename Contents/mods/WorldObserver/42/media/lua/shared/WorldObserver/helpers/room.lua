@@ -19,16 +19,18 @@ RoomHelpers.stream = RoomHelpers.stream or {}
 local function roomField(observation, fieldName)
 	local record = observation[fieldName]
 	if record == nil then
-		Log:warn("room helper called without field '%s' on observation", tostring(fieldName))
+		if _G.WORLDOBSERVER_HEADLESS ~= true then
+			Log:warn("room helper called without field '%s' on observation", tostring(fieldName))
+		end
 		return nil
 	end
 	return record
 end
 
 -- Stream sugar: apply a predicate to the room record directly.
-if RoomHelpers.whereRoom == nil then
-	function RoomHelpers.whereRoom(stream, fieldName, predicate)
-		assert(type(predicate) == "function", "whereRoom predicate must be a function")
+if RoomHelpers.roomFilter == nil then
+	function RoomHelpers.roomFilter(stream, fieldName, predicate)
+		assert(type(predicate) == "function", "roomFilter predicate must be a function")
 		local target = fieldName or "room"
 		return stream:filter(function(observation)
 			local roomRecord = roomField(observation, target)
@@ -36,9 +38,9 @@ if RoomHelpers.whereRoom == nil then
 		end)
 	end
 end
-if RoomHelpers.stream.whereRoom == nil then
-	function RoomHelpers.stream.whereRoom(stream, fieldName, ...)
-		return RoomHelpers.whereRoom(stream, fieldName, ...)
+if RoomHelpers.stream.roomFilter == nil then
+	function RoomHelpers.stream.roomFilter(stream, fieldName, ...)
+		return RoomHelpers.roomFilter(stream, fieldName, ...)
 	end
 end
 

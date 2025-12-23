@@ -109,7 +109,7 @@ Available today:
 - `:roomTypeIs("kitchen")`
 - `:roomHasWater()`
 
-Record helpers (use inside `:whereRoom(...)` or inside Rx `:filter(...)` after `:asRx()`):
+Record helpers (use inside `:roomFilter(...)` or inside Rx `:filter(...)` after `:asRx()`):
 - `WorldObserver.helpers.room.record.roomTypeIs(roomRecord, "kitchen")`
 - `WorldObserver.helpers.room.record.roomHasWater(roomRecord)`
 

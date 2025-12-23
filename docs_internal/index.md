@@ -10,6 +10,7 @@ Internal documentation for contributors and maintainers.
 
 - `docs_internal/vision.md` — permanent intent and “why”; use to sanity-check decisions.
 - `docs_internal/code_architecture.md` — current IS architecture and contributor guardrails.
+- `docs_internal/helpers.md` — helper families, attachment, naming, and third-party helpers.
 - `docs_internal/runtime_dynamics.md` — how runtime shaping works today (budgets, probes, draining).
 - `docs_internal/fact_layer.md` — current fact layer implementation notes and boundaries.
 

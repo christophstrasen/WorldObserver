@@ -31,9 +31,11 @@ if type(moduleName) == "string" then
 
 	local function squareField(observation, fieldName)
 		-- Helpers should be forgiving if a stream remaps the square field.
-		local square = observation[fieldName]
-		if square == nil then
-		Log:warn("square helper called without field '%s' on observation", tostring(fieldName))
+	local square = observation[fieldName]
+	if square == nil then
+		if _G.WORLDOBSERVER_HEADLESS ~= true then
+			Log:warn("square helper called without field '%s' on observation", tostring(fieldName))
+		end
 		return nil
 	end
 	return square
@@ -76,9 +78,9 @@ local function squareHasCorpse(squareRecord)
 
 	-- Stream sugar: apply a predicate to the square record directly.
 	-- This avoids leaking LQR schema names (e.g. "SquareObservation") into mod code.
-	if SquareHelpers.whereSquare == nil then
-	function SquareHelpers.whereSquare(stream, fieldName, predicate)
-		assert(type(predicate) == "function", "whereSquare predicate must be a function")
+	if SquareHelpers.squareFilter == nil then
+	function SquareHelpers.squareFilter(stream, fieldName, predicate)
+		assert(type(predicate) == "function", "squareFilter predicate must be a function")
 		local target = fieldName or "square"
 		return stream:filter(function(observation)
 			local square = squareField(observation, target)
@@ -86,9 +88,9 @@ local function squareHasCorpse(squareRecord)
 		end)
 	end
 end
-if SquareHelpers.stream.whereSquare == nil then
-	function SquareHelpers.stream.whereSquare(stream, fieldName, ...)
-		return SquareHelpers.whereSquare(stream, fieldName, ...)
+if SquareHelpers.stream.squareFilter == nil then
+	function SquareHelpers.stream.squareFilter(stream, fieldName, ...)
+		return SquareHelpers.squareFilter(stream, fieldName, ...)
 	end
 end
 

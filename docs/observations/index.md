@@ -51,5 +51,6 @@ ReactiveX primer (optional, but helpful):
 
 Next steps (advanced):
 - [Derived streams (multi-family observations)](../guides/derived_streams.md)
+- [Helpers (built-in and extending)](../guides/helpers.md)
 - [Extending record fields](../guides/extending_records.md)
 - [Troubleshooting](../troubleshooting.md)

@@ -104,13 +104,13 @@ If you need extra fields on `observation.deadBody`, register a record extender:
 
 ```lua
 local stream = WorldObserver.observations:deadBodies()
-  :whereDeadBody(function(body)
+  :deadBodyFilter(function(body)
     return body.squareId ~= nil
   end)
 ```
 
 Available today:
-- `:whereDeadBody(predicate)`
+- `:deadBodyFilter(predicate)`
 
 ## Supported interest configuration (today)
 

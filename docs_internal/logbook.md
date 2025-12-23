@@ -447,11 +447,34 @@
   - created `docs_internal/index.md` as a “start here” map,
   - moved proposal/design docs into `docs_internal/drafts/`,
   - added `docs_internal/testing.md` to formalize the de-facto test patterns used across the suite.
+- Added a focused helpers architecture doc (`docs_internal/helpers.md`) and a user-facing helpers guide (`docs/guides/helpers.md`), including:
+  - helper family vs observation family distinctions (not strictly 1:1),
+  - helper attachment rules (`enabled_helpers`, alias resolution, `withHelpers`, `registerHelperFamily`),
+  - new naming conventions and effectful-helper guidelines.
+- Standardized predicate helpers to the `<family>Filter` naming scheme:
+  - renamed all `where<Family>` helpers to `squareFilter`, `zombieFilter`, `spriteFilter`, etc.,
+  - updated call-sites, tests, and docs accordingly (no compatibility shims).
+- Added an effectful sprite helper `removeSpriteObject()` (renamed from `removeAssociatedTileObject`) to remove the observed tile object via `IsoGridSquare:RemoveTileObject`.
+- Refactored helper plumbing out of `observations/core.lua` into `observations/helpers.lua` (no behavior change), keeping core focused on stream/registry mechanics.
+- Kept busted output clean by extending headless suppression patterns to helper “missing field” warnings and adding headless flags to missing test files.
+- Implemented derived stream creation that preserves WO lifecycle semantics:
+  - added `WorldObserver.observations:derive(...)` as a wrapper over LQR joins while keeping fact start/stop behavior,
+  - ensured `ObservationStream:getLQR()` returns a join-friendly builder rooted at output schemas,
+  - merged helper families/dimensions across input streams and documented the pattern.
+- Expanded helper attachment and third‑party support:
+  - introduced `ObservationStream:withHelpers({ helperSets, enabled_helpers })` with alias resolution,
+  - added `WorldObserver.observations:registerHelperFamily(...)` and `stream.helpers.<family>` namespaces,
+  - updated docs/tests and wrote both internal (`docs_internal/helpers.md`) and user‑facing (`docs/guides/helpers.md`) helper guides.
+- Standardized helper naming and semantics:
+  - renamed all `where<Family>` stream predicates to `<family>Filter` (no shims),
+  - renamed the effectful sprite removal helper to `removeSpriteObject`,
+  - codified naming rules for read/filter vs effectful helpers.
 
 ### Lessons
 - Smoke scripts are part of the user-facing API: they must read top-to-bottom with explicit “do X” steps (no hidden auto-enables).
 - PZ/Kahlua is not “Lua 5.1 complete”: treat the stdlib as a compatibility surface and prefer explicit, engine-safe patterns.
 - Highlight duration is user-perceived correctness: it should be derived from the observation cadence, not an arbitrary cap, and must be consistent across all fact families.
+- Helper APIs need explicit naming and behavior rules to stay discoverable as the surface grows; codifying the conventions early prevents accidental divergence.
 
 ### Next steps
 - Add a small “sprite discovery helper” for smoke runs (e.g. dump a sample of nearby sprite names) so users don’t need to guess sprite strings.

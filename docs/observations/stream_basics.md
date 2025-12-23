@@ -51,8 +51,11 @@ Filtering means: “only keep the observations I actually care about”.
 For most mods, filtering has a simple learning path:
 
 1) try a built-in helper (easy, readable)  
-2) if you need custom logic (boolean AND/OR etc), use `:whereSquare(...)` / `:whereZombie(...)`  
+2) if you need custom logic (boolean AND/OR etc), use `:squareFilter(...)` / `:zombieFilter(...)`  
 3) only if you want more operators, switch to `:asRx()` (optional)
+
+More detail (including third-party helpers):
+- [Helpers (built-in and extending)](../guides/helpers.md)
 
 ### 2.1 Easiest: use a built-in helper
 
@@ -63,7 +66,7 @@ local stream = WorldObserver.observations:squares()
   :squareHasCorpse()
 ```
 
-### 2.2 Custom rules: use `:whereSquare(...)` / `:whereZombie(...)`
+### 2.2 Custom rules: use `:squareFilter(...)` / `:zombieFilter(...)`
 
 These methods call your function with the record you care about (the square record or zombie record).
 
@@ -73,7 +76,7 @@ Tip: create a short local alias once, so your code stays clean:
 local SquareHelper = WorldObserver.helpers.square.record
 
 local stream = WorldObserver.observations:squares()
-  :whereSquare(function(squareRecord)
+  :squareFilter(function(squareRecord)
     return SquareHelper.squareHasCorpse(squareRecord) and SquareHelper.squareHasIsoGridSquare(squareRecord)
   end)
 ```
@@ -84,10 +87,10 @@ Zombie example:
 local ZombieHelper = WorldObserver.helpers.zombie.record
 
 local stream = WorldObserver.observations:zombies()
-  :whereZombie(ZombieHelper.zombieHasTarget)
+  :zombieFilter(ZombieHelper.zombieHasTarget)
 ```
 
-If you’re just getting started: ignore `stream:filter(...)` for now and stick to helpers + `whereSquare/whereZombie`.
+If you’re just getting started: ignore `stream:filter(...)` for now and stick to helpers + `squareFilter/zombieFilter`.
 
 ### 2.3 Attach third-party helpers (optional)
 

@@ -57,7 +57,7 @@ function SmokeSquares.start(opts)
 	end
 	if opts.withHelpers == true then
 		-- Example: only keep squares with a corpse.
-		stream = stream:whereSquare(SquareHelper.squareHasCorpse)
+		stream = stream:squareFilter(SquareHelper.squareHasCorpse)
 	end
 
 	Log.info(

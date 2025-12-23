@@ -74,19 +74,19 @@ local stream = WorldObserver.observations:zombies()
   :distinct("zombie", 2)
 ```
 
-If you want custom boolean logic, use `:whereZombie(...)` with record predicates:
+If you want custom boolean logic, use `:zombieFilter(...)` with record predicates:
 
 ```lua
 local ZombieHelper = WorldObserver.helpers.zombie.record
 
 local stream = WorldObserver.observations:zombies()
-  :whereZombie(ZombieHelper.zombieHasTarget)
+  :zombieFilter(ZombieHelper.zombieHasTarget)
 ```
 
 Available today:
 - `:zombieHasTarget()` (keeps only zombies that currently have a target)
 
-Record helpers (use inside `:whereZombie(...)` or inside Rx `:filter(...)` after `:asRx()`):
+Record helpers (use inside `:zombieFilter(...)` or inside Rx `:filter(...)` after `:asRx()`):
 - `WorldObserver.helpers.zombie.record.zombieHasTarget(zombieRecord)`
 
 ## Supported interest configuration (today)

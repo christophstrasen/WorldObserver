@@ -118,13 +118,13 @@ local stream = WorldObserver.observations:items()
   :distinct("item", 10)
 ```
 
-If you want custom boolean logic, use `:whereItem(...)` with record predicates:
+If you want custom boolean logic, use `:itemFilter(...)` with record predicates:
 
 ```lua
 local ItemHelper = WorldObserver.helpers.item.record
 
 local stream = WorldObserver.observations:items()
-  :whereItem(function(item)
+  :itemFilter(function(item)
     return ItemHelper.itemTypeIs(item, "Apple")
   end)
 ```
@@ -132,9 +132,9 @@ local stream = WorldObserver.observations:items()
 Available today:
 - `:itemTypeIs(typeName)`
 - `:itemFullTypeIs(fullType)`
-- `:whereItem(predicate)`
+- `:itemFilter(predicate)`
 
-Record helpers (use inside `:whereItem(...)` or inside Rx `:filter(...)` after `:asRx()`):
+Record helpers (use inside `:itemFilter(...)` or inside Rx `:filter(...)` after `:asRx()`):
 - `WorldObserver.helpers.item.record.itemTypeIs(itemRecord, wanted)`
 - `WorldObserver.helpers.item.record.itemFullTypeIs(itemRecord, wanted)`
 

@@ -37,7 +37,7 @@ builders, etc.) is considered implementation detail and may change without notic
   - stream helpers should read well in a chain and **default to fluent predicate names**:
     - prefer `squareHasCorpse()`, `zombieHasTarget()`, `roomIsSafe()` over `whereSquareHasCorpse()`-style names;
     - assume helpers return a refined stream unless clearly stated otherwise.
-  - reserve `where*` only for **rare** helpers where the fluent predicate form would be ambiguous or misleading.
+  - use `<family>Filter(...)` for the generic “accept a predicate” helpers; avoid `where*` naming.
   - `*Is*` is used for simple flags/enums on that entity, `*Has*` for lookups
     into collections/relationships (loot, decals, tags, outfit tags, etc.).
 - **LQR windows are internal:** join/group/distinct windows are tuned inside
@@ -211,9 +211,9 @@ so existing streams keep calling the patched logic via their delegators.
   rather than the post-rename fields modders see in `subscribe` callbacks.
 - To keep modder code simple, WorldObserver also provides family sugar methods
   that hide these schema keys and pass the record directly:
-  - `:whereSquare(function(squareRecord, observation) return ... end)`
-  - `:whereZombie(function(zombieRecord, observation) return ... end)`
-- Use `:whereSquare(...)` / `:whereZombie(...)` for mod-facing predicate
+  - `:squareFilter(function(squareRecord, observation) return ... end)`
+  - `:zombieFilter(function(zombieRecord, observation) return ... end)`
+- Use `:squareFilter(...)` / `:zombieFilter(...)` for mod-facing predicate
   composition (AND/OR); reserve raw `filter` for advanced/internal use.
 
 ### Advanced escape hatch: `getLQR`

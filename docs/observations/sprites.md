@@ -93,13 +93,13 @@ local stream = WorldObserver.observations:sprites()
   :distinct("sprite", 10)
 ```
 
-If you want custom boolean logic, use `:whereSprite(...)` with record predicates:
+If you want custom boolean logic, use `:spriteFilter(...)` with record predicates:
 
 ```lua
 local SpriteHelper = WorldObserver.helpers.sprite.record
 
 local stream = WorldObserver.observations:sprites()
-  :whereSprite(function(sprite)
+  :spriteFilter(function(sprite)
     return SpriteHelper.spriteIdIs(sprite, 120000)
   end)
 ```
@@ -107,9 +107,10 @@ local stream = WorldObserver.observations:sprites()
 Available today:
 - `:spriteNameIs(name)`
 - `:spriteIdIs(id)`
-- `:whereSprite(predicate)`
+- `:spriteFilter(predicate)`
+- `:removeSpriteObject()` (best-effort; uses `IsoGridSquare:RemoveTileObject` for the observed sprite's `IsoObject`)
 
-Record helpers (use inside `:whereSprite(...)` or inside Rx `:filter(...)` after `:asRx()`):
+Record helpers (use inside `:spriteFilter(...)` or inside Rx `:filter(...)` after `:asRx()`):
 - `WorldObserver.helpers.sprite.record.spriteNameIs(spriteRecord, wanted)`
 - `WorldObserver.helpers.sprite.record.spriteIdIs(spriteRecord, wanted)`
 

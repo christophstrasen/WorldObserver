@@ -56,13 +56,13 @@ local stream = WorldObserver.observations:squares()
   :distinct("square", 10)
 ```
 
-If you want custom boolean logic (AND/OR), use `:whereSquare(...)` with record predicates:
+If you want custom boolean logic (AND/OR), use `:squareFilter(...)` with record predicates:
 
 ```lua
 local SquareHelper = WorldObserver.helpers.square.record
 
 local stream = WorldObserver.observations:squares()
-  :whereSquare(function(s)
+  :squareFilter(function(s)
     return SquareHelper.squareHasCorpse(s) and SquareHelper.squareHasIsoGridSquare(s)
   end)
 ```
@@ -71,7 +71,7 @@ Available today:
 - `:squareHasCorpse()`
 - `:squareHasIsoGridSquare()` (keeps only records that can resolve a live `IsoGridSquare`)
 
-Record helpers (use inside `:whereSquare(...)` or inside Rx `:filter(...)` after `:asRx()`):
+Record helpers (use inside `:squareFilter(...)` or inside Rx `:filter(...)` after `:asRx()`):
 - `WorldObserver.helpers.square.record.squareHasCorpse(squareRecord)`
 - `WorldObserver.helpers.square.record.squareHasIsoGridSquare(squareRecord, opts)` (may hydrate/cache `squareRecord.IsoGridSquare`)
 

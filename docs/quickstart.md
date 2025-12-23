@@ -103,12 +103,12 @@ If you see nothing, the most common causes:
 
 ### Custom conditions (AND/OR)
 
-Once you want custom boolean logic, keep the quickstart chain but switch to `:whereSquare(...)`:
+Once you want custom boolean logic, keep the quickstart chain but switch to `:squareFilter(...)`:
 
 ```lua
 local SquareHelper = WorldObserver.helpers.square.record
 local stream = WorldObserver.observations:squares()
-  :whereSquare(function(s)
+  :squareFilter(function(s)
     return SquareHelper.squareHasCorpse(s) and SquareHelper.squareHasIsoGridSquare(s)
   end)
 ```

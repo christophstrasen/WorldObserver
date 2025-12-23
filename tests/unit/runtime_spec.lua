@@ -1,4 +1,7 @@
 package.path = table.concat({ package.path, "./?.lua", "./?/init.lua" }, ";")
+_G.WORLDOBSERVER_HEADLESS = true
+_G.LQR_HEADLESS = true
+
 
 local Runtime = require("WorldObserver/runtime")
 

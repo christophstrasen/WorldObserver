@@ -19,16 +19,18 @@ DeadBodyHelpers.stream = DeadBodyHelpers.stream or {}
 local function deadBodyField(observation, fieldName)
 	local record = observation[fieldName]
 	if record == nil then
-		Log:warn("dead body helper called without field '%s' on observation", tostring(fieldName))
+		if _G.WORLDOBSERVER_HEADLESS ~= true then
+			Log:warn("dead body helper called without field '%s' on observation", tostring(fieldName))
+		end
 		return nil
 	end
 	return record
 end
 
 -- Stream sugar: apply a predicate to the dead body record directly.
-if DeadBodyHelpers.whereDeadBody == nil then
-	function DeadBodyHelpers.whereDeadBody(stream, fieldName, predicate)
-		assert(type(predicate) == "function", "whereDeadBody predicate must be a function")
+if DeadBodyHelpers.deadBodyFilter == nil then
+	function DeadBodyHelpers.deadBodyFilter(stream, fieldName, predicate)
+		assert(type(predicate) == "function", "deadBodyFilter predicate must be a function")
 		local target = fieldName or "deadBody"
 		return stream:filter(function(observation)
 			local bodyRecord = deadBodyField(observation, target)
@@ -36,9 +38,9 @@ if DeadBodyHelpers.whereDeadBody == nil then
 		end)
 	end
 end
-if DeadBodyHelpers.stream.whereDeadBody == nil then
-	function DeadBodyHelpers.stream.whereDeadBody(stream, fieldName, ...)
-		return DeadBodyHelpers.whereDeadBody(stream, fieldName, ...)
+if DeadBodyHelpers.stream.deadBodyFilter == nil then
+	function DeadBodyHelpers.stream.deadBodyFilter(stream, fieldName, ...)
+		return DeadBodyHelpers.deadBodyFilter(stream, fieldName, ...)
 	end
 end
 

@@ -117,10 +117,10 @@ describe("WorldObserver observations.squares()", function()
 		assert.is_equal(2, withCorpse[1].square.squareId)
 	end)
 
-	it("whereSquare passes the square record into the predicate", function()
+	it("squareFilter passes the square record into the predicate", function()
 		local received = {}
 		local SquareHelper = WorldObserver.helpers.square.record
-		local stream = WorldObserver.observations:squares():whereSquare(function(squareRecord, observation)
+		local stream = WorldObserver.observations:squares():squareFilter(function(squareRecord, observation)
 			assert.is_table(observation)
 			assert.is_table(squareRecord)
 			assert.equals(squareRecord, observation.SquareObservation)

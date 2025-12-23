@@ -115,11 +115,17 @@ Derived streams can emit **multi-family observations** (multiple families in one
 A named record namespace inside an observation table (example: `observation.square`, `observation.zombie`,  `observation.InOfficeZombie`).
 
 Important: “family” is about the **output payload shape**, not the interest type.
+Also distinct from a **helper family**, which is an attachable set of helper methods that can be configured (via `enabled_helpers`) to operate on a particular payload family.
 
 ## Stream helpers and filtering
 
 ### Helper
 WorldObserver-provided convenience methods for common filtering and readability (example: `:squareHasCorpse()`, `:zombieHasTarget()`).
+
+### Helper family
+An attachable helper set identified by a key like `square`, `zombie`, `sprite` (or third-party families like `unicorns`).
+
+Helper families are often aligned with observation payload families, but not always: a helper family can be configured (via `enabled_helpers`) to operate on another payload family.
 
 ### distinct(dimension, seconds)
 A WorldObserver stream operator that de-duplicates by a named dimension over an in-game time window (example: “once per square every 10 seconds”).

@@ -65,20 +65,20 @@ function HedgeTrample.start()
 			:joinWindow({ time = 50 * 1000, field = "sourceTime" })
 	end)
 
-	sub = joined:subscribe(function(observation)
+	sub = joined:removeSpriteObject():subscribe(function(observation)
 		local zombie = observation and observation.zombie or nil
 		local sprite = observation and observation.sprite or nil
 		if type(zombie) ~= "table" or type(sprite) ~= "table" then
+			print("This should not happen.")
 			return
 		end
 		print(
-			("[WO] zombie id=%s sprite=%s tile=%s"):format(
+			("[WO] ABOUT TO REMOVE THE HEDGE zombie id=%s sprite=%s tile=%s"):format(
 				tostring(zombie.zombieId),
 				tostring(sprite.spriteName),
 				tostring(zombie.tileLocation)
 			)
 		)
-		--sprite:
 	end)
 end
 

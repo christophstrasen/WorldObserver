@@ -19,16 +19,18 @@ ItemHelpers.stream = ItemHelpers.stream or {}
 local function itemField(observation, fieldName)
 	local record = observation[fieldName]
 	if record == nil then
-		Log:warn("item helper called without field '%s' on observation", tostring(fieldName))
+		if _G.WORLDOBSERVER_HEADLESS ~= true then
+			Log:warn("item helper called without field '%s' on observation", tostring(fieldName))
+		end
 		return nil
 	end
 	return record
 end
 
 -- Stream sugar: apply a predicate to the item record directly.
-if ItemHelpers.whereItem == nil then
-	function ItemHelpers.whereItem(stream, fieldName, predicate)
-		assert(type(predicate) == "function", "whereItem predicate must be a function")
+if ItemHelpers.itemFilter == nil then
+	function ItemHelpers.itemFilter(stream, fieldName, predicate)
+		assert(type(predicate) == "function", "itemFilter predicate must be a function")
 		local target = fieldName or "item"
 		return stream:filter(function(observation)
 			local itemRecord = itemField(observation, target)
@@ -36,9 +38,9 @@ if ItemHelpers.whereItem == nil then
 		end)
 	end
 end
-if ItemHelpers.stream.whereItem == nil then
-	function ItemHelpers.stream.whereItem(stream, fieldName, ...)
-		return ItemHelpers.whereItem(stream, fieldName, ...)
+if ItemHelpers.stream.itemFilter == nil then
+	function ItemHelpers.stream.itemFilter(stream, fieldName, ...)
+		return ItemHelpers.itemFilter(stream, fieldName, ...)
 	end
 end
 

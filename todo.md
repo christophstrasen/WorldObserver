@@ -19,5 +19,5 @@ I believe we should:
 3. We cannot do good hydration for the object because there is no good id
 
 
-Please add a new user-facing stream-helper for the sprite family. we should call it `removeAssociatedTileObject` and it takes no parameter (it implies the object whichs sprite we observed). Internally it uses the zomboid function `IsoGridSquare:RemoveTileObject(IsoObject obj)` which will remove the object handed to it (onnly works for tile objects, not workd objects). 
+Please add a new user-facing stream-helper for the sprite family. we should call it `removeSpriteObject` and it takes no parameter (it implies the object whichs sprite we observed). Internally it uses the zomboid function `IsoGridSquare:RemoveTileObject(IsoObject obj)` which will remove the object handed to it (onnly works for tile objects, not workd objects). 
 Now, as the stream helper  is supposed to work on sprite observations, we have to get the IsoGridSquare that is associated with that sprite _and_  the object the sprite observation belongs to. We do have IsoSquare and IsoObject available at the  sprite record now. Even though only one of them has a hydration we cannot guarantee they will exist anyway.

@@ -23,11 +23,11 @@ describe("WorldObserver observations.sprites()", function()
 		WorldObserver = reload("WorldObserver")
 	end)
 
-	it("whereSprite passes the sprite record into the predicate", function()
+	it("spriteFilter passes the sprite record into the predicate", function()
 		local received = {}
 		local SpriteHelper = WorldObserver.helpers.sprite.record
 
-		local stream = WorldObserver.observations:sprites():whereSprite(function(spriteRecord, observation)
+		local stream = WorldObserver.observations:sprites():spriteFilter(function(spriteRecord, observation)
 			assert.is_table(observation)
 			assert.is_table(spriteRecord)
 			assert.equals(spriteRecord, observation.SpriteObservation)
@@ -62,5 +62,49 @@ describe("WorldObserver observations.sprites()", function()
 
 		assert.is_equal(1, #received)
 		assert.is_equal("fixtures_bathroom_01_0", received[1].sprite.spriteName)
+	end)
+
+	it("removeSpriteObject calls RemoveTileObject when references exist", function()
+		local removed = { called = false, obj = nil }
+		local isoObject = {}
+		local isoGridSquare = {
+			getX = function()
+				return 1
+			end,
+			getY = function()
+				return 2
+			end,
+			getZ = function()
+				return 0
+			end,
+			RemoveTileObject = function(_, obj)
+				removed.called = true
+				removed.obj = obj
+			end,
+		}
+
+		local stream = WorldObserver.observations:sprites():removeSpriteObject()
+		local received = {}
+		stream:subscribe(function(row)
+			received[#received + 1] = row
+		end)
+
+		WorldObserver._internal.facts:emit("sprites", {
+			spriteKey = "fixtures_bathroom_01_0ID120000x1y2z0i3",
+			spriteName = "fixtures_bathroom_01_0",
+			spriteId = 120000,
+			x = 1,
+			y = 2,
+			z = 0,
+			objectIndex = 3,
+			sourceTime = 50,
+			source = "event",
+			IsoObject = isoObject,
+			IsoGridSquare = isoGridSquare,
+		})
+
+		assert.is_true(removed.called)
+		assert.equals(isoObject, removed.obj)
+		assert.equals(1, #received)
 	end)
 end)

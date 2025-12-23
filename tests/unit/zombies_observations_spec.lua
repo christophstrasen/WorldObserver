@@ -23,11 +23,11 @@ describe("WorldObserver observations.zombies()", function()
 		WorldObserver = reload("WorldObserver")
 	end)
 
-	it("whereZombie passes the zombie record into the predicate", function()
+	it("zombieFilter passes the zombie record into the predicate", function()
 		local received = {}
 		local ZombieHelper = WorldObserver.helpers.zombie.record
 
-		local stream = WorldObserver.observations:zombies():whereZombie(function(zombieRecord, observation)
+		local stream = WorldObserver.observations:zombies():zombieFilter(function(zombieRecord, observation)
 			assert.is_table(observation)
 			assert.is_table(zombieRecord)
 			assert.equals(zombieRecord, observation.ZombieObservation)
