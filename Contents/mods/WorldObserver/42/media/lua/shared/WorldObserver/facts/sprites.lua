@@ -33,11 +33,6 @@ Sprites._defaults.interest = Sprites._defaults.interest or {
 	radius = { desired = 8, tolerable = 5 },
 	cooldown = { desired = 10, tolerable = 20 },
 }
-Sprites._defaults.recordOpts = Sprites._defaults.recordOpts or {
-	includeIsoObject = true,
-	includeIsoSquare = true,
-}
-
 local function nowMillis()
 	return Time.gameMillis() or math.floor(os.time() * 1000)
 end
@@ -136,7 +131,6 @@ local spritesCollector = function(ctx, cursor, square, _playerIndex, nowMs, effe
 
 	local cooldownSeconds = tonumber(effective and effective.cooldown) or 0
 	local cooldownMs = math.max(0, cooldownSeconds * 1000)
-	local recordOpts = (ctx and ctx.recordOpts) or Sprites._defaults.recordOpts
 	local emittedAny = false
 	local highlighted = false
 
@@ -150,8 +144,6 @@ local spritesCollector = function(ctx, cursor, square, _playerIndex, nowMs, effe
 			sprite = extra and extra.sprite or nil,
 			spriteName = extra and extra.spriteName or nil,
 			spriteId = extra and extra.spriteId or nil,
-			includeIsoObject = recordOpts and recordOpts.includeIsoObject,
-			includeIsoSquare = recordOpts and recordOpts.includeIsoSquare,
 		})
 		if type(record) ~= "table" then
 			return
@@ -275,7 +267,7 @@ local function attachOnLoadRegistrationsOnce(state, ctx, listenerCfg)
 	return true
 end
 
-local function onLoadHandler(state, emitFn, recordOpts)
+local function onLoadHandler(state, emitFn)
 	return function(isoObject)
 		local effective = state.onLoadEffective
 		local spriteNameSet = state.onLoadSpriteNameSet
@@ -300,8 +292,6 @@ local function onLoadHandler(state, emitFn, recordOpts)
 			sprite = sprite,
 			spriteName = spriteName,
 			spriteId = spriteId,
-			includeIsoObject = recordOpts and recordOpts.includeIsoObject,
-			includeIsoSquare = recordOpts and recordOpts.includeIsoSquare,
 		})
 		if type(record) ~= "table" or record.spriteKey == nil then
 			return
@@ -345,7 +335,7 @@ end
 
 local SPRITES_TICK_HOOK_ID = "facts.sprites.tick"
 
-local function attachTickHookOnce(state, emitFn, ctx, recordOpts)
+local function attachTickHookOnce(state, emitFn, ctx)
 	if state.spritesTickHookAttached then
 		return true
 	end
@@ -357,7 +347,7 @@ local function attachTickHookOnce(state, emitFn, ctx, recordOpts)
 		return false
 	end
 
-	state.onLoadHandler = state.onLoadHandler or onLoadHandler(state, emitFn, recordOpts)
+	state.onLoadHandler = state.onLoadHandler or onLoadHandler(state, emitFn)
 
 	local fn = function()
 		tickOnLoadListener({
@@ -392,14 +382,6 @@ if Sprites.register == nil then
 		local listenerCfg = spritesCfg.listener or {}
 		local listenerEnabled = listenerCfg.enabled ~= false
 
-		local recordOpts = Sprites._defaults.recordOpts
-		if type(spritesCfg.record) == "table" then
-			recordOpts = {
-				includeIsoObject = spritesCfg.record.includeIsoObject ~= false,
-				includeIsoSquare = spritesCfg.record.includeIsoSquare ~= false,
-			}
-		end
-
 		registry:register(INTEREST_TYPE_SPRITES, {
 			ingest = {
 				mode = "latestByKey",
@@ -431,7 +413,7 @@ if Sprites.register == nil then
 						runtime = ctx.runtime,
 						interestRegistry = interestRegistry,
 						listenerCfg = listenerCfg,
-					}, recordOpts)
+					})
 				end
 				local sweepRegistered = false
 				if probeEnabled then
@@ -439,7 +421,7 @@ if Sprites.register == nil then
 						collectorId = INTEREST_TYPE_SPRITES,
 						interestType = INTEREST_TYPE_SPRITES,
 						emitFn = originalEmit,
-						context = { sprites = Sprites, recordOpts = recordOpts },
+						context = { sprites = Sprites },
 						headless = headless,
 						runtime = ctx.runtime,
 						interestRegistry = interestRegistry,

@@ -230,10 +230,6 @@ local function defaultBuildDefaults()
 					ordering = "fifo",
 					priority = 1,
 				},
-				record = {
-					includeIsoObject = true,
-					includeIsoSquare = true,
-				},
 				probe = {
 					enabled = true,
 					maxPerRun = 50,

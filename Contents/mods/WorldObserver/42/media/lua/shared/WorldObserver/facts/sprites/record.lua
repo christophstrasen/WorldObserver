@@ -224,11 +224,11 @@ if Record.makeSpriteRecord == nil then
 			source = source,
 		}
 
-		if opts.includeIsoObject then
-			record.IsoObject = isoObject
-		end
-		if opts.includeIsoSquare and square ~= nil then
-			record.IsoSquare = square
+		-- Always retain references (best-effort) for downstream consumers.
+		record.IsoObject = isoObject
+		record.IsoGridSquare = square
+		if SquareHelpers.record and SquareHelpers.record.getIsoGridSquare then
+			SquareHelpers.record.getIsoGridSquare(record, opts)
 		end
 
 		Record.applySpriteRecordExtenders(record, isoObject, source, opts)

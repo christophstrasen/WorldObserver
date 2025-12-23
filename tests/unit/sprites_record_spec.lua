@@ -64,7 +64,7 @@ describe("sprite records", function()
 		assert.equals("probe", record.source)
 	end)
 
-	it("includes IsoObject and IsoSquare when requested", function()
+	it("includes IsoObject and IsoGridSquare on the base record", function()
 		local square = {
 			getX = function()
 				return 1
@@ -96,13 +96,9 @@ describe("sprite records", function()
 			end,
 		}
 
-		local record = Record.makeSpriteRecord(isoObject, square, "player", {
-			nowMs = 456,
-			includeIsoObject = true,
-			includeIsoSquare = true,
-		})
+		local record = Record.makeSpriteRecord(isoObject, square, "player", { nowMs = 456 })
 		assert.is_table(record)
 		assert.equals(isoObject, record.IsoObject)
-		assert.equals(square, record.IsoSquare)
+		assert.equals(square, record.IsoGridSquare)
 	end)
 end)

@@ -89,6 +89,37 @@ local stream = WorldObserver.observations:zombies()
 
 If you’re just getting started: ignore `stream:filter(...)` for now and stick to helpers + `whereSquare/whereZombie`.
 
+### 2.3 Attach third-party helpers (optional)
+
+If you have a helper set from another mod (or your own), you can attach it to any stream:
+
+```lua
+local UnicornHelpers = require("YourMod/helpers/unicorns")
+
+local stream = WorldObserver.observations:squares()
+  :withHelpers({
+    helperSets = { unicorns = UnicornHelpers },
+    enabled_helpers = { unicorns = "square" },
+  })
+
+-- Fluent call (helpers attach as stream methods by default):
+stream:unicorns_squareIdIs(123)
+
+-- Or namespaced:
+stream.helpers.unicorns:unicorns_squareIdIs(123)
+```
+
+If a helper family is registered globally, you can attach it without passing the helper set table:
+
+```lua
+WorldObserver.observations:registerHelperFamily("unicorns", UnicornHelpers)
+
+local stream = WorldObserver.observations:squares()
+  :withHelpers({
+    enabled_helpers = { unicorns = "square" },
+  })
+```
+
 ## 3. De-duplicating with `:distinct(dimension, seconds)`
 
 Use `:distinct` to avoid repeats for the same “thing” within a window.

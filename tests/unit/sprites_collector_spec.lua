@@ -73,7 +73,6 @@ describe("sprites collector", function()
 				emitted[#emitted + 1] = record
 			end,
 			headless = true,
-			recordOpts = { includeIsoObject = false, includeIsoSquare = false },
 		}
 		local cursor = { source = "probe", color = { 1, 1, 1 }, alpha = 1 }
 		local effective = { cooldown = 5, spriteNames = { "fixtures_bathroom_01_0" } }

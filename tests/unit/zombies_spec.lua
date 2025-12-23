@@ -117,6 +117,9 @@ describe("zombies interest and records", function()
 			getTargetSeenTime = function()
 				return 1.5
 			end,
+			getOutfitName = function()
+				return "TestOutfit"
+			end,
 			speedType = 2,
 		}
 
@@ -133,6 +136,7 @@ describe("zombies interest and records", function()
 		assert.is_true(record.hasTarget)
 		assert.equals(99, record.targetId)
 		assert.equals(654, record.targetSquareId)
+		assert.equals("TestOutfit", record.outfitName)
 		assert.equals(123, record.sourceTime)
 		assert.equals(123, record.sourceTime)
 	end)

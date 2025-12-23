@@ -47,6 +47,20 @@ local function cloneTable(tbl)
 	return out
 end
 
+local function mergeTablesLastWins(out, incoming)
+	for key, value in pairs(incoming or {}) do
+		out[key] = value
+	end
+end
+
+local function mergeTablesFirstWins(out, incoming)
+	for key, value in pairs(incoming or {}) do
+		if out[key] == nil then
+			out[key] = value
+		end
+	end
+end
+
 local function listSortedKeys(tbl)
 	local keys = {}
 	local count = 0
@@ -56,6 +70,59 @@ local function listSortedKeys(tbl)
 	end
 	table.sort(keys)
 	return keys
+end
+
+local function resolveEnabledHelpers(overrides, baseEnabled)
+	local resolved = cloneTable(baseEnabled)
+	for helperKey, rawValue in pairs(overrides or {}) do
+		local mapped = nil
+		if rawValue == true then
+			mapped = (baseEnabled and baseEnabled[helperKey]) or helperKey
+		elseif type(rawValue) == "string" then
+			if baseEnabled and baseEnabled[rawValue] ~= nil then
+				mapped = baseEnabled[rawValue]
+			else
+				mapped = rawValue
+			end
+		else
+			Log:warn(
+				"enabled_helpers.%s expects true or string, got %s",
+				tostring(helperKey),
+				type(rawValue)
+			)
+		end
+		if mapped ~= nil then
+			resolved[helperKey] = mapped
+		end
+	end
+	return resolved
+end
+
+local function buildHelperMethods(helperSets, enabledHelpers)
+	local methods = {}
+	for _, helperKey in ipairs(listSortedKeys(enabledHelpers)) do
+		local fieldName = enabledHelpers[helperKey]
+		local helperSet = helperSets[helperKey]
+		if helperSet then
+			-- Helper sets can target alternative field names (enabled_helpers value), defaulting to their own key.
+			local targetField = fieldName == true and helperKey or fieldName
+			-- Only attach explicit stream helpers (avoid attaching record predicates, hydration helpers, effects, etc.).
+			local helperSource = helperSet
+			if type(helperSet.stream) == "table" then
+				helperSource = helperSet.stream
+			end
+			for methodName, helperFn in pairs(helperSource) do
+				if type(helperFn) == "function" and methods[methodName] == nil then
+					methods[methodName] = function(stream, ...)
+						return helperFn(stream, targetField, ...)
+					end
+				end
+			end
+		else
+			Log:warn("No helper set found for '%s'", tostring(helperKey))
+		end
+	end
+	return methods
 end
 
 local function buildHelperNamespaces(helperSets, enabledHelpers, stream)
@@ -258,6 +325,41 @@ function BaseMethods:distinct(dimension, seconds)
 	)
 end
 
+function BaseMethods:withHelpers(opts)
+	assert(type(opts) == "table", "withHelpers expects a single options table")
+
+	local helperSets = opts.helperSets
+	if helperSets ~= nil then
+		assert(type(helperSets) == "table", "withHelpers helperSets must be a table")
+	end
+	if opts.enabled_helpers ~= nil then
+		assert(type(opts.enabled_helpers) == "table", "withHelpers enabled_helpers must be a table")
+	end
+
+	local mergedHelperSets = cloneTable(self._helperSets)
+	mergeTablesLastWins(mergedHelperSets, helperSets)
+
+	local enabledHelpers = resolveEnabledHelpers(opts.enabled_helpers, self._enabled_helpers)
+	for helperKey in pairs(helperSets or {}) do
+		if enabledHelpers[helperKey] == nil then
+			enabledHelpers[helperKey] = helperKey
+		end
+	end
+
+	local helperMethods = buildHelperMethods(mergedHelperSets, enabledHelpers)
+	mergeTablesFirstWins(helperMethods, self._helperMethods)
+
+	return newObservationStream(
+		self._builder,
+		helperMethods,
+		self._dimensions,
+		self._factRegistry,
+		self._factDeps,
+		mergedHelperSets,
+		enabledHelpers
+	)
+end
+
 ObservationStream.__index = function(self, key)
 	local base = BaseMethods[key]
 	if base then
@@ -283,33 +385,6 @@ local function nextObservationId()
 	return observationIdCounter
 end
 
-local function buildHelperMethods(helperSets, enabledHelpers)
-	local methods = {}
-	for _, helperKey in ipairs(listSortedKeys(enabledHelpers)) do
-		local fieldName = enabledHelpers[helperKey]
-		local helperSet = helperSets[helperKey]
-		if helperSet then
-			-- Helper sets can target alternative field names (enabled_helpers value), defaulting to their own key.
-			local targetField = fieldName == true and helperKey or fieldName
-			-- Only attach explicit stream helpers (avoid attaching record predicates, hydration helpers, effects, etc.).
-			local helperSource = helperSet
-			if type(helperSet.stream) == "table" then
-				helperSource = helperSet.stream
-			end
-			for methodName, helperFn in pairs(helperSource) do
-				if type(helperFn) == "function" and methods[methodName] == nil then
-					methods[methodName] = function(stream, ...)
-						return helperFn(stream, targetField, ...)
-					end
-				end
-			end
-		else
-			Log:warn("No helper set found for '%s'", tostring(helperKey))
-		end
-	end
-	return methods
-end
-
 function ObservationRegistry.new(opts)
 	-- Registry uses a metatable for method lookup; instances are just tables carrying deps/config.
 	local self = setmetatable({
@@ -325,6 +400,12 @@ function ObservationRegistry.new(opts)
 		self._api.derive = function(api, streamsByName, buildFn, deriveOpts)
 			assert(api == self._api, "Call as WorldObserver.observations:derive(streamsByName, buildFn, opts)")
 			return self:derive(streamsByName, buildFn, deriveOpts)
+		end
+	end
+	if self._api.registerHelperFamily == nil then
+		self._api.registerHelperFamily = function(api, family, helperSet)
+			assert(api == self._api, "Call as WorldObserver.observations:registerHelperFamily(family, helperSet)")
+			return self:registerHelperFamily(family, helperSet)
 		end
 	end
 	return self
@@ -358,6 +439,15 @@ function ObservationRegistry:register(name, opts)
 	end
 end
 
+if ObservationRegistry.registerHelperFamily == nil then
+	function ObservationRegistry:registerHelperFamily(family, helperSet)
+		assert(type(family) == "string" and family ~= "", "registerHelperFamily family must be a non-empty string")
+		assert(type(helperSet) == "table", "registerHelperFamily helperSet must be a table")
+		self._helperSets[family] = helperSet
+		return helperSet
+	end
+end
+
 function ObservationRegistry:_buildStream(name, streamOpts)
 	local entry = self._registry[name]
 	if not entry then
@@ -365,8 +455,8 @@ function ObservationRegistry:_buildStream(name, streamOpts)
 	end
 
 	local builder = entry.build(streamOpts or {})
-	local helperMethods = buildHelperMethods(self._helperSets, entry.enabled_helpers)
 	local dimensions = entry.dimensions or {}
+	local helperMethods = buildHelperMethods(self._helperSets, entry.enabled_helpers)
 	return newObservationStream(builder, helperMethods, dimensions, self._factRegistry, entry.fact_deps, self._helperSets, entry.enabled_helpers)
 end
 
@@ -391,14 +481,6 @@ local function mergeUniqueFactDeps(out, seen, deps)
 	end
 end
 
-local function mergeTablesFirstWins(out, incoming)
-	for key, value in pairs(incoming or {}) do
-		if out[key] == nil then
-			out[key] = value
-		end
-	end
-end
-
 -- Derived ObservationStreams (wrapping LQR queries while preserving fact dependency lifecycles).
 -- Why: subscribing to an LQR query directly bypasses FactRegistry:onSubscribe(...), so probes/listeners don't start.
 if ObservationRegistry.derive == nil then
@@ -417,6 +499,7 @@ if ObservationRegistry.derive == nil then
 		local factDepsSeen = {}
 		local enabledHelpers = {}
 		local helperMethods = {}
+		local helperSets = cloneTable(self._helperSets)
 		local dimensions = {}
 		local lqrByName = {}
 
@@ -452,12 +535,15 @@ if ObservationRegistry.derive == nil then
 					end
 				end
 			end
+			if type(stream._helperSets) == "table" then
+				mergeTablesLastWins(helperSets, stream._helperSets)
+			end
 			if type(stream._dimensions) == "table" then
 				mergeTablesFirstWins(dimensions, stream._dimensions)
 			end
 		end
 
-		helperMethods = buildHelperMethods(self._helperSets, enabledHelpers)
+		helperMethods = buildHelperMethods(helperSets, enabledHelpers)
 		for i = 1, #names do
 			local name = names[i]
 			local stream = streamsByName[name]
@@ -468,7 +554,7 @@ if ObservationRegistry.derive == nil then
 
 		local builder = buildFn(lqrByName, opts)
 		assert(type(builder) == "table" and type(builder.subscribe) == "function", "derive buildFn must return LQR query with :subscribe()")
-		return newObservationStream(builder, helperMethods, dimensions, self._factRegistry, factDeps, self._helperSets, enabledHelpers)
+		return newObservationStream(builder, helperMethods, dimensions, self._factRegistry, factDeps, helperSets, enabledHelpers)
 	end
 end
 
@@ -496,6 +582,7 @@ ObservationsCore._internal.resolveNowMillis = resolveNowMillis
 ObservationsCore._internal.cloneTable = cloneTable
 ObservationsCore._internal.newObservationStream = newObservationStream
 ObservationsCore._internal.buildHelperMethods = buildHelperMethods
+ObservationsCore._internal.resolveEnabledHelpers = resolveEnabledHelpers
 
 -- Patch seam: define only when nil so mods can override by reassigning these module fields and so reloads
 -- (tests/console via `package.loaded`) don't clobber an existing patch.

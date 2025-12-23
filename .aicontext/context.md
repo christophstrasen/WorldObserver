@@ -14,6 +14,7 @@ Repo-wide guidance for AI agents.
 - Refer back to existing canonical terms and do not invent new definitions. When you believe it is necessary flag it clearly.
 - When we make changes, from time to time check and challenge if we improve the situation for users as we target in our `docs_internal/vision.md`
 - Do not make assumptions and sell them as facts
+- If in agent mode with write permissions
 
 ## Output & Style
 Avoid diff-style output; provide copy-paste ready snippets and file paths.

@@ -192,6 +192,7 @@ if Record.makeZombieRecord == nil then
 		local targetSeenSeconds = SafeCall.safeCall(zombie, "getTargetSeenTime")
 
 		local targetSquare = target and SafeCall.safeCall(target, "getCurrentSquare") or nil
+		local outfitName = SafeCall.safeCall(zombie, "getOutfitName")
 
 		local record = {
 			zombieId = zombieId,
@@ -225,6 +226,7 @@ if Record.makeZombieRecord == nil then
 					SafeCall.safeCall(targetSquare, "getZ")
 				)
 			or nil,
+			outfitName = outfitName,
 			sourceTime = ts,
 			source = source,
 		}

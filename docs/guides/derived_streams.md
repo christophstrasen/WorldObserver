@@ -122,4 +122,5 @@ Guidelines that help avoid “nil-check soup”:
 - Prefer stream-attached helper namespaces for derived streams (avoids name collisions across families):
   - `joined.helpers.square:squareHasCorpse()` / `joined.helpers.zombie:zombieHasTarget()`
   - Advanced: you can pass a schema key explicitly as the first argument (example: `joined.helpers.square:squareHasCorpse("square")`), but it must match the schema key that LQR uses inside stream predicates (which may differ from what you see in `subscribe` callbacks).
+- You can attach additional helper families to a derived stream via `:withHelpers(...)` (see stream basics).
 - Bound your windows: keep join windows short and use `:distinct(...)` upstream to limit join multiplicity.
