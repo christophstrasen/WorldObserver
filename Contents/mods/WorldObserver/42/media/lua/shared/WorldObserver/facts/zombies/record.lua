@@ -2,6 +2,7 @@
 local Log = require("LQR/util/log").withTag("WO.FACTS.zombies")
 local Time = require("WorldObserver/helpers/time")
 local SafeCall = require("WorldObserver/helpers/safe_call")
+local SquareHelpers = require("WorldObserver/helpers/square")
 
 local moduleName = ...
 local Record = {}
@@ -201,6 +202,7 @@ if Record.makeZombieRecord == nil then
 			tileX = tileX,
 			tileY = tileY,
 			tileZ = tileZ,
+			tileLocation = SquareHelpers.record.tileLocationFromCoords(tileX, tileY, tileZ),
 			squareId = squareId,
 			isMoving = isMoving,
 			isRunning = isRunning,

@@ -112,7 +112,7 @@ end
 - Subscribe to the observation stream:
 
 ```lua
-local stream = WorldObserver.observations.<type>()
+local stream = WorldObserver.observations:<type>()
 stream:subscribe(function(row) ... end)
 ```
 

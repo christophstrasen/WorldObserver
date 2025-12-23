@@ -32,7 +32,7 @@ One important rule: **order matters**. For example, doing `distinct` before `map
 WorldObserver gives you a few common operators directly on streams:
 
 ```lua
-WorldObserver.observations.squares()
+WorldObserver.observations:squares()
   :squareHasCorpse()
   :distinct("square", 10)
   :subscribe(function(observation) ... end)
@@ -48,7 +48,7 @@ WorldObserver streams expose `:asRx()` to get a lua-reactivex Observable:
 
 ```lua
 local WorldObserver = require("WorldObserver")
-local rxStream = WorldObserver.observations.squares():asRx()
+local rxStream = WorldObserver.observations:squares():asRx()
 
 rxStream
   :map(function(observation) return observation.square.squareId end)
@@ -75,7 +75,7 @@ When you use `:asRx()`, a nice “shape” to aim for is:
 ```lua
 local WorldObserver = require("WorldObserver")
 
-local stream = WorldObserver.observations.squares()
+local stream = WorldObserver.observations:squares()
   :squareHasCorpse()
   :distinct("square", 10)
 
@@ -111,7 +111,7 @@ All examples below assume you have `WorldObserver` required.
 Example: “turn square observations into just `squareId`”:
 
 ```lua
-local sub = WorldObserver.observations.squares()
+local sub = WorldObserver.observations:squares()
   :asRx()
   :map(function(observation)
     return observation.square.squareId
@@ -127,7 +127,7 @@ Important: `map` changes what flows downstream.
 - If you still need multiple fields, map to a *smaller table* instead of a single value:
 
 ```lua
-local sub = WorldObserver.observations.squares()
+local sub = WorldObserver.observations:squares()
   :asRx()
   :map(function(observation)
     local square = observation.square
@@ -149,7 +149,7 @@ local sub = WorldObserver.observations.squares()
 Example: “only zombies that currently have a target”:
 
 ```lua
-local sub = WorldObserver.observations.zombies()
+local sub = WorldObserver.observations:zombies()
   :asRx()
   :filter(function(observation)
     return observation.zombie.hasTarget == true
@@ -162,7 +162,7 @@ local sub = WorldObserver.observations.zombies()
 Tip: you can also use WorldObserver’s built-in helpers *before* `:asRx()`:
 
 ```lua
-local sub = WorldObserver.observations.zombies()
+local sub = WorldObserver.observations:zombies()
   :zombieHasTarget()
   :asRx()
   :subscribe(function(observation) ... end)
@@ -173,7 +173,7 @@ local sub = WorldObserver.observations.zombies()
 Example: “get `observation.square.squareId`”:
 
 ```lua
-local sub = WorldObserver.observations.squares()
+local sub = WorldObserver.observations:squares()
   :asRx()
   :pluck("square", "squareId")
   :subscribe(function(squareId)
@@ -186,7 +186,7 @@ local sub = WorldObserver.observations.squares()
 Example: “only log when `squareId` changes” (no manual `lastSquareId` variable):
 
 ```lua
-local sub = WorldObserver.observations.squares()
+local sub = WorldObserver.observations:squares()
   :asRx()
   :pluck("square", "squareId")
   :distinctUntilChanged()
@@ -212,7 +212,7 @@ Important: observation streams usually don’t end, so you should keep scan stat
 Example: “count how many targeted-zombie observations we’ve seen” (a simple counter):
 
 ```lua
-local sub = WorldObserver.observations.zombies()
+local sub = WorldObserver.observations:zombies()
   :zombieHasTarget()
   :asRx()
   :scan(function(count, _)
@@ -226,7 +226,7 @@ local sub = WorldObserver.observations.zombies()
 Example: “track how many zombies currently have a target” (small in-memory state):
 
 ```lua
-local sub = WorldObserver.observations.zombies()
+local sub = WorldObserver.observations:zombies()
   :asRx()
   :scan(function(state, observation)
     local z = observation.zombie
@@ -261,7 +261,7 @@ When `scan` is not the right tool:
 Example: “process 5 square observations at once”:
 
 ```lua
-local sub = WorldObserver.observations.squares()
+local sub = WorldObserver.observations:squares()
   :asRx()
   :buffer(5)
   :pack() -- turns varargs into a table: batch[1..batch.n]
@@ -279,7 +279,7 @@ local sub = WorldObserver.observations.squares()
 - It does not filter or transform values (unlike `map`/`filter`).
 
 ```lua
-local sub = WorldObserver.observations.squares()
+local sub = WorldObserver.observations:squares()
   :asRx()
   :tap(function(observation)
     print(("[WO debug] squareId=%s"):format(tostring(observation.square.squareId)))
@@ -307,7 +307,7 @@ If you do:
 `share()` turns “one pipeline” into “one shared source with many listeners”:
 
 ```lua
-local squaresShared = WorldObserver.observations.squares()
+local squaresShared = WorldObserver.observations:squares()
   :asRx()
   :pluck("square", "squareId")
   :share()

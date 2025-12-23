@@ -27,7 +27,7 @@ describe("WorldObserver observations.sprites()", function()
 		local received = {}
 		local SpriteHelper = WorldObserver.helpers.sprite.record
 
-		local stream = WorldObserver.observations.sprites():whereSprite(function(spriteRecord, observation)
+		local stream = WorldObserver.observations:sprites():whereSprite(function(spriteRecord, observation)
 			assert.is_table(observation)
 			assert.is_table(spriteRecord)
 			assert.equals(spriteRecord, observation.SpriteObservation)

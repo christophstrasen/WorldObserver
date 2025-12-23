@@ -49,6 +49,17 @@ local lease = WorldObserver.factInterest:declare("YourModId", "featureKey", {
 Notes:
 - `highlight` is best-effort and is meant for local debugging.
 - It is intentionally not part of the “quality ladder” and does not merge deterministically across mods.
+- For some interest types you can pass a color table instead of `true`, like `highlight = { 1, 0.2, 0.2 }` or `highlight = { 1, 0.2, 0.2, 0.9 }` (alpha is optional).
+
+If you want full control (duration/color/alpha/blink), call the highlight helpers directly in your subscription:
+
+```lua
+-- Highlight a square floor (takes a square record or an IsoGridSquare).
+WorldObserver.highlight(observation.square, 750, { color = { 1, 0.2, 0.2 }, alpha = 0.9, blink = false })
+
+-- Highlight a zombie (takes a zombie record or an IsoZombie).
+WorldObserver.helpers.zombie.highlight(observation.zombie, 750, { color = { 1, 0.2, 0.2 }, alpha = 0.9, blink = true })
+```
 
 ## 3) Inspect merged interest (what WO *thinks* is active)
 

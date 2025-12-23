@@ -27,6 +27,11 @@ Definitions.types.squares = Definitions.types.squares or {
 	zeroKnobs = {
 		onLoad = { staleness = true, radius = true },
 	},
+	recommendedFields = {
+		near = { "radius", "staleness", "cooldown" },
+		vision = { "radius", "staleness", "cooldown" },
+		onLoad = { "cooldown" },
+	},
 	bucketKey = "squaresTarget",
 }
 
@@ -37,6 +42,9 @@ Definitions.types.zombies = Definitions.types.zombies or {
 	allowTarget = false,
 	ignoreFields = {
 		allLoaded = { target = true },
+	},
+	recommendedFields = {
+		allLoaded = { "radius", "zRange", "staleness", "cooldown" },
 	},
 	bucketKey = "scope",
 }
@@ -59,6 +67,11 @@ Definitions.types.rooms = Definitions.types.rooms or {
 		onPlayerChangeRoom = { staleness = true, radius = true, zRange = true },
 		allLoaded = { radius = true, zRange = true },
 	},
+	recommendedFields = {
+		allLoaded = { "staleness", "cooldown" },
+		onSeeNewRoom = { "cooldown" },
+		onPlayerChangeRoom = { "cooldown" },
+	},
 	bucketKey = "roomsScope",
 }
 
@@ -76,6 +89,11 @@ Definitions.types.items = Definitions.types.items or {
 	zeroKnobs = {
 		playerSquare = { staleness = true, radius = true, zRange = true },
 	},
+	recommendedFields = {
+		playerSquare = { "cooldown" },
+		near = { "radius", "staleness", "cooldown" },
+		vision = { "radius", "staleness", "cooldown" },
+	},
 	bucketKey = "squaresTarget",
 }
 
@@ -92,6 +110,11 @@ Definitions.types.deadBodies = Definitions.types.deadBodies or {
 	},
 	zeroKnobs = {
 		playerSquare = { staleness = true, radius = true, zRange = true },
+	},
+	recommendedFields = {
+		playerSquare = { "cooldown" },
+		near = { "radius", "staleness", "cooldown" },
+		vision = { "radius", "staleness", "cooldown" },
 	},
 	bucketKey = "squaresTarget",
 }
@@ -111,6 +134,14 @@ Definitions.types.sprites = Definitions.types.sprites or {
 	},
 	zeroKnobs = {
 		onLoadWithSprite = { staleness = true, radius = true, zRange = true },
+	},
+	requiredFields = {
+		all = { "spriteNames" },
+	},
+	recommendedFields = {
+		near = { "radius", "staleness", "cooldown" },
+		vision = { "radius", "staleness", "cooldown" },
+		onLoadWithSprite = { "cooldown" },
 	},
 	bucketKey = "squaresTarget",
 }

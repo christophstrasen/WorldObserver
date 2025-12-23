@@ -98,7 +98,7 @@ One emitted “event” you receive in a subscription callback: a Lua table that
 Observations are snapshots, not live game objects.
 
 ### Observation stream (ObservationStream)
-A stream you can subscribe to, produced by WorldObserver (example: `WorldObserver.observations.squares()`).
+A stream you can subscribe to, produced by WorldObserver (example: `WorldObserver.observations:squares()`).
 
 ### Subscription
 The handle returned by `stream:subscribe(fn)`. You stop receiving events by calling `sub:unsubscribe()`.

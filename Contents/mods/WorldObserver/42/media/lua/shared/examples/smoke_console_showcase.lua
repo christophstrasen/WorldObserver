@@ -131,7 +131,7 @@ function Showcase.startSquares()
 			SQUARES_INTEREST_VISION
 		),
 	}
-	local stream = WorldObserver.observations.squares():distinct("square", 5)
+	local stream = WorldObserver.observations:squares():distinct("square", 5)
 	local sub = stream:subscribe(function(observation)
 		local sq = observation.square
 		Log.info(
@@ -168,7 +168,7 @@ function Showcase.startZombies()
 	local WorldObserver = require("WorldObserver")
 	local lease =
 		WorldObserver.factInterest:declare("examples/smoke_console_showcase", "zombies.allLoaded", ZOMBIES_INTEREST)
-	local stream = WorldObserver.observations.zombies():distinct("zombie", 5)
+	local stream = WorldObserver.observations:zombies():distinct("zombie", 5)
 	local sub = stream:subscribe(function(observation)
 		local z = observation.zombie
 		Log.info(
@@ -203,7 +203,7 @@ function Showcase.startRooms()
 	local WorldObserver = require("WorldObserver")
 	local lease =
 		WorldObserver.factInterest:declare("examples/smoke_console_showcase", "rooms.allLoaded", ROOMS_INTEREST)
-	local stream = WorldObserver.observations.rooms():distinct("room", 10)
+	local stream = WorldObserver.observations:rooms():distinct("room", 10)
 	local sub = stream:subscribe(function(observation)
 		local r = observation.room
 		Log.info(
@@ -257,7 +257,7 @@ function Showcase.startItems()
 			ITEMS_INTEREST_VISION
 		),
 	}
-	local stream = WorldObserver.observations.items():distinct("item", 10)
+	local stream = WorldObserver.observations:items():distinct("item", 10)
 	local sub = stream:subscribe(function(observation)
 		local item = observation.item
 		Log.info(
@@ -313,7 +313,7 @@ function Showcase.startDeadBodies()
 			DEAD_BODIES_INTEREST_VISION
 		),
 	}
-	local stream = WorldObserver.observations.deadBodies():distinct("deadBody", 10)
+	local stream = WorldObserver.observations:deadBodies():distinct("deadBody", 10)
 	local sub = stream:subscribe(function(observation)
 		local body = observation.deadBody
 		Log.info(

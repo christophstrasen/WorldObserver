@@ -128,6 +128,7 @@ describe("zombies interest and records", function()
 		assert.equals(5, record.tileX)
 		assert.equals(6, record.tileY)
 		assert.equals(0, record.tileZ)
+		assert.equals("x5y6z0", record.tileLocation)
 		assert.equals("walker", record.locomotion)
 		assert.is_true(record.hasTarget)
 		assert.equals(99, record.targetId)
@@ -174,6 +175,116 @@ describe("zombies interest and records", function()
 		assert.is_false(fn(record, player, 10, 1)) -- z diff 2 > zRange
 		assert.is_true(fn(record, { x = 6, y = 6, z = 2 }, 10, 2))
 		assert.is_false(fn(record, { x = 20, y = 20, z = 1 }, 5, 2))
+	end)
+
+	it("only highlights zombies when requested via interest", function()
+		local savedGetNumActivePlayers = _G.getNumActivePlayers
+		local savedGetSpecificPlayer = _G.getSpecificPlayer
+		local savedGetCell = _G.getCell
+
+		_G.getNumActivePlayers = function()
+			return 1
+		end
+		_G.getSpecificPlayer = function()
+			return {
+				getX = function()
+					return 5
+				end,
+				getY = function()
+					return 5
+				end,
+				getZ = function()
+					return 0
+				end,
+			}
+		end
+
+		local zombieSquare = { id = "zSquare" }
+		local zombie = {
+			getCurrentSquare = function()
+				return zombieSquare
+			end,
+		}
+		_G.getCell = function()
+			return {
+				getZombieList = function()
+					return {
+						size = function()
+							return 1
+						end,
+						get = function(_, idx0)
+							assert.equals(0, idx0)
+							return zombie
+						end,
+					}
+				end,
+			}
+		end
+
+		local SquareHelpers = require("WorldObserver/helpers/square")
+		local savedSquareHighlight = SquareHelpers.highlight
+		local highlightCalls = 0
+		SquareHelpers.highlight = function()
+			highlightCalls = highlightCalls + 1
+		end
+
+		local Probe = require("WorldObserver/facts/zombies/probe")
+
+		do
+			local registry = InterestRegistry.new({ ttlMs = 1000000 })
+			registry:declare("m1", "a", {
+				type = "zombies",
+				scope = "allLoaded",
+				staleness = { desired = 1, tolerable = 2 },
+				radius = { desired = 25, tolerable = 30 },
+				zRange = { desired = 1, tolerable = 2 },
+				cooldown = { desired = 0, tolerable = 0 },
+			})
+
+			Probe.tick({
+				state = {},
+				emitFn = function() end,
+				headless = false,
+				runtime = nil,
+				interestRegistry = registry,
+				probeCfg = {},
+				makeZombieRecord = function()
+					return { zombieId = 1, x = 5, y = 5, z = 0 }
+				end,
+			})
+			assert.equals(0, highlightCalls)
+		end
+
+		do
+			local registry = InterestRegistry.new({ ttlMs = 1000000 })
+			registry:declare("m1", "a", {
+				type = "zombies",
+				scope = "allLoaded",
+				staleness = { desired = 1, tolerable = 2 },
+				radius = { desired = 25, tolerable = 30 },
+				zRange = { desired = 1, tolerable = 2 },
+				cooldown = { desired = 0, tolerable = 0 },
+				highlight = true,
+			})
+
+			Probe.tick({
+				state = {},
+				emitFn = function() end,
+				headless = false,
+				runtime = nil,
+				interestRegistry = registry,
+				probeCfg = {},
+				makeZombieRecord = function()
+					return { zombieId = 1, x = 5, y = 5, z = 0 }
+				end,
+			})
+			assert.equals(1, highlightCalls)
+		end
+
+		SquareHelpers.highlight = savedSquareHighlight
+		_G.getNumActivePlayers = savedGetNumActivePlayers
+		_G.getSpecificPlayer = savedGetSpecificPlayer
+		_G.getCell = savedGetCell
 	end)
 
 	it("highlights zombies via outline APIs when available", function()

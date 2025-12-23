@@ -33,7 +33,7 @@ Related docs:
 
 ### 2.2 Lifecycle: lazy start on first subscription
 
-- Fact types are registered at startup (currently only `squares`).
+- Fact types are registered at startup (`squares`, `zombies`, `rooms`, `items`, `deadBodies`, `sprites`).
 - Fact producers start lazily when the first ObservationStream subscribes (`FactRegistry:onSubscribe(...)`).
 - Fact producers stop when the last subscriber unsubscribes.
   - If a type cannot fully unregister its handlers (missing `Remove`), it may return `false` from `stop()` so the

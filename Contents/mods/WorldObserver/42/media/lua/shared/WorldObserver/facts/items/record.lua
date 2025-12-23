@@ -2,6 +2,7 @@
 local Log = require("LQR/util/log").withTag("WO.FACTS.items")
 local Time = require("WorldObserver/helpers/time")
 local SafeCall = require("WorldObserver/helpers/safe_call")
+local SquareHelpers = require("WorldObserver/helpers/square")
 
 local moduleName = ...
 local Record = {}
@@ -176,6 +177,7 @@ if Record.makeItemRecord == nil then
 			x = x,
 			y = y,
 			z = z,
+			tileLocation = SquareHelpers.record.tileLocationFromCoords(x, y, z),
 			squareId = deriveSquareId(square, x, y, z),
 			sourceTime = ts,
 			source = source,

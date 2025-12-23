@@ -61,7 +61,7 @@ local lease = WorldObserver.factInterest:declare("YourModId", "items.vision", {
 ## Subscribe
 
 ```lua
-local sub = WorldObserver.observations.items()
+local sub = WorldObserver.observations:items()
   :distinct("item", 10)
   :subscribe(function(observation)
     local item = observation.item
@@ -113,7 +113,7 @@ If you need extra fields on `observation.item`, register a record extender:
 ## Built-in stream helpers
 
 ```lua
-local stream = WorldObserver.observations.items()
+local stream = WorldObserver.observations:items()
   :itemFullTypeIs("Base.CannedSoup")
   :distinct("item", 10)
 ```
@@ -123,7 +123,7 @@ If you want custom boolean logic, use `:whereItem(...)` with record predicates:
 ```lua
 local ItemHelper = WorldObserver.helpers.item.record
 
-local stream = WorldObserver.observations.items()
+local stream = WorldObserver.observations:items()
   :whereItem(function(item)
     return ItemHelper.itemTypeIs(item, "Apple")
   end)

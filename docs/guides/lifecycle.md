@@ -10,7 +10,7 @@ WorldObserver is streaming and long-running by design. That means you need to ma
 When you call:
 
 ```lua
-local sub = WorldObserver.observations.squares():subscribe(function(observation) ... end)
+local sub = WorldObserver.observations:squares():subscribe(function(observation) ... end)
 ```
 
 you must later call:
@@ -111,7 +111,7 @@ function handle:start()
     scope = "near",
     target = { player = { id = 0 } },
   })
-  self.sub = WorldObserver.observations.squares():subscribe(function(observation) ... end)
+  self.sub = WorldObserver.observations:squares():subscribe(function(observation) ... end)
 end
 
 function handle:tick()

@@ -56,7 +56,7 @@ local lease = WorldObserver.factInterest:declare("YourModId", "featureKey", {
 ## Subscribe
 
 ```lua
-local sub = WorldObserver.observations.rooms()
+local sub = WorldObserver.observations:rooms()
   :roomTypeIs("kitchen")
   :distinct("room", 10)
   :subscribe(function(observation)
@@ -100,7 +100,7 @@ If you need extra fields on `observation.room`, register a record extender:
 ## Built-in stream helpers
 
 ```lua
-local stream = WorldObserver.observations.rooms()
+local stream = WorldObserver.observations:rooms()
   :roomHasWater()
   :distinct("room", 10)
 ```

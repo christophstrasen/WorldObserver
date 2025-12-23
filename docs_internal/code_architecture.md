@@ -140,6 +140,17 @@ Implemented via lazy start/stop in:
 - `Contents/mods/WorldObserver/42/media/lua/shared/WorldObserver/facts/registry.lua:1`
 - `Contents/mods/WorldObserver/42/media/lua/shared/WorldObserver/observations/core.lua:60`
 
+### Derived ObservationStreams (joins, multi-family)
+Derived streams must preserve subscriber gating. The main “gotcha” is that subscribing to an LQR query directly
+**bypasses** `FactRegistry:onSubscribe(...)`, which can leave probes/listeners stopped in-game even though your
+LQR join/query is subscribed.
+
+Current solution:
+- Build derived streams via `WorldObserver.observations:derive(...)` (implemented in `WorldObserver/observations/core.lua`).
+  - It returns a normal `ObservationStream` and unions `fact_deps` from all input streams so facts start/stop correctly.
+- `ObservationStream:getLQR()` returns a join-friendly LQR `QueryBuilder` rooted at the stream’s output schemas
+  (`observation.square`, `observation.zombie`, …) and does not force a post-join schema selection that would drop joined schemas.
+
 ### Backpressure boundary: ingest
 Producers “ingest”, the scheduler “drains”:
 - Producers call `ctx.ingest(record)` (cheap, safe inside bursty callbacks).
@@ -333,7 +344,7 @@ Rule of thumb: if an id might be “big Java long” or unstable between session
 
 ## 5) How to add/change things (recommended contributor workflows)
 
-### Add a new fact type (new `WorldObserver.observations.<type>()`)
+### Add a new fact type (new `WorldObserver.observations:<type>()`)
 Typical checklist:
 1) **Interest surface**
    - Add to `Contents/mods/WorldObserver/42/media/lua/shared/WorldObserver/interest/definitions.lua`

@@ -25,20 +25,20 @@
   - Added a “Before” story for how mods observe the world today, with LoC/complexity/risk estimates per step.
 
 - Created `docs_internal/drafts/api_proposal.md` scaffold and first decisions:
-  - ObservationStreams are exposed as `WorldObserver.observations.<name>()`.
+  - ObservationStreams are exposed as `WorldObserver.observations:<name>()`.
   - New ObservationStreams are registered via a small config: `build = …` plus `enabled_helpers = { square = "SquareObs", zombie = "ZombieObs", … }`.
   - Helper sets (square/zombie/spatial/time/etc.) are thin, reusable sugar attached based on `enabled_helpers`, assuming certain fields in the observation records; internal use of LQR join/group/distinct windows is hidden behind semantic helpers.
   - WorldObserver owns “fact plans” (event + probe strategies) per element type, with strategy selection as an advanced config knob, and never implicitly de‑duplicates observations.
 
 - Sketched and refined concrete use cases in API terms:
   - Squares with corpses near the player:
-    - `WorldObserver.observations.squares():distinct("square", 10):nearIsoObject(playerIsoObject, 20):squareHasCorpse():subscribe(...)`
+    - `WorldObserver.observations:squares():distinct("square", 10):nearIsoObject(playerIsoObject, 20):squareHasCorpse():subscribe(...)`
     - Shows helpers as reducers only, explicit “once per square within N seconds” via a dimension‑aware `distinct`, and spatial filtering on a live `IsoObject`.
   - Chef zombie in a kitchen with ambient sound:
-    - `WorldObserver.observations.roomZombies():roomIsKitchen():zombieHasChefOutfit():subscribe(...)`
+    - `WorldObserver.observations:roomZombies():roomIsKitchen():zombieHasChefOutfit():subscribe(...)`
     - Demonstrates multi‑dimension ObservationStreams (rooms + zombies) and entity‑prefixed helpers (`roomIs*`, `zombieHas*`).
   - Vehicles under attack (advanced custom ObservationStream):
-    - Mod‑facing: `WorldObserver.observations.vehiclesUnderAttack():withConfig({ minZombies = 3 }):filter(function(observation) return (observation.vehicle.weightKg or 0) <= 1200 end):subscribe(...)`
+    - Mod‑facing: `WorldObserver.observations:vehiclesUnderAttack():withConfig({ minZombies = 3 }):filter(function(observation) return (observation.vehicle.weightKg or 0) <= 1200 end):subscribe(...)`
     - Internal: custom `build(opts)` using LQR joins + a 1‑second group window + `having`, reading `minZombies` from `opts`, with `enabled_helpers = { vehicle = "VehicleObs" }`.
   - Clarified that `subscribe` callbacks see a single `observation` table (one field per world type, e.g. `observation.square`, `observation.room`, `observation.zombie`, `observation.vehicle`) and added an advanced `filter(function(observation) ...)` escape hatch that mirrors lua‑reactivex `filter` on this table shape.
   - Added namespacing and configuration rules for helper sets (`WorldObserver.helpers.<type>` and `enabled_helpers` with `true` vs `"<fieldName>"`), documented `getLQR()` as an advanced escape hatch, and sketched debugging/logging guidance that reuses LQR’s logger plus future `describeFacts` / `describeStream` helpers and potential visual highlighting.

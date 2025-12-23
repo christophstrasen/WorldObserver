@@ -276,7 +276,7 @@ At a high level, WorldObserver should:
 
 - **Publish reusable ObservationStreams.**  
   Provide a stable set of base ObservationStreams under
-  `WorldObserver.observations.<name>()` (for example `squares()`, `rooms()`,
+  `WorldObserver.observations:<name>()` (for example `squares()`, `rooms()`,
   `zombies()`, `vehicles()`, and selected cross‑mod streams like
   `roomStatus()`), each carrying schema‑tagged observations over time.
 
@@ -330,7 +330,7 @@ Conceptually:
   
   - defines world schemas and keys (for example `SquareObs`, `RoomObs`, …);
   - turns PZ/engine events and other fact sources into LQR‑friendly record streams;
-  - publishes ready‑made base ObservationStreams such as `WorldObserver.observations.squares()` or `WorldObserver.observations.rooms()`; and
+  - publishes ready‑made base ObservationStreams such as `WorldObserver.observations:squares()` or `WorldObserver.observations:rooms()`; and
   - offers extension points, via the fact layer APIs, for mod authors to define their own facts and ObservationStreams on top.
 
 For most mod authors, **WorldObserver is the primary entry point**:

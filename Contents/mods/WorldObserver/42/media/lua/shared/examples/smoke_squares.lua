@@ -49,7 +49,7 @@ function SmokeSquares.start(opts)
 	local visionLease = WorldObserver.factInterest:declare(modId, "vision", INTEREST_VISION, LEASE_OPTS)
 
 	-- Build stream.
-	local stream = WorldObserver.observations.squares()
+	local stream = WorldObserver.observations:squares()
 	local SquareHelper = WorldObserver.helpers.square.record
 	local distinctSeconds = opts.distinctSeconds
 	if distinctSeconds ~= nil then

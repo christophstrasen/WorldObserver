@@ -31,7 +31,7 @@ describe("WorldObserver observations.squares()", function()
 
 	it("emits Observation rows with SquareObservation payload", function()
 		local received = {}
-		local stream = WorldObserver.observations.squares()
+		local stream = WorldObserver.observations:squares()
 		stream:subscribe(function(row)
 			received[#received + 1] = row
 		end)
@@ -58,7 +58,7 @@ describe("WorldObserver observations.squares()", function()
 
 	it("distinct once per square suppresses duplicates", function()
 		local received = {}
-		local stream = WorldObserver.observations.squares():distinct("square")
+		local stream = WorldObserver.observations:squares():distinct("square")
 		stream:subscribe(function(row)
 			received[#received + 1] = row
 		end)
@@ -87,7 +87,7 @@ describe("WorldObserver observations.squares()", function()
 
 		it("squareHasCorpse filters expected observations", function()
 			local withCorpse = {}
-			local stream = WorldObserver.observations.squares():squareHasCorpse()
+			local stream = WorldObserver.observations:squares():squareHasCorpse()
 			stream:subscribe(function(row)
 			withCorpse[#withCorpse + 1] = row
 		end)
@@ -120,7 +120,7 @@ describe("WorldObserver observations.squares()", function()
 	it("whereSquare passes the square record into the predicate", function()
 		local received = {}
 		local SquareHelper = WorldObserver.helpers.square.record
-		local stream = WorldObserver.observations.squares():whereSquare(function(squareRecord, observation)
+		local stream = WorldObserver.observations:squares():whereSquare(function(squareRecord, observation)
 			assert.is_table(observation)
 			assert.is_table(squareRecord)
 			assert.equals(squareRecord, observation.SquareObservation)
@@ -186,7 +186,7 @@ describe("WorldObserver observations.squares()", function()
 		end
 
 			local received = {}
-			local stream = WorldObserver.observations.squares():squareHasIsoGridSquare()
+			local stream = WorldObserver.observations:squares():squareHasIsoGridSquare()
 			stream:subscribe(function(row)
 				received[#received + 1] = row
 			end)
@@ -207,7 +207,7 @@ describe("WorldObserver observations.squares()", function()
 
 	it("tracks fact subscribers when subscribing and unsubscribing", function()
 		local facts = WorldObserver._internal.facts
-		local stream = WorldObserver.observations.squares()
+		local stream = WorldObserver.observations:squares()
 		local subscription = stream:subscribe(function() end)
 
 		assert.is_true((facts._types.squares.subscribers or 0) >= 1)

@@ -51,7 +51,7 @@ local lease = WorldObserver.factInterest:declare(MOD_ID, "quickstart.squares", {
   cooldown = { desired = 10 },   -- time window in which emmissions are suppressed
 })
 
-local corpseSquares = WorldObserver.observations.squares()
+local corpseSquares = WorldObserver.observations:squares()
   :squareHasCorpse()          -- try removing this line if you see no output
   :distinct("square", 10)
   :subscribe(function(observation)

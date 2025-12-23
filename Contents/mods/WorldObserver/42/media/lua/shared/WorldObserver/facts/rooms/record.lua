@@ -3,6 +3,7 @@ local Log = require("LQR/util/log").withTag("WO.FACTS.rooms")
 local Time = require("WorldObserver/helpers/time")
 local JavaList = require("WorldObserver/helpers/java_list")
 local SafeCall = require("WorldObserver/helpers/safe_call")
+local SquareHelpers = require("WorldObserver/helpers/square")
 
 local moduleName = ...
 local Record = {}
@@ -166,7 +167,7 @@ local function deriveRoomIdFromFirstSquare(room)
 	if type(z) ~= "number" then
 		z = 0
 	end
-	return string.format("x%dy%dz%d", math.floor(x), math.floor(y), math.floor(z))
+	return SquareHelpers.record.tileLocationFromCoords(x, y, z)
 end
 
 local function deriveRoomId(room)
@@ -214,7 +215,8 @@ if Record.makeRoomRecord == nil then
 		-- Room IDs in Lua must be stable and non-colliding.
 		-- We intentionally derive them from the first room square coordinates, not from engine IDs
 		-- that may exceed Lua number precision.
-		local roomId = deriveRoomId(room)
+		local tileLocation = deriveRoomIdFromFirstSquare(room)
+		local roomId = tileLocation or deriveRoomId(room)
 		if roomId == nil then
 			Log:info("Skipped room record (missing roomId)")
 			return nil
@@ -247,6 +249,7 @@ if Record.makeRoomRecord == nil then
 
 		local roomMeta = {
 			roomId = roomId,
+			tileLocation = tileLocation or roomId,
 			roomDefId = roomDefId,
 			buildingId = buildingId,
 			name = name,
@@ -254,6 +257,7 @@ if Record.makeRoomRecord == nil then
 
 		local record = {
 			roomId = roomId,
+			tileLocation = tileLocation or roomId,
 			roomDefId = roomDefId,
 			buildingId = buildingId,
 			name = name,

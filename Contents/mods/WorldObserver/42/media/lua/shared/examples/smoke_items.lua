@@ -63,7 +63,7 @@ function SmokeItems.start(opts)
 		leases.vision = WorldObserver.factInterest:declare(modId, "vision", INTEREST_VISION, LEASE_OPTS)
 	end
 
-	local stream = WorldObserver.observations.items()
+	local stream = WorldObserver.observations:items()
 	if opts.distinctSeconds then
 		stream = stream:distinct("item", opts.distinctSeconds)
 	end

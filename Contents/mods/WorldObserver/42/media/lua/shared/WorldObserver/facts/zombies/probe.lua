@@ -83,6 +83,10 @@ local function withinInterest(zombie, player, radius, zRange)
 	return (dx * dx + dy * dy) <= (radius * radius)
 end
 
+local function shouldHighlight(pref)
+	return pref == true or type(pref) == "table"
+end
+
 local function startSweep(state, effective, nowMs)
 	state.cursorIndex = 1
 	state.sweepStartMs = nowMs
@@ -203,21 +207,27 @@ if Probe.tick == nil then
 		local stalenessMs = math.max(0, stalenessSeconds * 1000)
 		effective.zRange = zRange
 		effective.highlight = highlightPref
-		local highlightMs = tonumber(probeCfg.highlightMs)
-		if highlightMs == nil then
-			local cadenceMs = math.max(stalenessMs, cooldownMs)
-			highlightMs = math.max(0, math.floor(cadenceMs * 0.5))
-		end
-		local highlightAlpha = tonumber(probeCfg.highlightAlpha) or 0.7
-		local highlightColor = probeCfg.highlightColor or highlightPref
-		if highlightColor == true then
-			highlightColor = { 1, 0.2, 0.2 }
-		end
-		if type(highlightColor) ~= "table" then
-			highlightColor = { 1, 0.2, 0.2 }
-		end
-		if type(highlightColor[4]) == "number" then
-			highlightAlpha = highlightColor[4]
+		local doHighlight = (ctx.headless ~= true) and shouldHighlight(highlightPref)
+		local highlightMs = 0
+		local highlightAlpha = 0.7
+		local highlightColor = nil
+		if doHighlight then
+			highlightMs = tonumber(probeCfg.highlightMs) or 0
+			if highlightMs <= 0 then
+				local cadenceMs = math.max(stalenessMs, cooldownMs)
+				highlightMs = math.max(0, math.floor(cadenceMs * 0.5))
+			end
+			highlightAlpha = tonumber(probeCfg.highlightAlpha) or 0.7
+			highlightColor = probeCfg.highlightColor or highlightPref
+			if highlightColor == true then
+				highlightColor = { 1, 0.2, 0.2 }
+			end
+			if type(highlightColor) ~= "table" then
+				highlightColor = { 1, 0.2, 0.2 }
+			end
+			if type(highlightColor[4]) == "number" then
+				highlightAlpha = highlightColor[4]
+			end
 		end
 
 		local nowMs = nowMillis()
@@ -273,7 +283,7 @@ if Probe.tick == nil then
 							ctx.emitFn(record)
 							emitted = emitted + 1
 						end
-						if highlightMs and highlightMs > 0 then
+						if doHighlight and highlightMs > 0 then
 							-- Zombies override their own highlight each frame; highlight the floor they currently stand on.
 							local okSquare, isoSquare = pcall(zombie.getCurrentSquare, zombie)
 							if okSquare and isoSquare ~= nil then

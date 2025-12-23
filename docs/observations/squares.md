@@ -11,7 +11,7 @@ Quickstart first (recommended):
 ## Subscribe
 
 ```lua
-local sub = WorldObserver.observations.squares()
+local sub = WorldObserver.observations:squares()
   :subscribe(function(observation)
     local s = observation.square
     print(("[WO] squareId=%s x=%s y=%s z=%s corpse=%s source=%s"):format(
@@ -51,7 +51,7 @@ If you need extra fields on `observation.square`, register a record extender:
 These are convenience filters you can chain:
 
 ```lua
-local stream = WorldObserver.observations.squares()
+local stream = WorldObserver.observations:squares()
   :squareHasCorpse()
   :distinct("square", 10)
 ```
@@ -61,7 +61,7 @@ If you want custom boolean logic (AND/OR), use `:whereSquare(...)` with record p
 ```lua
 local SquareHelper = WorldObserver.helpers.square.record
 
-local stream = WorldObserver.observations.squares()
+local stream = WorldObserver.observations:squares()
   :whereSquare(function(s)
     return SquareHelper.squareHasCorpse(s) and SquareHelper.squareHasIsoGridSquare(s)
   end)

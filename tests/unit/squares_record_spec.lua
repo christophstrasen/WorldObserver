@@ -32,6 +32,7 @@ describe("squares records", function()
 
 		local record = Record.makeSquareRecord(square, "probe")
 		assert.is_table(record)
+		assert.equals("x1y2z0", record.tileLocation)
 		assert.is_number(record.sourceTime)
 	end)
 end)

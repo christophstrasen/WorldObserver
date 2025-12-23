@@ -2,7 +2,7 @@
 
 Observations are the main thing you consume from WorldObserver.
 
-- You subscribe to an observation stream (example: `WorldObserver.observations.squares()`).
+- You subscribe to an observation stream (example: `WorldObserver.observations:squares()`).
 - Each stream emits **observations** (Lua tables), not “live” game objects.
 - Each observation can carry one or more **record families** (example: `observation.square`, `observation.zombie`).
 - You react to those observations (and the records inside them).
@@ -15,7 +15,7 @@ If you haven’t run the first working example yet, start here:
 You subscribe like this:
 
 ```lua
-local sub = WorldObserver.observations.squares():subscribe(function(observation)
+local sub = WorldObserver.observations:squares():subscribe(function(observation)
   -- observation.square is a record table (a snapshot).
 end)
 ```

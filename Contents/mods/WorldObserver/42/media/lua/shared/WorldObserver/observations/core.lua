@@ -47,14 +47,65 @@ local function cloneTable(tbl)
 	return out
 end
 
-local function newObservationStream(builder, helperMethods, dimensions, factRegistry, factDeps)
+local function listSortedKeys(tbl)
+	local keys = {}
+	local count = 0
+	for key in pairs(tbl or {}) do
+		count = count + 1
+		keys[count] = key
+	end
+	table.sort(keys)
+	return keys
+end
+
+local function buildHelperNamespaces(helperSets, enabledHelpers, stream)
+	local namespaces = {}
+	for _, helperKey in ipairs(listSortedKeys(enabledHelpers)) do
+		local fieldName = enabledHelpers[helperKey]
+		local helperSet = helperSets and helperSets[helperKey] or nil
+		if helperSet then
+			local targetField = fieldName == true and helperKey or fieldName
+			local helperSource = helperSet
+			if type(helperSet.stream) == "table" then
+				helperSource = helperSet.stream
+			end
+
+			local proxy = {
+				key = helperKey,
+				defaultField = targetField,
+				raw = helperSet,
+				stream = helperSource,
+			}
+
+			for methodName, helperFn in pairs(helperSource) do
+				if type(helperFn) == "function" and proxy[methodName] == nil then
+					proxy[methodName] = function(_, maybeFieldName, ...)
+						if type(maybeFieldName) == "string" and maybeFieldName ~= "" then
+							return helperFn(stream, maybeFieldName, ...)
+						end
+						return helperFn(stream, targetField, maybeFieldName, ...)
+					end
+				end
+			end
+			namespaces[helperKey] = proxy
+		end
+	end
+	return namespaces
+end
+
+local function newObservationStream(builder, helperMethods, dimensions, factRegistry, factDeps, helperSets, enabledHelpers)
+	local enabled = cloneTable(enabledHelpers)
 	local stream = {
 		_builder = builder,
 		_helperMethods = helperMethods or {},
 		_dimensions = dimensions or {},
 		_factRegistry = factRegistry,
 		_factDeps = factDeps or {},
+		_helperSets = helperSets or {},
+		_enabled_helpers = enabled,
+		helpers = {},
 	}
+	stream.helpers = buildHelperNamespaces(stream._helperSets, enabled, stream)
 	-- Keep a light OO shape via metatable so helper methods resolve and we don’t copy functions per instance.
 	return setmetatable(stream, ObservationStream)
 end
@@ -93,7 +144,49 @@ function BaseMethods:subscribe(callback, onError, onCompleted)
 end
 
 function BaseMethods:getLQR()
-	return self._builder
+	-- Return a join-friendly builder rooted at this stream's OUTPUT schemas (post-selectSchemas).
+	-- LQR join steps operate on the schemas currently flowing through the pipeline; WO hides the
+	-- internal schema names ("SquareObservation", etc) behind selectSchemas aliases ("square", etc).
+	-- If we return the raw builder here, users will configure joins against the visible aliases but
+	-- LQR will still see the pre-selection schema names, causing joins to silently drop everything.
+	--
+	-- We solve this by anchoring a new QueryBuilder to the stream's built observable (which has
+	-- selectSchemas already applied), and then copying the schema name metadata so join coverage
+	-- checks and warnings stay useful without forcing a selection that would later drop joined schemas.
+	if self._lqrBuilder then
+		return self._lqrBuilder
+	end
+
+	-- Note: Query.from(QueryBuilder) will build the source builder. We try to avoid marking the stream's
+	-- underlying builder as "built" (which would trigger LQR warnings when users later chain WO helpers)
+	-- by building a clone instead.
+	local source = self._builder
+	local cloneFn = source and source._clone
+	if source and source._built == nil and type(cloneFn) == "function" then
+		local ok, cloned = pcall(cloneFn, source)
+		if ok and type(cloned) == "table" then
+			source = cloned
+		end
+	end
+
+	local joinable = Query.from(source)
+
+	local schemaNames = self._builder and self._builder._schemaNames
+	if type(schemaNames) == "table" then
+		local copied = {}
+		for _, schemaName in ipairs(schemaNames) do
+			if type(schemaName) == "string" and schemaName ~= "" then
+				copied[#copied + 1] = schemaName
+			end
+		end
+		if #copied >= 1 then
+			joinable._rootSchemas = copied
+			joinable._schemaNames = copied
+		end
+	end
+
+	self._lqrBuilder = joinable
+	return joinable
 end
 
 function BaseMethods:asRx()
@@ -123,7 +216,15 @@ end
 
 function BaseMethods:filter(predicate)
 	local nextBuilder = self._builder:where(predicate)
-	return newObservationStream(nextBuilder, self._helperMethods, self._dimensions, self._factRegistry, self._factDeps)
+	return newObservationStream(
+		nextBuilder,
+		self._helperMethods,
+		self._dimensions,
+		self._factRegistry,
+		self._factDeps,
+		self._helperSets,
+		self._enabled_helpers
+	)
 end
 
 function BaseMethods:distinct(dimension, seconds)
@@ -146,7 +247,15 @@ function BaseMethods:distinct(dimension, seconds)
 	end
 
 	local nextBuilder = self._builder:distinct(dim.schema, { by = by, window = window })
-	return newObservationStream(nextBuilder, self._helperMethods, self._dimensions, self._factRegistry, self._factDeps)
+	return newObservationStream(
+		nextBuilder,
+		self._helperMethods,
+		self._dimensions,
+		self._factRegistry,
+		self._factDeps,
+		self._helperSets,
+		self._enabled_helpers
+	)
 end
 
 ObservationStream.__index = function(self, key)
@@ -176,7 +285,8 @@ end
 
 local function buildHelperMethods(helperSets, enabledHelpers)
 	local methods = {}
-	for helperKey, fieldName in pairs(enabledHelpers or {}) do
+	for _, helperKey in ipairs(listSortedKeys(enabledHelpers)) do
+		local fieldName = enabledHelpers[helperKey]
 		local helperSet = helperSets[helperKey]
 		if helperSet then
 			-- Helper sets can target alternative field names (enabled_helpers value), defaulting to their own key.
@@ -209,6 +319,14 @@ function ObservationRegistry.new(opts)
 		_registry = {},
 		_api = {},
 	}, ObservationRegistry)
+	-- Derived streams are an advanced feature, but we still expose them on the public API table
+	-- so user code can keep WO lifecycle semantics (facts start on subscribe).
+	if self._api.derive == nil then
+		self._api.derive = function(api, streamsByName, buildFn, deriveOpts)
+			assert(api == self._api, "Call as WorldObserver.observations:derive(streamsByName, buildFn, opts)")
+			return self:derive(streamsByName, buildFn, deriveOpts)
+		end
+	end
 	return self
 end
 
@@ -234,7 +352,8 @@ function ObservationRegistry:register(name, opts)
 		fact_deps = cloneTable(opts.fact_deps),
 	}
 
-	self._api[name] = function(_, streamOpts)
+	self._api[name] = function(api, streamOpts)
+		assert(api == self._api, ("Call as WorldObserver.observations:%s(opts)"):format(tostring(name)))
 		return self:_buildStream(name, streamOpts)
 	end
 end
@@ -248,7 +367,109 @@ function ObservationRegistry:_buildStream(name, streamOpts)
 	local builder = entry.build(streamOpts or {})
 	local helperMethods = buildHelperMethods(self._helperSets, entry.enabled_helpers)
 	local dimensions = entry.dimensions or {}
-	return newObservationStream(builder, helperMethods, dimensions, self._factRegistry, entry.fact_deps)
+	return newObservationStream(builder, helperMethods, dimensions, self._factRegistry, entry.fact_deps, self._helperSets, entry.enabled_helpers)
+end
+
+local function listStreamNames(streamsByName)
+	local names = {}
+	local count = 0
+	for name in pairs(streamsByName or {}) do
+		assert(type(name) == "string" and name ~= "", "derive stream keys must be non-empty strings")
+		count = count + 1
+		names[count] = name
+	end
+	table.sort(names)
+	return names
+end
+
+local function mergeUniqueFactDeps(out, seen, deps)
+	for _, dep in ipairs(deps or {}) do
+		if type(dep) == "string" and dep ~= "" and seen[dep] ~= true then
+			out[#out + 1] = dep
+			seen[dep] = true
+		end
+	end
+end
+
+local function mergeTablesFirstWins(out, incoming)
+	for key, value in pairs(incoming or {}) do
+		if out[key] == nil then
+			out[key] = value
+		end
+	end
+end
+
+-- Derived ObservationStreams (wrapping LQR queries while preserving fact dependency lifecycles).
+-- Why: subscribing to an LQR query directly bypasses FactRegistry:onSubscribe(...), so probes/listeners don't start.
+if ObservationRegistry.derive == nil then
+	--- Build a derived ObservationStream from one or more input streams.
+	--- The returned stream keeps WO lifecycle semantics (facts start on subscribe, stop on unsubscribe).
+	--- @param streamsByName table<string, any> ObservationStream map (values must support :getLQR()).
+	--- @param buildFn fun(lqrByName: table<string, any>, opts: table): any Returns an LQR query/builder with :subscribe().
+	--- @param opts table|nil Passed through to buildFn.
+	--- @return any ObservationStream
+	function ObservationRegistry:derive(streamsByName, buildFn, opts)
+		assert(type(streamsByName) == "table", "derive expects streamsByName table")
+		assert(type(buildFn) == "function", "derive expects buildFn function")
+		opts = opts or {}
+
+		local factDeps = {}
+		local factDepsSeen = {}
+		local enabledHelpers = {}
+		local helperMethods = {}
+		local dimensions = {}
+		local lqrByName = {}
+
+		local names = listStreamNames(streamsByName)
+		assert(#names >= 1, "derive expects at least one input stream")
+		for i = 1, #names do
+			local name = names[i]
+			local stream = streamsByName[name]
+			assert(type(stream) == "table", ("derive stream '%s' must be a table"):format(tostring(name)))
+			assert(type(stream.getLQR) == "function", ("derive stream '%s' must support :getLQR()"):format(tostring(name)))
+			lqrByName[name] = stream:getLQR()
+
+			if stream._factRegistry ~= nil and stream._factRegistry ~= self._factRegistry then
+				Log:warn(
+					"derive received stream with different factRegistry name=%s registry=%s streamRegistry=%s",
+					tostring(name),
+					tostring(self._factRegistry),
+					tostring(stream._factRegistry)
+				)
+			end
+
+			if type(stream._factDeps) == "table" then
+				mergeUniqueFactDeps(factDeps, factDepsSeen, stream._factDeps)
+			end
+			if type(stream._enabled_helpers) == "table" then
+				for helperKey in pairs(stream._enabled_helpers) do
+					if enabledHelpers[helperKey] == nil then
+						-- Derived streams are built from :getLQR() builders, which are rooted in OUTPUT schemas
+						-- (post-selectSchemas). Helper predicates run before the derived stream's own selection,
+						-- so default to the public schema aliases ("square", "zombie", ...) instead of the
+						-- source stream's internal schema names ("SquareObservation", ...).
+						enabledHelpers[helperKey] = helperKey
+					end
+				end
+			end
+			if type(stream._dimensions) == "table" then
+				mergeTablesFirstWins(dimensions, stream._dimensions)
+			end
+		end
+
+		helperMethods = buildHelperMethods(self._helperSets, enabledHelpers)
+		for i = 1, #names do
+			local name = names[i]
+			local stream = streamsByName[name]
+			if type(stream._helperMethods) == "table" then
+				mergeTablesFirstWins(helperMethods, stream._helperMethods)
+			end
+		end
+
+		local builder = buildFn(lqrByName, opts)
+		assert(type(builder) == "table" and type(builder.subscribe) == "function", "derive buildFn must return LQR query with :subscribe()")
+		return newObservationStream(builder, helperMethods, dimensions, self._factRegistry, factDeps, self._helperSets, enabledHelpers)
+	end
 end
 
 function ObservationRegistry:api()

@@ -37,7 +37,7 @@ local lease = WorldObserver.factInterest:declare(MOD_ID, "quickstart.squares", {
   cooldown = { desired = 2 },   -- don't re-emit for the same square within the cooldown seconds
 })
 
-local sub = WorldObserver.observations.squares()
+local sub = WorldObserver.observations:squares()
   :squareHasCorpse()          -- Only when at least one corpse is found
   :distinct("square", 10)     -- We don't want repeat observations more frequent than every 10 seconds
   :subscribe(function(observation)
@@ -107,7 +107,7 @@ Once you want custom boolean logic, keep the quickstart chain but switch to `:wh
 
 ```lua
 local SquareHelper = WorldObserver.helpers.square.record
-local stream = WorldObserver.observations.squares()
+local stream = WorldObserver.observations:squares()
   :whereSquare(function(s)
     return SquareHelper.squareHasCorpse(s) and SquareHelper.squareHasIsoGridSquare(s)
   end)

@@ -61,7 +61,7 @@ local lease = WorldObserver.factInterest:declare("YourModId", "deadBodies.vision
 ## Subscribe
 
 ```lua
-local sub = WorldObserver.observations.deadBodies()
+local sub = WorldObserver.observations:deadBodies()
   :distinct("deadBody", 10)
   :subscribe(function(observation)
     local body = observation.deadBody
@@ -103,7 +103,7 @@ If you need extra fields on `observation.deadBody`, register a record extender:
 ## Built-in stream helpers
 
 ```lua
-local stream = WorldObserver.observations.deadBodies()
+local stream = WorldObserver.observations:deadBodies()
   :whereDeadBody(function(body)
     return body.squareId ~= nil
   end)

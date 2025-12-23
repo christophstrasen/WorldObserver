@@ -25,7 +25,7 @@ local lease = WorldObserver.factInterest:declare("YourModId", "featureKey", {
 ## Subscribe
 
 ```lua
-local sub = WorldObserver.observations.zombies()
+local sub = WorldObserver.observations:zombies()
   :subscribe(function(observation)
     local z = observation.zombie
     print(("[WO] zombieId=%s tile=%s,%s,%s hasTarget=%s kind=%s"):format(
@@ -68,7 +68,7 @@ If you need extra fields on `observation.zombie`, register a record extender:
 ## Built-in stream helpers
 
 ```lua
-local stream = WorldObserver.observations.zombies()
+local stream = WorldObserver.observations:zombies()
   :zombieHasTarget()
   :distinct("zombie", 2)
 ```
@@ -78,7 +78,7 @@ If you want custom boolean logic, use `:whereZombie(...)` with record predicates
 ```lua
 local ZombieHelper = WorldObserver.helpers.zombie.record
 
-local stream = WorldObserver.observations.zombies()
+local stream = WorldObserver.observations:zombies()
   :whereZombie(ZombieHelper.zombieHasTarget)
 ```
 

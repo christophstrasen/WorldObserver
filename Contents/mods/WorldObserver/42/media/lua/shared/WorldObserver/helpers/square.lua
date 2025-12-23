@@ -16,6 +16,19 @@ if type(moduleName) == "string" then
 	SquareHelpers.record = SquareHelpers.record or {}
 	SquareHelpers.stream = SquareHelpers.stream or {}
 
+	-- Patch seam: only define when nil so mods can override.
+	if SquareHelpers.record.tileLocationFromCoords == nil then
+		function SquareHelpers.record.tileLocationFromCoords(x, y, z)
+			if x == nil or y == nil then
+				return nil
+			end
+			if type(z) ~= "number" then
+				z = 0
+			end
+			return string.format("x%dy%dz%d", math.floor(x), math.floor(y), math.floor(z))
+		end
+	end
+
 	local function squareField(observation, fieldName)
 		-- Helpers should be forgiving if a stream remaps the square field.
 		local square = observation[fieldName]

@@ -81,6 +81,11 @@ MapObjects.OnLoadWithSprite({ "fixtures_bathroom_01_0", "location_shop_mall_01_1
 end, 1)
 ```
 
+# SoundObservations
+
+https://steamcommunity.com/sharedfiles/filedetails/?id=3367336031
+https://steamcommunity.com/sharedfiles/filedetails/?id=3628725609
+
 # DeathObservations
 
 https://pzwiki.net/wiki/OnCharacterDeath

@@ -27,7 +27,7 @@ describe("WorldObserver observations.zombies()", function()
 		local received = {}
 		local ZombieHelper = WorldObserver.helpers.zombie.record
 
-		local stream = WorldObserver.observations.zombies():whereZombie(function(zombieRecord, observation)
+		local stream = WorldObserver.observations:zombies():whereZombie(function(zombieRecord, observation)
 			assert.is_table(observation)
 			assert.is_table(zombieRecord)
 			assert.equals(zombieRecord, observation.ZombieObservation)

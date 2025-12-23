@@ -354,6 +354,96 @@ local function resolveDefaultTarget(typeDef, scope)
 	return typeDef.defaultTarget
 end
 
+local function fieldsForScope(typeDef, fieldKey, scope)
+	if not (typeDef and typeDef[fieldKey]) then
+		return nil
+	end
+	local fields = typeDef[fieldKey]
+	if type(fields) ~= "table" then
+		return nil
+	end
+	local scoped = fields[scope] or fields.all or fields.default
+	if type(scoped) ~= "table" then
+		return nil
+	end
+	return scoped
+end
+
+local function isFieldSpecified(spec, normalized, field)
+	if field == "spriteNames" then
+		return type(normalized.spriteNames) == "table" and normalized.spriteNames[1] ~= nil
+	end
+	if field == "target" then
+		return spec.target ~= nil
+	end
+	return spec[field] ~= nil
+end
+
+local function listMissingFields(spec, normalized, fields)
+	if type(fields) ~= "table" then
+		return nil
+	end
+	local missing = {}
+	for i = 1, #fields do
+		local field = fields[i]
+		if not isFieldSpecified(spec, normalized, field) then
+			missing[#missing + 1] = field
+		end
+	end
+	if missing[1] == nil then
+		return nil
+	end
+	return missing
+end
+
+local function hasAnyRecommended(spec, normalized, fields)
+	if type(fields) ~= "table" then
+		return false
+	end
+	for i = 1, #fields do
+		if isFieldSpecified(spec, normalized, fields[i]) then
+			return true
+		end
+	end
+	return false
+end
+
+local function warnMissingFields(modId, key, spec, normalized)
+	if _G.WORLDOBSERVER_HEADLESS == true then
+		return
+	end
+	local typeDef = typeDefFor(normalized and normalized.type or nil)
+	if not typeDef then
+		return
+	end
+	local scope = normalized and normalized.scope or nil
+	local required = fieldsForScope(typeDef, "requiredFields", scope)
+	local missingRequired = listMissingFields(spec or {}, normalized or {}, required)
+	if missingRequired and missingRequired[1] ~= nil then
+		Log:warn(
+			"[interest] missing required fields mod=%s key=%s type=%s scope=%s fields=%s",
+			tostring(modId),
+			tostring(key),
+			tostring(normalized and normalized.type or nil),
+			tostring(scope),
+			table.concat(missingRequired, ",")
+		)
+		return
+	end
+
+	local recommended = fieldsForScope(typeDef, "recommendedFields", scope)
+	if recommended and recommended[1] ~= nil and not hasAnyRecommended(spec or {}, normalized or {}, recommended) then
+		Log:warn(
+			"[interest] lease uses defaults mod=%s key=%s type=%s scope=%s consider=%s",
+			tostring(modId),
+			tostring(key),
+			tostring(normalized and normalized.type or nil),
+			tostring(scope),
+			table.concat(recommended, ",")
+		)
+	end
+end
+
 local function normalizeSpec(spec, defaults, modId)
 	spec = spec or {}
 	local interestType = spec.type
@@ -510,7 +600,9 @@ end
 local function addLeaseWithTtl(self, modId, key, spec, nowMs, ttlMs)
 	ttlMs = tonumber(ttlMs) or self._ttlMs
 	assert(ttlMs > 0, "interest lease ttl must be > 0")
-	local normalizedSpec, bucketKey = normalizeSpec(spec or {}, self._defaults, modId)
+	local incomingSpec = spec or {}
+	local normalizedSpec, bucketKey = normalizeSpec(incomingSpec, self._defaults, modId)
+	warnMissingFields(modId, key, incomingSpec, normalizedSpec)
 	local lease = {
 		modId = modId,
 		key = key,

@@ -3,7 +3,7 @@
 --[[ @AI agent dont change this
 	_G.WORLDOBSERVER_CONFIG_OVERRIDES = { facts = { squares = { probe = { infoLogEveryMs = 500, logEachSweep = true } } } }
 	smokez = require("examples/smoke_zombies")
-	handlez = smoke.start({
+	handlez = smokez.start({
 		distinctSeconds = 10,
 		staleness = 1,
 		radius = 25,
@@ -33,7 +33,7 @@ function SmokeZombies.start(opts)
 		highlight = true,
 	})
 
-	local stream = WorldObserver.observations.zombies()
+	local stream = WorldObserver.observations:zombies()
 	if opts.distinctSeconds then
 		stream = stream:distinct("zombie", opts.distinctSeconds)
 	end

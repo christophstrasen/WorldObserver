@@ -1,6 +1,7 @@
 -- facts/squares/record.lua -- builds stable square fact records from IsoGridSquare objects.
 local Log = require("LQR/util/log").withTag("WO.FACTS.squares")
 local Time = require("WorldObserver/helpers/time")
+local SquareHelpers = require("WorldObserver/helpers/square")
 
 local moduleName = ...
 local Record = {}
@@ -170,6 +171,7 @@ if Record.makeSquareRecord == nil then
 			x = x,
 			y = y,
 			z = z,
+			tileLocation = SquareHelpers.record.tileLocationFromCoords(x, y, z),
 			hasBloodSplat = detectFlag(square, square.hasBlood),
 			hasCorpse = detectCorpse(square),
 			hasTrashItems = false, -- placeholder until we wire real trash detection

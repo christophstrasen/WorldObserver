@@ -20,9 +20,11 @@
 local SmokeSprites = {}
 
 local DEFAULT_SPRITE_NAMES = {
-	"walls_exterior_house_01_0",
-	"floors_interior_tilesandwood_01_0",
-	"fixtures_bathroom_01_0",
+	"fixtures_bathroom_01_1",
+	"fixtures_bathroom_01_3",
+}
+
+local DEFAULT_SPRITE_NAMES = {
 	-- Hedges / tall ornamental vegetation (commonly used in yards).
 	"vegetation_ornamental_01_0",
 	"vegetation_ornamental_01_1",
@@ -32,11 +34,12 @@ local DEFAULT_SPRITE_NAMES = {
 	"vegetation_ornamental_01_5",
 	"vegetation_ornamental_01_6",
 	"vegetation_ornamental_01_7",
+	"vegetation_ornamental_01_8",
+	"vegetation_ornamental_01_9",
 	"vegetation_ornamental_01_10",
 	"vegetation_ornamental_01_11",
 	"vegetation_ornamental_01_12",
 	"vegetation_ornamental_01_13",
-	"location_farm_accesories_01_8",
 }
 
 local LEASE_OPTS = {
@@ -71,7 +74,7 @@ local function ensureSubscription()
 		return
 	end
 	local WorldObserver = require("WorldObserver")
-	local stream = WorldObserver.observations.sprites()
+	local stream = WorldObserver.observations:sprites()
 	if state.distinctSeconds ~= nil then
 		stream = stream:distinct("sprite", state.distinctSeconds)
 	end

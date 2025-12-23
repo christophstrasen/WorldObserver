@@ -23,7 +23,7 @@ local function start()
     target = { player = { id = 0 } },
   })
 
-  sub = WorldObserver.observations.squares()
+  sub = WorldObserver.observations:squares()
     :subscribe(function(observation)
       print(("[WO] squareId=%s source=%s"):format(
         tostring(observation.square.squareId),
@@ -59,7 +59,7 @@ For most mods, filtering has a simple learning path:
 Example: “only squares that have a corpse”:
 
 ```lua
-local stream = WorldObserver.observations.squares()
+local stream = WorldObserver.observations:squares()
   :squareHasCorpse()
 ```
 
@@ -72,7 +72,7 @@ Tip: create a short local alias once, so your code stays clean:
 ```lua
 local SquareHelper = WorldObserver.helpers.square.record
 
-local stream = WorldObserver.observations.squares()
+local stream = WorldObserver.observations:squares()
   :whereSquare(function(squareRecord)
     return SquareHelper.squareHasCorpse(squareRecord) and SquareHelper.squareHasIsoGridSquare(squareRecord)
   end)
@@ -83,7 +83,7 @@ Zombie example:
 ```lua
 local ZombieHelper = WorldObserver.helpers.zombie.record
 
-local stream = WorldObserver.observations.zombies()
+local stream = WorldObserver.observations:zombies()
   :whereZombie(ZombieHelper.zombieHasTarget)
 ```
 
@@ -96,7 +96,7 @@ Use `:distinct` to avoid repeats for the same “thing” within a window.
 Example: “at most once per square every 10 seconds”:
 
 ```lua
-local stream = WorldObserver.observations.squares()
+local stream = WorldObserver.observations:squares()
   :distinct("square", 10)
 ```
 
@@ -109,7 +109,7 @@ Notes:
 If you want more stream operators (map/filter/scan/…), use lua-reactivex via `:asRx()`:
 
 ```lua
-local rxStream = WorldObserver.observations.squares():asRx()
+local rxStream = WorldObserver.observations:squares():asRx()
 -- Now you can use lua-reactivex operators:
 rxStream:map(function(o) return o.square.squareId end):subscribe(print)
 ```

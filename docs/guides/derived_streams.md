@@ -1,11 +1,11 @@
 # Guide: derived streams (multi-family observations)
 
-Goal: combine multiple WorldObserver observation streams into a single stream that carries **multiple families** at once (example: both `observation.square` and `observation.zombie`).
+Goal: combine multiple WorldObserver observation streams into a single stream that carries **multiple observation families** at once (example: both `observation.square` and `observation.zombie`).
 
 This is an advanced guide. If you haven’t built a working base subscription yet, start here:
 - [Quickstart](../quickstart.md)
 
-This guide uses LQR joins. If you want to learn LQR itself (joins/windows/grouping), start here:
+This guide uses LQR joins. If you want to learn LQR itself (joins/windows/grouping etc.), start here:
 - https://github.com/christophstrasen/LQR
 
 ## 1) What “multi-family” means (in practice)
@@ -27,7 +27,6 @@ This joins the square stream with the zombie stream so you can react to zombies 
 
 ```lua
 local WorldObserver = require("WorldObserver")
-local Time = require("WorldObserver/helpers/time")
 
 -- Interest declarations: keep them separate and explicit.
 -- (If you forget these leases, the streams may be silent.)
@@ -49,21 +48,23 @@ local zombiesLease = WorldObserver.factInterest:declare("YourModId", "derived.zo
   cooldown = { desired = 2 },
 })
 
--- Base observation streams already carry LQR metadata, so they can participate in joins directly.
--- `:distinct(...)` is optional, but helps keep join output leaner when you have very busy fact sources (see section 3).
-local squares = WorldObserver.observations.squares()
-  :distinct("square", 1)
-
-local zombies = WorldObserver.observations.zombies()
-  :distinct("zombie", 1)
-  :getLQR()
-
--- NOTE: WorldObserver uses millisecond timestamps internally (in-game clock).
--- For low-level LQR interval windows, `time` is therefore milliseconds here.
-local joined = squares:getLQR()
-  :leftJoin(zombies)
-  :using({ square = "squareId", zombie = "squareId" })
-  :joinWindow({ time = 5 * 1000, field = "sourceTime", currentFn = Time.gameMillis })
+-- Derived ObservationStreams:
+-- Use `WorldObserver.observations:derive(...)` so WorldObserver can start/stop the underlying fact sources
+-- when you subscribe/unsubscribe. Subscribing to an LQR query directly bypasses that lifecycle.
+local joined = WorldObserver.observations:derive({
+  -- `:distinct(...)` is optional, but helps keep join output leaner when you have very busy fact sources (see section 3).
+  squares = WorldObserver.observations:squares()
+    :distinct("square", 1),
+  zombies = WorldObserver.observations:zombies()
+    :distinct("zombie", 1),
+}, function(lqr)
+  -- NOTE: WorldObserver uses millisecond timestamps internally (in-game clock).
+  -- For LQR interval windows, `time` is therefore milliseconds here.
+  return lqr.squares
+    :leftJoin(lqr.zombies)
+    :using({ square = "squareId", zombie = "squareId" })
+    :joinWindow({ time = 5 * 1000, field = "sourceTime" })
+end)
 
 local sub = joined:subscribe(function(observation)
   local square = observation.square
@@ -106,7 +107,7 @@ If both streams emit repeated updates for the same ids within the join window, t
 - zombie `#9` observed 3 times (same `squareId`)
 - join output can be 6 emissions for that one logical “zombie on square” situation
 
-`WorldObserver.observations.<type>():distinct(dimension, seconds)` is the simplest lever to keep output leaner:
+`WorldObserver.observations:<type>():distinct(dimension, seconds)` is the simplest lever to keep output leaner:
 - `:distinct("square", 1)` limits repeated square observations per `squareId`.
 - `:distinct("zombie", 1)` limits repeated zombie observations per `zombieId`.
 
@@ -118,4 +119,7 @@ When to skip `:distinct`:
 Guidelines that help avoid “nil-check soup”:
 - Guard by presence: `if observation.zombie and observation.zombie.zombieId ~= nil then ... end`.
 - Keep family-local logic in helpers: use `WorldObserver.helpers.square.record` / `WorldObserver.helpers.zombie.record` inside your predicates.
+- Prefer stream-attached helper namespaces for derived streams (avoids name collisions across families):
+  - `joined.helpers.square:squareHasCorpse()` / `joined.helpers.zombie:zombieHasTarget()`
+  - Advanced: you can pass a schema key explicitly as the first argument (example: `joined.helpers.square:squareHasCorpse("square")`), but it must match the schema key that LQR uses inside stream predicates (which may differ from what you see in `subscribe` callbacks).
 - Bound your windows: keep join windows short and use `:distinct(...)` upstream to limit join multiplicity.
