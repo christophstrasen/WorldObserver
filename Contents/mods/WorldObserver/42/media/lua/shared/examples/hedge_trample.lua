@@ -12,12 +12,16 @@ local HedgeTrample = {}
 local MOD_ID = "examples/hedge_trample"
 
 local leases = nil
-local sub = nil
+local joined = nil
 
 function HedgeTrample.start()
 	HedgeTrample.stop()
 
 	local WorldObserver = require("WorldObserver")
+	local defaultWindow = {
+		mode = "time",
+		time = 10 * 1000,
+	}
 
 	leases = {
 		zombies = WorldObserver.factInterest:declare(MOD_ID, "zombies", {
@@ -55,38 +59,68 @@ function HedgeTrample.start()
 		}),
 	}
 
-	local joined = WorldObserver.observations:derive({
-		zombies = WorldObserver.observations:zombies(),
-		sprites = WorldObserver.observations:sprites(),
-	}, function(lqr)
-		return lqr.zombies
-			:innerJoin(lqr.sprites)
-			:using({ zombie = "tileLocation", sprite = "tileLocation" })
-			:joinWindow({ time = 50 * 1000, field = "sourceTime" })
-	end)
-
-	sub = joined:removeSpriteObject():subscribe(function(observation)
-		local zombie = observation and observation.zombie or nil
-		local sprite = observation and observation.sprite or nil
-		if type(zombie) ~= "table" or type(sprite) ~= "table" then
-			print("This should not happen.")
-			return
-		end
-		print(
-			("[WO] ABOUT TO REMOVE THE HEDGE zombie id=%s sprite=%s tile=%s"):format(
-				tostring(zombie.zombieId),
-				tostring(sprite.spriteName),
-				tostring(zombie.tileLocation)
+	joined = WorldObserver.observations
+		:derive({
+			zombies = WorldObserver.observations:zombies(),
+			sprites = WorldObserver.observations:sprites(),
+		}, function(lqr)
+			return lqr
+				.zombies
+				:innerJoin(lqr.sprites)
+				:using({ zombie = "tileLocation", sprite = "tileLocation" })
+				:joinWindow(defaultWindow)
+				:distinct("sprite", { by = "spriteKey", window = defaultWindow })
+				:distinct("zombie", { by = "zombieId", window = defaultWindow })
+				-- Keep only tiles with at least two distinct zombies in the recent window.
+				:groupByEnrich(
+					"tileLocation_grouped",
+					function(row)
+						local zombie = row and row.zombie
+						return zombie and zombie.tileLocation
+					end
+				)
+				:groupWindow(defaultWindow)
+				:aggregates({
+					count = {
+						{
+							path = "zombie.zombieId",
+							distinctFn = function(row)
+								local zombie = row and row.zombie
+								return zombie and zombie.zombieId
+							end,
+						},
+					},
+				})
+				:having(function(row)
+					local count = row and row._count and row._count.zombie or 0
+					return count >= 2
+				end)
+		end)
+		:removeSpriteObject()
+		:subscribe(function(observation)
+			local zombie = observation and observation.zombie or nil
+			local sprite = observation and observation.sprite or nil
+			local zombieCount = observation and observation._count and observation._count.zombie or nil
+			if type(zombie) ~= "table" or type(sprite) ~= "table" then
+				print("This should not happen.")
+				return
+			end
+			print(
+				("[WO] ABOUT TO REMOVE THE HEDGE zombiesOnTile=%s zombieId=%s sprite=%s tile=%s"):format(
+					tostring(zombieCount),
+					tostring(zombie.zombieId),
+					tostring(sprite.spriteName),
+					tostring(zombie.tileLocation)
+				)
 			)
-		)
-	end)
+		end)
 end
 
 function HedgeTrample.stop()
-	if sub and sub.unsubscribe then
-		sub:unsubscribe()
+	if joined and joined.unsubscribe then
+		joined:unsubscribe()
 	end
-	sub = nil
+	joined = nil
 
 	for _, lease in pairs(leases or {}) do
 		if lease and lease.stop then

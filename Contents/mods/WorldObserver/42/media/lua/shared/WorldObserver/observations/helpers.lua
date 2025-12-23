@@ -139,6 +139,7 @@ end
 HelperSupport.cloneTable = HelperSupport.cloneTable or cloneTable
 HelperSupport.mergeTablesLastWins = HelperSupport.mergeTablesLastWins or mergeTablesLastWins
 HelperSupport.mergeTablesFirstWins = HelperSupport.mergeTablesFirstWins or mergeTablesFirstWins
+HelperSupport.listSortedKeys = HelperSupport.listSortedKeys or listSortedKeys
 HelperSupport.resolveEnabledHelpers = HelperSupport.resolveEnabledHelpers or resolveEnabledHelpers
 HelperSupport.buildHelperMethods = HelperSupport.buildHelperMethods or buildHelperMethods
 HelperSupport.buildHelperNamespaces = HelperSupport.buildHelperNamespaces or buildHelperNamespaces

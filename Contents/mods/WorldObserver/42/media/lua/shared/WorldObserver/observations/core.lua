@@ -43,6 +43,7 @@ end
 local cloneTable = HelperSupport.cloneTable
 local mergeTablesLastWins = HelperSupport.mergeTablesLastWins
 local mergeTablesFirstWins = HelperSupport.mergeTablesFirstWins
+local listSortedKeys = HelperSupport.listSortedKeys
 local resolveEnabledHelpers = HelperSupport.resolveEnabledHelpers
 local buildHelperMethods = HelperSupport.buildHelperMethods
 local buildHelperNamespaces = HelperSupport.buildHelperNamespaces
@@ -183,7 +184,13 @@ end
 
 function BaseMethods:distinct(dimension, seconds)
 	local dim = self._dimensions[dimension]
-	assert(dim ~= nil, ("distinct: unknown dimension '%s'"):format(tostring(dimension)))
+	assert(
+		dim ~= nil,
+		("distinct: unknown dimension '%s'. This stream does not expose that family; use one of: %s"):format(
+			tostring(dimension),
+			table.concat(listSortedKeys(self._dimensions or {}), ", ")
+		)
+	)
 
 	-- Helpers declare which schema/field represents a dimension; distinct rides on that mapping.
 	local by = dim.keySelector or dim.keyField or "id"

@@ -102,7 +102,11 @@ Defaults:
 
 Knobs:
 - Probe scopes (`near`, `vision`): `radius`, `staleness`, `cooldown`, `highlight`, `spriteNames`.
-- Event scope (`onLoadWithSprite`): `cooldown`, `highlight`, `spriteNames`.
+- Event scope (`onLoadWithSprite`): `cooldown`, `highlight`, `spriteNames` (exact names only).
+
+Notes:
+- `spriteNames` supports trailing `%` for prefix matches (example: `vegetation_ornamental_01_%`).
+- `%` alone matches all names.
 
 Defaults:
 - If `scope` is missing, it defaults to `"near"`.

@@ -115,6 +115,10 @@ If both streams emit repeated updates for the same ids within the join window, t
 - zombie `#9` observed 3 times (same `squareId`)
 - join output can be 6 emissions for that one logical “zombie on square” situation
 
+There are two places you can apply `distinct`, and they solve slightly different problems. **Upstream distinct** (calling `:distinct(...)` on the base WorldObserver streams before you hand them into `:derive`) is an input limiter: it reduces how many repeated observations ever reach your join/group logic. This is usually the best first lever for performance and for keeping derived streams calmer, while still allowing “real” many-to-one matches (many zombies on one square).
+
+**Post-join distinct** (calling LQR `:distinct(schema, ...)` inside the LQR chain) is an output limiter for join results: it deduplicates rows that are already joined. This is especially useful when downstream work is effectful or expensive (e.g. “remove a tile object”, “spawn an item”, “write a log line”) and you want to ensure you only act once per key even if the join emits multiple rows. It does not reduce the join’s internal work as much as upstream distinct, but it can prevent repeated side effects.
+
 `WorldObserver.observations:<type>():distinct(dimension, seconds)` is the simplest lever to keep output leaner:
 
 - `:distinct("square", 1)` limits repeated square observations per `squareId`.
@@ -123,3 +127,16 @@ If both streams emit repeated updates for the same ids within the join window, t
 When to skip `:distinct`:
 
 - If you intentionally want every update (example: you want to react to zombie movement or changing targets), do not deduplicate away those events.
+
+Side note: **join-side `oneShot`** is a different knob than `distinct`. It controls join multiplicity by giving each cached record a single “match ticket” on a specific join step (consume-on-match), which can be useful for lookup/dimension-style joins. It’s not a replacement for schema-level deduplication. For the deeper LQR explanation of `distinct` (and how it relates to `oneShot`), see: https://github.com/christophstrasen/LQR/blob/main/docs/concepts/distinct_and_dedup.md
+
+## 4) Keeping multi-family logic readable
+
+Guidelines that help avoid “nil-check soup”:
+- Guard by presence: `if observation.zombie and observation.zombie.zombieId ~= nil then ... end`.
+- Keep family-local logic in helpers: use `WorldObserver.helpers.square.record` / `WorldObserver.helpers.zombie.record` inside your predicates.
+- Prefer stream-attached helper namespaces for derived streams (avoids name collisions across families):
+  - `joined.helpers.square:squareHasCorpse()` / `joined.helpers.zombie:zombieHasTarget()`
+  - Advanced: you can pass a schema key explicitly as the first argument (example: `joined.helpers.square:squareHasCorpse("square")`), but it must match the schema key that LQR uses inside stream predicates (which may differ from what you see in `subscribe` callbacks).
+- You can attach additional helper families to a derived stream via `:withHelpers(...)` (see stream basics).
+- Bound your windows: keep join windows short and use `:distinct(...)` upstream to limit join multiplicity.

@@ -201,31 +201,45 @@ local function normalizeTarget(target)
 	}
 end
 
-local function normalizeSpriteNames(value)
+local function normalizeSpriteNames(value, modId, key)
 	if type(value) == "string" then
-		return { value }
+		value = { value }
 	end
 	if type(value) ~= "table" then
 		return nil
 	end
 	local out = {}
 	local seen = {}
+	local function considerName(name)
+		if type(name) ~= "string" or name == "" or seen[name] then
+			return
+		end
+		local percent = string.find(name, "%%", 1, true)
+		if percent ~= nil and percent < #name then
+			if _G.WORLDOBSERVER_HEADLESS ~= true then
+				Log:warn(
+					"[interest] spriteNames entry ignored (only trailing %% supported) mod=%s key=%s entry=%s",
+					tostring(modId),
+					tostring(key),
+					tostring(name)
+				)
+			end
+			return
+		end
+		out[#out + 1] = name
+		seen[name] = true
+	end
+
 	if value[1] ~= nil then
 		for i = 1, #value do
-			local name = value[i]
-			if type(name) == "string" and name ~= "" and not seen[name] then
-				out[#out + 1] = name
-				seen[name] = true
-			end
+			considerName(value[i])
 		end
 	else
 		for k, v in pairs(value) do
-			if v == true and type(k) == "string" and k ~= "" and not seen[k] then
-				out[#out + 1] = k
-				seen[k] = true
-			elseif type(v) == "string" and v ~= "" and not seen[v] then
-				out[#out + 1] = v
-				seen[v] = true
+			if v == true then
+				considerName(k)
+			else
+				considerName(v)
 			end
 		end
 	end
@@ -444,7 +458,7 @@ local function warnMissingFields(modId, key, spec, normalized)
 	end
 end
 
-local function normalizeSpec(spec, defaults, modId)
+local function normalizeSpec(spec, defaults, modId, key)
 	spec = spec or {}
 	local interestType = spec.type
 	if type(interestType) ~= "string" or interestType == "" then
@@ -474,7 +488,7 @@ local function normalizeSpec(spec, defaults, modId)
 		type = canonicalType,
 		scope = scope,
 		target = target,
-		spriteNames = normalizeSpriteNames(spec.spriteNames),
+		spriteNames = normalizeSpriteNames(spec.spriteNames, modId, key),
 		staleness = staleness,
 		radius = radius,
 		zRange = zRange,
@@ -601,7 +615,7 @@ local function addLeaseWithTtl(self, modId, key, spec, nowMs, ttlMs)
 	ttlMs = tonumber(ttlMs) or self._ttlMs
 	assert(ttlMs > 0, "interest lease ttl must be > 0")
 	local incomingSpec = spec or {}
-	local normalizedSpec, bucketKey = normalizeSpec(incomingSpec, self._defaults, modId)
+	local normalizedSpec, bucketKey = normalizeSpec(incomingSpec, self._defaults, modId, key)
 	warnMissingFields(modId, key, incomingSpec, normalizedSpec)
 	local lease = {
 		modId = modId,

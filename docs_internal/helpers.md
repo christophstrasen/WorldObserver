@@ -147,7 +147,6 @@ Logging rule of thumb:
 
 These conventions were originally captured in `docs_internal/drafts/api_proposal.md` and are treated as the intended direction:
 
-
 - Prefer fluent predicate names: `squareHasCorpse()`, `zombieHasTarget()`, `roomHasWater()`.
 - Use `<family>Filter(...)` for the generic “accept a predicate” helpers: `squareFilter(fn)`, `zombieFilter(fn)`, etc.
 - Use `*Is*` for simple flags/enums on an entity; use `*Has*` for relationships/lookups into collections.

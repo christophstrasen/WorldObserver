@@ -1,6 +1,6 @@
 # Helpers (built-in and extending)
 
-Helpers are optional sugar around ObservationStreams. They make common filtering and convenience operations readable and reusable, without forcing you to learn internal LQR schema keys.
+Helpers are optional sugar around ObservationStreams. They make common filtering and convenience operations reusable and compact.
 
 This guide focuses on how to *use* helpers as a modder. For internal architecture details, see `docs_internal/helpers.md`.
 
@@ -46,7 +46,7 @@ Note: a few record helpers perform best-effort hydration and may cache engine re
 
 ## 2) Extending helpers (advanced)
 
-Third-party helpers are just helper families you attach to a stream.
+You can attach third-party helpers helper families by attaching them to a stream or registering them globally.
 
 ### Option A: attach a helper set directly
 
@@ -74,9 +74,9 @@ local stream = WorldObserver.observations:squares():withHelpers({
 })
 ```
 
-### What does `enabled_helpers` mean?
+### What does `enabled_helpers` do?
 
-`enabled_helpers` tells WorldObserver which observation record the helper family should read.
+`enabled_helpers` tells WorldObserver which helpers to enabled and also which observation family the helper family should read.
 
 Most of the time you want the “alias” form:
 - `enabled_helpers = { unicorns = "square" }` means “my helpers operate on the same records as the built-in `square` helpers”.

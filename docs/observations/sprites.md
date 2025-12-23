@@ -128,6 +128,9 @@ Supported combinations for `type = "sprites"`:
 
 Required fields:
 - `spriteNames` (array of sprite name strings)
+  - Trailing `%` means “prefix match” (example: `"vegetation_ornamental_01_%"`).
+  - `%` alone matches all names.
+  - Wildcards apply to `near` / `vision` probes only; `onLoadWithSprite` still requires explicit names.
 
 Meaningful knobs:
 - Probe scopes (`near`, `vision`): `radius`, `staleness`, `cooldown`, `highlight`.

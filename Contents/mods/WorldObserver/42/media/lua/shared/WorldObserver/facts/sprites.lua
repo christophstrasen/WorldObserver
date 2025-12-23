@@ -50,21 +50,38 @@ local function buildSpriteNameSet(list)
 	if type(list) ~= "table" then
 		return nil
 	end
-	local out = {}
-	local count = 0
+	local exact = {}
+	local exactList = {}
+	local prefixes = {}
+	local seenPrefix = {}
+	local matchAll = false
 	for i = 1, #list do
 		local name = list[i]
 		if type(name) == "string" and name ~= "" then
-			if out[name] == nil then
-				out[name] = true
-				count = count + 1
+			if string.sub(name, -1) == "%" then
+				local prefix = string.sub(name, 1, -2)
+				if prefix == "" then
+					matchAll = true
+				elseif not seenPrefix[prefix] then
+					prefixes[#prefixes + 1] = prefix
+					seenPrefix[prefix] = true
+				end
+			elseif exact[name] == nil then
+				exact[name] = true
+				exactList[#exactList + 1] = name
 			end
 		end
 	end
-	if count == 0 then
+	if not matchAll and exactList[1] == nil and prefixes[1] == nil then
 		return nil
 	end
-	return out
+	table.sort(prefixes)
+	return {
+		matchAll = matchAll,
+		exact = exact,
+		exactList = exactList,
+		prefixes = prefixes,
+	}
 end
 
 local function resolveSpriteNameSet(effective)
@@ -77,6 +94,28 @@ local function resolveSpriteNameSet(effective)
 	local set = buildSpriteNameSet(effective.spriteNames)
 	effective._spriteNameSet = set
 	return set
+end
+
+local function spriteNameMatches(spriteNameSet, spriteName)
+	if spriteNameSet == nil or spriteName == nil then
+		return false
+	end
+	if spriteNameSet.matchAll then
+		return true
+	end
+	if spriteNameSet.exact and spriteNameSet.exact[spriteName] then
+		return true
+	end
+	local prefixes = spriteNameSet.prefixes
+	if prefixes and prefixes[1] ~= nil then
+		for i = 1, #prefixes do
+			local prefix = prefixes[i]
+			if string.find(spriteName, prefix, 1, true) == 1 then
+				return true
+			end
+		end
+	end
+	return false
 end
 
 local function iterIsoObjects(square, fn)
@@ -100,7 +139,7 @@ local function collectSpritesOnSquare(square, spriteNameSet, visitor)
 	iterIsoObjects(square, function(obj)
 		local sprite = SafeCall.safeCall(obj, "getSprite")
 		local spriteName = SafeCall.safeCall(sprite, "getName")
-		if spriteName and spriteNameSet[spriteName] then
+		if spriteName and spriteNameMatches(spriteNameSet, spriteName) then
 			local spriteId = SafeCall.safeCall(sprite, "getID")
 			visitor(obj, { sprite = sprite, spriteName = spriteName, spriteId = spriteId })
 		end
@@ -248,9 +287,23 @@ local function attachOnLoadRegistrationsOnce(state, ctx, listenerCfg)
 		return false
 	end
 
+	if (spriteNameSet.matchAll or (spriteNameSet.prefixes and spriteNameSet.prefixes[1] ~= nil))
+		and not state.onLoadWildcardWarned
+		and _G.WORLDOBSERVER_HEADLESS ~= true
+	then
+		Log:warn("spriteNames wildcards are ignored for onLoadWithSprite; use explicit names or near/vision")
+		state.onLoadWildcardWarned = true
+	end
+
+	local exactList = spriteNameSet.exactList or {}
+	if exactList[1] == nil then
+		return false
+	end
+
 	state.onLoadRegisteredNames = state.onLoadRegisteredNames or {}
 	local pending = {}
-	for name in pairs(spriteNameSet) do
+	for i = 1, #exactList do
+		local name = exactList[i]
 		if not state.onLoadRegisteredNames[name] then
 			pending[#pending + 1] = name
 		end
@@ -277,7 +330,7 @@ local function onLoadHandler(state, emitFn)
 
 		local sprite = SafeCall.safeCall(isoObject, "getSprite")
 		local spriteName = SafeCall.safeCall(sprite, "getName")
-		if spriteName == nil or spriteNameSet[spriteName] ~= true then
+		if spriteName == nil or not spriteNameMatches(spriteNameSet, spriteName) then
 			return
 		end
 		local spriteId = SafeCall.safeCall(sprite, "getID")
