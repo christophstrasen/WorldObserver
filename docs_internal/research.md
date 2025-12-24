@@ -3,6 +3,12 @@
 https://demiurgequantified.github.io/ProjectZomboidJavaDocs/zombie/iso/IsoChunk.html#isValidLevel(int)
 https://demiurgequantified.github.io/ProjectZomboidJavaDocs/zombie/iso/IsoChunk.html#getSquaresForLevel(int)
 
+```lua
+if self.character:getSquare():getLightLevel(self.character:getPlayerNum()) < 0.4 then
+  --print("It's too dark to do this shit")
+  self:End()
+end```
+
 ## To load _all_ 
 Get IsoCell from Player
 Get ChunkMap from IsoCell
