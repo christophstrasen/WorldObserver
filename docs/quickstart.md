@@ -1,12 +1,12 @@
 # Quickstart (WorldObserver)
 
-Goal: subscribe to a WorldObserver observation and get a visible/logged result in-game.
+Goal: subscribe to a WorldObserver observation and get a visible and logged result in-game.
 If you want an overview of all docs pages and a recommended reading order:
 - [Docs index](index.md)
 
 ## 1. Prereqs
 
-- Enable the `WorldObserver` mod (and its dependency `StarlitLibrary`) in your save.
+- Enable the `WorldObserver` mod and its dependencies in your save.
 - Ensure `WorldObserver` loads before your mod.
 
 ## 2. Add a tiny “hello observation” script
@@ -24,9 +24,7 @@ local MOD_ID = "YourModId"
 
 -- Declare interest: tell WorldObserver what you want it to look at, and how often.
 -- If you skip this, you may not get any observations at all
--- (by default WO does not run probes/listeners until at least one mod declares interest).
 --
--- Time note: durations like `staleness`/`cooldown` are “seconds” on the in-game clock
 -- (same clock as `getGameTime():getTimeCalendar():getTimeInMillis()`), not real-time seconds.
 local lease = WorldObserver.factInterest:declare(MOD_ID, "quickstart.squares", {
   type = "squares",
@@ -35,6 +33,7 @@ local lease = WorldObserver.factInterest:declare(MOD_ID, "quickstart.squares", {
   radius = { desired = 8 },     -- tiles around the player
   staleness = { desired = 5 },  -- informs the frequency of probing in seconds
   cooldown = { desired = 2 },   -- don't re-emit for the same square within the cooldown seconds
+  highlight = false.            -- Change this to true if you want to see the probe ag worl
 })
 
 local sub = WorldObserver.observations:squares()
@@ -50,11 +49,10 @@ local sub = WorldObserver.observations:squares()
     ))
 
     -- Optional: visual feedback (client-only). Highlights the square floor briefly.
-    WorldObserver.highlight(observation.square, 750, { color = { 1.0, 0.2, 0.2 }, alpha = 0.9 })
+    WorldObserver.highlight(observation.square, 750, { color = { 1.0, 0.0, 1.0 }, alpha = 0.9 })
   end)
 
 -- IMPORTANT: you should stop your subscription and lease when you no longer need them.
--- (Example: feature toggled off, UI closed, etc.). Code below is so you can stop via zomboid console
 _G.WOQuickstart = {
   stop = function()
     if sub then
@@ -73,11 +71,6 @@ _G.WOQuickstart = {
 
 - It tells WO *how far* to probe (`radius`) or what else to listen to and *how fresh* results should be (`staleness`/`cooldown`).
 
-### A note about stability (square ids vs coords)
-
-- `x/y/z` is the stable long-term anchor.
-- `squareId` is stable within a running session, but should not be relied on across game reloads (TODO: confirm and document stricter guarantees later).
-
 ### Lease renewal and cleanup
 
 - Interest declarations are leases and will expire if you don’t renew them (TTL uses the same in-game clock as `staleness`/`cooldown`).
@@ -86,12 +79,9 @@ _G.WOQuickstart = {
 
 See [Lifecycle](guides/lifecycle.md) for the recommended patterns.
 
-Next:
-- [Observations](observations/index.md)
-
 ## 3. Verify it works
 
-- Load into a save (singleplayer is easiest for first verification).
+- Load into a save
 - Walk around until you see log lines like `[WO quickstart] Corpse observed ...`.
 - If highlighting is available, affected squares should flash briefly.
 
@@ -109,6 +99,9 @@ Once you want custom boolean logic, keep the quickstart chain but switch to `:sq
 local SquareHelper = WorldObserver.helpers.square.record
 local stream = WorldObserver.observations:squares()
   :squareFilter(function(s)
-    return SquareHelper.squareHasCorpse(s) and SquareHelper.squareHasIsoGridSquare(s)
+    return SquareHelper.squareHasCorpse(s) -- add other logic here
   end)
 ```
+
+Next:
+- [Observations](observations/index.md)

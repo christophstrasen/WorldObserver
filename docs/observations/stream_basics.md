@@ -1,5 +1,7 @@
 # Observation streams: basics
 
+@TODO move to `guides` folder.
+
 Goal: subscribe to a stream, optionally filter/deduplicate it, and stop cleanly.
 
 If you want a complete copy/paste example first, see [Quickstart](../quickstart.md).
@@ -50,14 +52,13 @@ Filtering means: “only keep the observations I actually care about”.
 
 For most mods, filtering has a simple learning path:
 
+There is a learning curve starting with simple inbuilt filtering to custom queries Rx. 
+
 1) try a built-in helper (easy, readable)  
-2) if you need custom logic (boolean AND/OR etc), use `:squareFilter(...)` / `:zombieFilter(...)`  
-3) only if you want more operators, switch to `:asRx()` (optional)
+2) apply your own per-record logic (boolean AND/OR etc), use `:squareFilter(...)` / `:zombieFilter(...)`  
+3) only if you want more operators, switch to `:asLQR()` or `:asRx()` @TODO add or link guide
 
-More detail (including third-party helpers):
-- [Helpers (built-in and extending)](../guides/helpers.md)
-
-### 2.1 Easiest: use a built-in helper
+### 2.1 Easiest: use a built-in *stream* helper
 
 Example: “only squares that have a corpse”:
 
@@ -66,31 +67,27 @@ local stream = WorldObserver.observations:squares()
   :squareHasCorpse()
 ```
 
-### 2.2 Custom rules: use `:squareFilter(...)` / `:zombieFilter(...)`
+Note: These helpers are attached directly to a stream and can act as short-hand filters.
+
+[To read more on Helpers click here](../guides/helpers.md)
+
+### 2.2 Your own per-record filter logic via `:squareFilter(...)` / `:zombieFilter(...)`
 
 These methods call your function with the record you care about (the square record or zombie record).
 
-Tip: create a short local alias once, so your code stays clean:
+Within the closure you can run any logic and inspect the given record.
+Additonally you may use *record* helpers as shown below. Unlike the *stream* helpers above, these don't attach directly in order to keep records pure lua data tables.
+
 
 ```lua
 local SquareHelper = WorldObserver.helpers.square.record
 
 local stream = WorldObserver.observations:squares()
   :squareFilter(function(squareRecord)
-    return SquareHelper.squareHasCorpse(squareRecord) and SquareHelper.squareHasIsoGridSquare(squareRecord)
+    return SquareHelper.squareHasCorpse(squareRecord) and SquareHelper.squareHasCorpse(squareRecord) squareRecord.z < 0 --checking for a basement body
   end)
 ```
 
-Zombie example:
-
-```lua
-local ZombieHelper = WorldObserver.helpers.zombie.record
-
-local stream = WorldObserver.observations:zombies()
-  :zombieFilter(ZombieHelper.zombieHasTarget)
-```
-
-If you’re just getting started: ignore `stream:filter(...)` for now and stick to helpers + `squareFilter/zombieFilter`.
 
 ### 2.3 Attach third-party helpers (optional)
 
@@ -102,7 +99,7 @@ local UnicornHelpers = require("YourMod/helpers/unicorns")
 local stream = WorldObserver.observations:squares()
   :withHelpers({
     helperSets = { unicorns = UnicornHelpers },
-    enabled_helpers = { unicorns = "square" },
+    enabled_helpers = { unicorns = "square" }, -- @TODO check the config fields/syntax
   })
 
 -- Fluent call (helpers attach as stream methods by default):
@@ -119,24 +116,22 @@ WorldObserver.observations:registerHelperFamily("unicorns", UnicornHelpers)
 
 local stream = WorldObserver.observations:squares()
   :withHelpers({
-    enabled_helpers = { unicorns = "square" },
+    enabled_helpers = { unicorns = "square" }, -- @TODO check the config fields/syntax
   })
 ```
 
 ## 3. De-duplicating with `:distinct(dimension, seconds)`
 
-Use `:distinct` to avoid repeats for the same “thing” within a window.
+If you are interested to observe "Unique" facts this one way to achieve it is `:distinct` to avoid repeats for the same underylying fact within a window.
+
+Note: This version of `:distinct` is a high level stream helper which uses the "primary key" of the record to establish uniqueness. If you want more customized distinct behavior look into LQR queries. @TODO add link
 
 Example: “at most once per square every 10 seconds”:
 
 ```lua
 local stream = WorldObserver.observations:squares()
-  :distinct("square", 10)
+  :distinct("square", 10) 
 ```
-
-Notes:
-- The `seconds` window uses the **in-game clock** (not real time).
-- Dimensions are stream-specific (examples: `"square"`, `"zombie"`).
 
 ## 4. More operators with `:asRx()`
 
@@ -148,5 +143,4 @@ local rxStream = WorldObserver.observations:squares():asRx()
 rxStream:map(function(o) return o.square.squareId end):subscribe(print)
 ```
 
-More examples:
-- [ReactiveX primer](reactivex_primer.md)
+More examples: [ReactiveX primer](reactivex_primer.md)

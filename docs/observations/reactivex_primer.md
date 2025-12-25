@@ -2,32 +2,32 @@
 
 This page is a gentle introduction to “ReactiveX thinking” for working with WorldObserver observation streams.
 
-You do **not** need to learn all of ReactiveX to use WorldObserver. But learning a few core operators can make your mod code smaller and clearer.
+You do **not** need to learn all of ReactiveX to use WorldObserver. But learning a few core operators could help you make your mod code smaller and clearer.
 
 ## When to use this
 
 Read this page if:
-- you already have a working subscription, but your code is getting “state-y” and hard to follow
-- you want simple building blocks like `map`, `filter`, `scan`, `buffer`, `distinctUntilChanged`, …
 
-If you just want “subscribe and print something”, start with:
-- [Quickstart](../quickstart.md)
+- You already read [The Quickstart](../quickstart.md)
+- you already have a working subscription, but your code is getting “state-y” and hard to follow
+- You are simpler curious and want to learn more about some simple reactive building blocks like `map`, `filter`, `scan`, `buffer`, `distinctUntilChanged`, …
+
 
 ## The basic idea (in one paragraph)
 
 ReactiveX treats “events over time” as a stream:
 
-- a stream emits values over time (observations)
-- you chain small operators (map/filter/scan/…) to shape the stream
-- you subscribe once at the end to run your actual mod logic
+- a stream emits values over time
+- you chain small operators (map/filter/scan/…) to shape the data in the stream
+- you subscribe once at the end
 
-This often replaces big “tick loops + state tables” with small, explicit pipelines.
+This can help to replaces “tick loops + state tables” with small, explicit pipelines.
 
 One important rule: **order matters**. For example, doing `distinct` before `map` can behave very differently than doing it after.
 
 ## Two ways to work with observation streams
 
-### 1) Use the built-in WorldObserver stream methods (recommended)
+### 1) Use the built-in WorldObserver stream methods
 
 WorldObserver gives you a few common operators directly on streams:
 
@@ -38,9 +38,7 @@ WorldObserver.observations:squares()
   :subscribe(function(observation) ... end)
 ```
 
-This already follows the ReactiveX style: build a pipeline, then react.
-
-### 2) Use lua-reactivex operators via `:asRx()` (more operators)
+### 2) Use lua-reactivex operators via `:asRx()` to access more operators
 
 lua-reactivex provides lots of useful operators like `:map()`, `:filter()`, `:scan()`, `:buffer()`, `:distinctUntilChanged()`, …
 
@@ -55,16 +53,9 @@ rxStream
   :subscribe(print)
 ```
 
-## Best practices (keeps things sane)
+## Recommended integration pattern
 
-- Keep transformations in `:map()` and selection in `:filter()`; keep side effects in `:subscribe()` (or `:tap()` for debug prints).
-- Prefer stable ids/coords from observation records (example: `observation.square.x`); don’t store engine userdata (`Iso*`) long-term.
-- Unsubscribe when your feature turns off (`sub:unsubscribe()`) and stop your interest lease (`lease:stop()`).
-  See [Lifecycle](../guides/lifecycle.md).
-
-## A good default pattern
-
-When you use `:asRx()`, a nice “shape” to aim for is:
+When you want to use `:asRx()` a useful pipeline can look like this:
 
 1) start with a WorldObserver stream  
 2) apply WorldObserver helpers (like `squareHasCorpse`, `distinct`)  
@@ -96,13 +87,21 @@ local sub = stream
 WorldObserver’s `:distinct("<dimension>", seconds)` is dimension- and time-window-aware (e.g. “once per square every 10 seconds”).
 
 lua-reactivex also has `:distinct()`, but it is **not** the same:
+
 - it is **raw deduplication**: once a value was seen, it will never be emitted again for the lifetime of that subscription
 - there is **no time window**
 - it has no idea about WorldObserver dimensions like `"square"` or `"zombie"`
 
-Rule of thumb: do WorldObserver `:distinct(...)` **before** calling `:asRx()` when you want “once per X per time window”.
+As value from the first `:asRx()` is multi-dimensional table that will usually be unique, it is not a good candidate for many of the reactiveX functions that are better suited for scalar values.
+@TODO list which and why.
 
-## Operator recipes (use-case based)
+Rule of thumb: 
+
+1. Use WorldObserver `:distinct(...)` _before_ calling `:asRx()` when you want “once per X per time window”.
+2. Use Rx native `:distinct` when _after_ you alreaded `:map`ed to more simple shape and just want to suppress duplicates.
+
+
+## A short look at some operator use-cases
 
 All examples below assume you have `WorldObserver` required.
 
@@ -123,7 +122,7 @@ local sub = WorldObserver.observations:squares()
 
 Important: `map` changes what flows downstream.
 
-- If you map from `observation` → `squareId`, you no longer have access to `observation.square.x` later in the pipeline.
+- If you map from a rich `observation` table → scalar  `squareId`, you no longer have access to `observation.square.x` later in the pipeline.
 - If you still need multiple fields, map to a *smaller table* instead of a single value:
 
 ```lua
@@ -157,15 +156,6 @@ local sub = WorldObserver.observations:zombies()
   :subscribe(function(observation)
     print(("[WO] zombieId=%s has a target"):format(tostring(observation.zombie.zombieId)))
   end)
-```
-
-Tip: you can also use WorldObserver’s built-in helpers *before* `:asRx()`:
-
-```lua
-local sub = WorldObserver.observations:zombies()
-  :zombieHasTarget()
-  :asRx()
-  :subscribe(function(observation) ... end)
 ```
 
 ### 3) `pluck`: pull a field out of a table without writing a custom map
@@ -253,6 +243,7 @@ local sub = WorldObserver.observations:zombies()
 ```
 
 When `scan` is not the right tool:
+
 - If you need “group by X” style aggregation with time windows, prefer a windowed/grouping approach from WorldObserver’s query tools. Those handle the bookkeeping for you (per-key state, window eviction), so the state stays naturally bounded.
 - `scan` is lower-level and more flexible, but you must implement pruning/reset logic yourself; otherwise its state can grow forever.
 
@@ -325,3 +316,6 @@ Simpler alternative (often better): do both actions in a single subscription.
 - lua-reactivex fork used by WorldObserver: https://github.com/christophstrasen/lua-reactivex
 - Local copy in this repo: [external/lua-reactivex/README.md](../../external/lua-reactivex/README.md)
   - Full API list: [external/lua-reactivex/doc/README.md](../../external/lua-reactivex/doc/README.md)
+
+  
+@TODO deep link to respective explainer pages on reactivex.io e.g. https://reactivex.io/documentation/operators/distinct.html

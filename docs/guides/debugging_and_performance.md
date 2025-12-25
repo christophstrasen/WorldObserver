@@ -47,9 +47,11 @@ local lease = WorldObserver.factInterest:declare("YourModId", "featureKey", {
 ```
 
 Notes:
-- `highlight` is best-effort and is meant for local debugging.
-- It is intentionally not part of the “quality ladder” and does not merge deterministically across mods.
+
+- `highlight` is best-effort and is meant for local debugging. When a fact is locatable on a square, that is what highlighted.
 - For some interest types you can pass a color table instead of `true`, like `highlight = { 1, 0.2, 0.2 }` or `highlight = { 1, 0.2, 0.2, 0.9 }` (alpha is optional).
+- Square highlights will progressivly dim with a roughly half the time of either `staleness` or `cooldown`, whichever is larger.
+- Performance warning: The way `WO` handles highling, using it on many squares will drain the CPU budget and is not advised for player-facing "visual effects".
 
 If you want full control (duration/color/alpha/blink), call the highlight helpers directly in your subscription:
 
@@ -77,17 +79,7 @@ for _, entry in ipairs(buckets) do
 end
 ```
 
-What to expect (today):
-- Squares merge per `scope` + target identity.
-  - `target = { player = ... }` is WO-owned and merges across mods.
-  - `target = { square = ... }` is mod-owned and intentionally does **not** merge across mods (even if coords match).
-
-Supported combinations per interest type:
-- [Squares](../observations/squares.md)
-- [Zombies](../observations/zombies.md)
-- [Rooms](../observations/rooms.md)
-- [Items](../observations/items.md)
-- [Dead bodies](../observations/dead_bodies.md)
+Supported combinations per interest type: [Squares](../observations/squares.md), [Zombies](../observations/zombies.md), [Rooms](../observations/rooms.md), [Items](../observations/items.md), [Dead bodies](../observations/dead_bodies.md)
 
 ## 4) Turn on runtime diagnostics (budget + backlog + drops)
 
@@ -110,11 +102,13 @@ local handle = WorldObserver.debug.attachRuntimeDiagnostics({
 ```
 
 What you’ll see:
+
 - A periodic `[runtime] ...` line describing controller pressure (CPU/backlog/drops) and tick costs.
 - Per-fact compact metrics like `[squares] pending=... fill=... dropped=... rate15(in/out)=...`.
 
 If you see nothing:
-- you may be running headless (busted) or without a functioning `Events` system;
+
+- you may be running headless via `busted` or without a functioning `Events` system;
 - or your log level is still `warn` (default).
 
 ## 5) One-off metrics (when you don’t want a heartbeat)
@@ -127,7 +121,7 @@ WorldObserver.debug.describeIngestScheduler()
 
 ## 6) Making probe logs more verbose (optional)
 
-Square sweep probes support live console toggles for their logging knobs.
+Square sweep probes support live console toggles for their logging.
 
 ```lua
 _G.WORLDOBSERVER_CONFIG_OVERRIDES = {
@@ -136,6 +130,7 @@ _G.WORLDOBSERVER_CONFIG_OVERRIDES = {
 ```
 
 Notes:
+
 - This is meant for short-lived local debugging (expect lots of output).
 - Not all config is live-reloaded; treat this as a debug convenience, not a stable “tuning API”.
 
@@ -151,41 +146,36 @@ _G.WORLDOBSERVER_CONFIG_OVERRIDES = {
 }
 ```
 
-If you’re only running `items`/`deadBodies` (no `squares` stream), set it on `items` instead:
-
-```lua
-_G.WORLDOBSERVER_CONFIG_OVERRIDES = {
-  facts = {
-    items = { probe = { logCollectorStats = true, logCollectorStatsEveryMs = 2000 } },
-  },
-}
-```
-
 You’ll see periodic lines like:
 - `[probe collectors] tickScan=... tickVisit=... tickVisible=... items calls=... records=... | squares calls=... records=...`
 
 Notes:
-- The square sweep sensor is shared: when you only run `items` / `deadBodies`, the probe cfg can come from those types instead of `squares`.
+
+- The square sweep sensor is shared among many fact types: when you only run `items` / `deadBodies`, the probe cfg can come from those types instead of `squares`.
 - If you don’t see the collector line, ensure you enabled it on the type that is currently driving the sweep (typically the highest “probePriority” among active consumers).
 
 ## 7) Tuning: what actually reduces work vs reduces spam
 
 Think in two layers:
 
-1) **Upstream cost (WO work):** how much probing/listening WO must do.
-2) **Downstream cost (your mod work):** how much you process in your subscription.
+1. **Upstream cost (acquisition work):** how much probing/listening WO must do.
+2. **Downstream cost (Querying, 'reasoning' and action):** how build and process your subscription.
 
 Practical rules:
+
 - Use `cooldown` to avoid re-emitting the same key too frequently (reduces downstream spam and some probe overhead).
-- Use `:distinct("<dimension>", seconds)` to reduce downstream work in your subscription pipeline.
+- Use `:distinct("<dimension>", seconds)` to reduce downstream work in your subscription pipeline. (Which in effect works similar to a cooldown but is private to your subscription, not a shared setting)
 - Increase `staleness` if you can accept older information (lets WO probe less often).
 - Reduce `radius` when you can focus spatially (reduces square probing work).
+- Don't add expensive pre-compute record extenders
 
 Items note:
+
 - Observing items can “fan out” because WO can optionally include direct container contents (depth=1).
 - If you don’t need container contents, set `facts.items.record.includeContainerItems = false`.
 - If you do need them but want a guardrail, use `facts.items.record.maxContainerItemsPerSquare` to cap work per square.
 
 Zombie note:
+
 - For `type = "zombies", scope = "allLoaded"`, the probe still has to scan the loaded zombie list.
   `radius` makes emissions leaner (and reduces downstream work), but does not avoid the baseline “iterate zombies” cost.

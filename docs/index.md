@@ -1,6 +1,6 @@
 # WorldObserver documentation
 
-WorldObserver helps Lua mods observe the Project Zomboid world safely (shared budgets, shared probes) using **observation streams**.
+WorldObserver helps Lua mods observe the World of Project Zomboid safely and conveniently.
 
 You are reading the documentation index. For a high level overview, see [readme.md](../readme.md).
 
@@ -21,6 +21,7 @@ Recommended reading order:
 
 ### Guides (workflows)
 - [Declaring interest](guides/interest.md)
+- [Stream basics](observations/stream_basics.md)
 - [Lifecycle (unsubscribe + stop/renew leases)](guides/lifecycle.md)
 - [Debugging and performance](guides/debugging_and_performance.md)
 - [Derived streams (multi-family observations)](guides/derived_streams.md)
@@ -31,7 +32,6 @@ Recommended reading order:
 - [Squares](observations/squares.md)
 - [Rooms](observations/rooms.md)
 - [Zombies](observations/zombies.md)
-- [Stream basics](observations/stream_basics.md)
 - [ReactiveX primer](observations/reactivex_primer.md)
 
 ### Diagrams (optional)

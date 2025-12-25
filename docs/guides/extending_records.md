@@ -1,19 +1,22 @@
 # Extending record fields (advanced)
 
-WorldObserver observation records are intentionally small “snapshots”.
+WorldObserver observation records are intentionally small “extracts”.
 If you need extra fields from the original engine objects (`IsoZombie`, `IsoRoom`, `IsoGridSquare`), you can extend the record builders.
 
 ## Preferred: register a record extender (multi-mod friendly)
 
-Record extenders are additive: multiple mods can register extenders without “last mod wins” conflicts.
+Record extenders are additive: multiple mods can register extenders without “Monkey Patching”.
 
-Extender rules:
+Extender principles:
+
 - Runs for every produced record of that family.
 - Runs in registration order.
 - Runs inside a `pcall`; failures are logged and the base record is still emitted.
 
 Recommended: put your extra fields under your own namespace to avoid collisions:
 `record.extra = record.extra or {}; record.extra.YourModId = ...`
+
+Your extender _can_ break other mods, especially if it overwrites fields commonly used for identification and de-duplication.
 
 ### Zombies
 
@@ -66,6 +69,8 @@ end)
 If you need to change how the base record is built (not just add fields), you can override the builder function.
 This is powerful but conflicts easily with other mods (whoever patches last “wins”).
 
+@TODO clarify or change because the last wins is because we don't use the global object?
+
 Example (zombies):
 
 ```lua
@@ -83,5 +88,6 @@ end
 ## Performance note
 
 Extenders run on the hot path. Keep them cheap:
+
 - Prefer reading fields from the provided `Iso*` object.
 - Avoid scanning lists, calling expensive pathfinding APIs, or allocating large tables.

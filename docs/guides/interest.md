@@ -3,7 +3,7 @@
 Goal: tell WorldObserver which facts to gather for your mod, where to focus, and how fresh those observations should be.
 
 WorldObserver does **not** probe or listen for fact sources unless at least one mod declares an interest.
-Declaring interest is also how multiple mods share probing fairly: WO merges interest across mods and then chooses an effective probing strategy that fits inside runtime budgets.
+Declaring interest is also how multiple mods share probing fairly: 'WO' merges interest across mods and then chooses an effective strategy that fits inside runtime budgets so that the user framerate stays unaffected.
 
 If you haven’t run the first working example yet, start here:
 - [Quickstart](../quickstart.md)
@@ -178,22 +178,25 @@ Optional, best-effort visual feedback. Useful while tuning.
 - Squares: `highlight = true` highlights probed squares (near/vision use different colors).
 - Zombies: `highlight = true` highlights the floor under the zombie; you can also pass a color table (example: `{ 1, 0.2, 0.2 }`).
 
-`highlight` is intentionally not part of the “quality ladder” and may not merge deterministically across multiple mods. Treat it as a local debugging aid, not a contract.
+Unlike most of the other parameters, `highlight` does not merge across different mods. 
+@TODO so what happens when different mods have differne highlight setting?
 
 ## 5. How WO merges multiple mods’ interest (what to expect)
 
 All active leases are merged per interest type.
 
 The merge is designed so that the system can satisfy everyone at once:
+
 - `radius` / `zRange`: the merged `desired` tends toward the **largest** requested area.
 - `staleness` / `cooldown`: the merged `desired` tends toward the **smallest** requested freshness/emit intervals.
 - For `squares`, merging happens per scope + target identity (same target only).
-  - `target = { player = ... }` is WO-owned and merges across mods.
-  - `target = { square = ... }` is mod-owned and intentionally does **not** merge across mods, even if coordinates match.
+  - `target = { player = ... }` is 'WO'-owned and merges across mods.
+  - `target = { square = ... }` is mod-owned and does **not** merge across mods, even if coordinates match.
 
-Then an adaptive policy picks an effective level based on runtime pressure:
+An adaptive policy picks the effective level based on runtime pressure:
+
 - Degrade order is: **increase staleness → reduce radius → increase cooldown**.
-- In “emergency” situations, WO may degrade beyond your `tolerable` bounds to protect the frame rate.
+- In “emergency” situations, WO may degrade beyond your `tolerable` bounds to protect the frame rate or disable some fact sources entirely.
 
 ## 6. Introspection: “what interest is currently active?”
 

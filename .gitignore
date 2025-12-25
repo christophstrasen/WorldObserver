@@ -2,4 +2,5 @@
 .vscode/WorldObserver.local.code-workspace
 *.drawio.bkp
 *.drawio.dtmp
+*.DS_Store
 out.log
