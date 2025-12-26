@@ -140,9 +140,9 @@ function HedgeTrample.start()
 			)
 			:groupWindow(groupWindow)
 			:aggregates({
-				-- We need a DISTINCT zombie count, not a row count.
-				-- Disable default row_count to avoid polluting `_count` with `zombie.id` event counts.
-				row_count = false,
+				-- NOTE: In LQR, `aggregates.count` is computed only when `row_count` is enabled.
+				-- Because we provide an explicit `count` entry below, LQR will not use the default per-schema row counts.
+				row_count = true,
 				count = {
 					{
 						path = "zombie.zombieId",
