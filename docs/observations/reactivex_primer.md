@@ -10,7 +10,7 @@ Read this page if:
 
 - You already read [The Quickstart](../quickstart.md)
 - you already have a working subscription, but your code is getting “state-y” and hard to follow
-- You are simpler curious and want to learn more about some simple reactive building blocks like `map`, `filter`, `scan`, `buffer`, `distinctUntilChanged`, …
+- You are simply curious and want to learn more about some simple reactive building blocks like `map`, `filter`, `scan`, `buffer`, `distinctUntilChanged`, …
 
 
 ## The basic idea (in one paragraph)
@@ -86,6 +86,8 @@ local sub = stream
 
 WorldObserver’s `:distinct("<dimension>", seconds)` is dimension- and time-window-aware (e.g. “once per square every 10 seconds”).
 
+ReactiveX docs (distinct): https://reactivex.io/documentation/operators/distinct.html
+
 lua-reactivex also has `:distinct()`, but it is **not** the same:
 
 - it is **raw deduplication**: once a value was seen, it will never be emitted again for the lifetime of that subscription
@@ -93,7 +95,13 @@ lua-reactivex also has `:distinct()`, but it is **not** the same:
 - it has no idea about WorldObserver dimensions like `"square"` or `"zombie"`
 
 As value from the first `:asRx()` is multi-dimensional table that will usually be unique, it is not a good candidate for many of the reactiveX functions that are better suited for scalar values.
-@TODO list which and why.
+
+In practice, you usually want to `:map(...)` / `:pluck(...)` to a scalar first before using operators like:
+
+- `distinct` / `distinctUntilChanged` (need a stable scalar to compare)
+- `groupBy` (needs a key; otherwise you create “groups of tables” that never match)
+- `scan` / `reduce` style accumulators (need a small, intentional state shape)
+- time/window operators like `debounce` / `throttle` (usually meant for “user intent” signals, not full observation tables)
 
 Rule of thumb: 
 
@@ -106,6 +114,8 @@ Rule of thumb:
 All examples below assume you have `WorldObserver` required.
 
 ### 1) `map`: transform an observation into the value you actually care about
+
+ReactiveX docs (map): https://reactivex.io/documentation/operators/map.html
 
 Example: “turn square observations into just `squareId`”:
 
@@ -145,6 +155,8 @@ local sub = WorldObserver.observations:squares()
 
 ### 2) `filter`: keep only the observations you want
 
+ReactiveX docs (filter): https://reactivex.io/documentation/operators/filter.html
+
 Example: “only zombies that currently have a target”:
 
 ```lua
@@ -160,6 +172,8 @@ local sub = WorldObserver.observations:zombies()
 
 ### 3) `pluck`: pull a field out of a table without writing a custom map
 
+lua-reactivex operator: `external/lua-reactivex/reactivex/operators/pluck.lua`
+
 Example: “get `observation.square.squareId`”:
 
 ```lua
@@ -172,6 +186,8 @@ local sub = WorldObserver.observations:squares()
 ```
 
 ### 4) `distinctUntilChanged`: react only when a value changes
+
+ReactiveX docs (distinctUntilChanged): https://reactivex.io/documentation/operators/distinctuntilchanged.html
 
 Example: “only log when `squareId` changes” (no manual `lastSquareId` variable):
 
@@ -188,6 +204,8 @@ local sub = WorldObserver.observations:squares()
 This is often what you want when you have repeated updates but only care about changes.
 
 ### 5) `scan`: keep small “running state” as events arrive
+
+ReactiveX docs (scan): https://reactivex.io/documentation/operators/scan.html
 
 `scan` is a “running accumulator”.
 
@@ -249,6 +267,8 @@ When `scan` is not the right tool:
 
 ### 6) `buffer`: batch events (useful when you want to process in chunks)
 
+ReactiveX docs (buffer): https://reactivex.io/documentation/operators/buffer.html
+
 Example: “process 5 square observations at once”:
 
 ```lua
@@ -262,6 +282,8 @@ local sub = WorldObserver.observations:squares()
 ```
 
 ### 7) `tap`: debug without changing the stream
+
+ReactiveX docs note: in many implementations this operator is called `do`: https://reactivex.io/documentation/operators/do.html
 
 `tap` lets you run a function “in the middle” of a pipeline without changing what flows downstream.
 
@@ -280,6 +302,10 @@ local sub = WorldObserver.observations:squares()
 ```
 
 ### 8) `share`: avoid accidentally subscribing twice
+
+ReactiveX docs note: `share()` is commonly `publish().refCount()` in other implementations:
+- https://reactivex.io/documentation/operators/publish.html
+- https://reactivex.io/documentation/operators/refcount.html
 
 Most mods only need **one** `:subscribe(...)`. If that’s you, skip this section.
 
@@ -317,5 +343,4 @@ Simpler alternative (often better): do both actions in a single subscription.
 - Local copy in this repo: [external/lua-reactivex/README.md](../../external/lua-reactivex/README.md)
   - Full API list: [external/lua-reactivex/doc/README.md](../../external/lua-reactivex/doc/README.md)
 
-  
-@TODO deep link to respective explainer pages on reactivex.io e.g. https://reactivex.io/documentation/operators/distinct.html
+ReactiveX operator deep links are included inline where each operator is introduced above.

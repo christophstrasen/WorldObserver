@@ -21,7 +21,7 @@ Recommended reading order:
 
 ### Guides (workflows)
 - [Declaring interest](guides/interest.md)
-- [Stream basics](observations/stream_basics.md)
+- [Stream basics](guides/stream_basics.md)
 - [Lifecycle (unsubscribe + stop/renew leases)](guides/lifecycle.md)
 - [Debugging and performance](guides/debugging_and_performance.md)
 - [Derived streams (multi-family observations)](guides/derived_streams.md)

@@ -499,6 +499,11 @@
   - used in `examples/hedge_trample.lua` to label tiles with `zombiesOnTile` while removal runs.
 - Expanded user-facing derived stream docs to cover the LQR “windows” we hit in practice (join vs group vs distinct) and how they map to “freshness” vs “rule windows” in gameplay logic.
 - Small doc UX cleanup: replaced “knob” with “setting” across user-facing docs for a more neutral tone.
+- Docs follow-through (removed open TODOs in user docs):
+  - moved stream basics from `docs/observations/stream_basics.md` → `docs/guides/stream_basics.md` and fixed cross-links,
+  - clarified interest `highlight` merge behavior (“first non-nil lease wins”),
+  - improved `docs/observations/reactivex_primer.md` with practical guidance for multi-family observations and inline deep links where operators are taught,
+  - reinforced “use `x/y/z` as the stable handle” and avoided promising `squareId` stability across reloads.
 
 ### Lessons
 - Users think in terms of “the stream I subscribed to”; helpers that are chained after `derive(...)` must apply to the derived stream output, not to any pre-selection or intermediate row view.

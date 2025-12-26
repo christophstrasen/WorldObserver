@@ -61,14 +61,13 @@ function HedgeTrample.start()
 				:innerJoin(lqr.sprite)
 				:using({ zombie = "tileLocation", sprite = "tileLocation" })
 				:joinWindow({ time = 50 * 1000 }) -- ms
-				:distinct("zombie", { by = "zombieId", window = { time = 300 } }) --removes potential chattiness while keeping frequency high enough so that we don't miss a walking-over-square
+				:distinct("zombie", { by = "zombieId", window = { time = 300 } }) --distincts to remove potential chattiness while keeping frequency high enough not to miss a walking-over-square
 				:distinct("sprite", { by = "spriteKey", window = { time = 300 } })
 				:groupByEnrich("tileLocation_grouped", function(row)
 					return row.zombie.tileLocation -- Groups by tile location as this is where we want to take counts
 				end)
-				:groupWindow({
-					-- The group window is the "rule window": only zombies within the last 10s count.
-					time = 10 * 1000, -- ms
+				:groupWindow({ -- The group window is the "rule window": only zombies within the last 10s count.
+					time = 10 * 1000,
 					field = "zombie.sourceTime",
 				})
 				:aggregates({
@@ -83,21 +82,16 @@ function HedgeTrample.start()
 				})
 				:having(
 					function(row) -- Only pass through when we observe that 2 zombies have been on the same tile (within the last 10s)
+						SquareHelper.setSquareMarker( -- ah ah -side effect in :having only for debugs you nasty person!
+							row.sprite,
+							("zombies=%s"):format(tostring(row._count.zombie or 0))
+						)
 						return (row._count.zombie or 0) >= 2
 					end
 				)
 		end)
 		:removeSpriteObject()
-		:subscribe(function(observation)
-			local sprite = observation.sprite
-			SquareHelper.setSquareMarker(sprite, ("zombies=%s"):format(tostring(observation._count.zombie or 0)))
-			say(
-				"[WO hedge_trample] attempted remove zombiesOnTile=%s spriteName=%s tile=%s",
-				tostring(observation._count.zombie or 0),
-				tostring(sprite.spriteName),
-				tostring(observation._group_key or sprite.tileLocation)
-			)
-		end)
+		:subscribe(function(observation) end)
 end
 
 function HedgeTrample.stop()

@@ -136,4 +136,4 @@ end
 Wire `handle:tick()` into your own tick loop if you need renewal, and call `handle:stop()` when the feature shuts down.
 
 Next:
-- [Stream basics](../observations/stream_basics.md)
+- [Stream basics](stream_basics.md)

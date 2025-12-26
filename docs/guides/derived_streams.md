@@ -28,6 +28,14 @@ The key points:
 3. **The build function receives LQR builders.** Inside `function(lqr) ... end`, `lqr.square`, `lqr.zombie`, etc. are join-ready LQR `QueryBuilder`s.
 4. **Return a query; don’t subscribe inside `buildFn`.** Work only starts once you subscribe to the derived stream.
 
+### 2.1 Going lower-level (optional): `:getLQR()` and `:asRx()`
+
+Most of the time, `:derive(...)` is the cleanest way to use LQR.
+
+If you need it:
+- Every WorldObserver stream supports `:getLQR()` (advanced). It returns an LQR `QueryBuilder` rooted at the stream’s **visible output schemas** (e.g. `"square"`, `"zombie"`), so joins behave like you expect.
+- For “classic ReactiveX operators” like `map`, `filter`, `scan`, `buffer`, etc., use `:asRx()` and follow the [ReactiveX primer](../observations/reactivex_primer.md).
+
 Minimal shape:
 
 ```lua

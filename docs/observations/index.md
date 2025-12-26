@@ -44,7 +44,7 @@ Current base streams:
 - [Dead bodies](dead_bodies.md)
 
 General stream usage (subscribe, distinct, stop/unsubscribe):
-- [Stream basics](stream_basics.md)
+- [Stream basics](../guides/stream_basics.md)
 
 ReactiveX primer (optional, but helpful):
 - [ReactiveX primer](reactivex_primer.md)

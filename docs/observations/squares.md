@@ -6,7 +6,7 @@ Quickstart first (recommended):
 - [Quickstart](../quickstart.md)
 
 ## Note on IDs and stability of Squares:
-- Use `x/y/z` as the long-term stable anchor. `squareId` should not be relied on across game reloads (@TODO: confirm and document stricter guarantees later).
+- Use `x/y/z` as the long-term stable anchor. `squareId` should not be relied on across game reloads.
 
 ## Subscribe
 

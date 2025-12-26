@@ -69,16 +69,16 @@ end)
 If you need to change how the base record is built (not just add fields), you can override the builder function.
 This is powerful but conflicts easily with other mods (whoever patches last “wins”).
 
-@TODO clarify or change because the last wins is because we don't use the global object?
-
 Example (zombies):
 
 ```lua
 local ZombieRecord = require("WorldObserver/facts/zombies/record")
-local defaultMake = ZombieRecord.makeZombieRecord
+local previousMake = ZombieRecord.makeZombieRecord
 
 ZombieRecord.makeZombieRecord = function(zombie, source, opts)
-  local record = defaultMake(zombie, source, opts)
+  -- Best-effort composability: call the previous function so other mods can wrap too.
+  -- Like with all Monky-patching, load order is not guaranteed
+  local record = previousMake(zombie, source, opts)
   if not record then return nil end
   record.customField = true
   return record

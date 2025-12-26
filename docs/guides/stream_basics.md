@@ -1,6 +1,4 @@
-# Observation streams: basics
-
-@TODO move to `guides` folder.
+# Guide: stream basics
 
 Goal: subscribe to a stream, optionally filter/deduplicate it, and stop cleanly.
 
@@ -41,10 +39,10 @@ end
 ```
 
 Note: one emitted `observation` is a Lua table and can carry multiple “families” at once (for example both `observation.square` and `observation.zombie`). The built-in base streams mostly emit one family, but derived streams can combine them.
-See: [Derived streams (multi-family observations)](../guides/derived_streams.md)
+See: [Derived streams (multi-family observations)](derived_streams.md)
 
 Lifecycle details (renewal, TTL override):
-- [Lifecycle](../guides/lifecycle.md)
+- [Lifecycle](lifecycle.md)
 
 ## 2. Filtering
 
@@ -56,7 +54,9 @@ There is a learning curve starting with simple inbuilt filtering to custom queri
 
 1) try a built-in helper (easy, readable)  
 2) apply your own per-record logic (boolean AND/OR etc), use `:squareFilter(...)` / `:zombieFilter(...)`  
-3) only if you want more operators, switch to `:asLQR()` or `:asRx()` @TODO add or link guide
+3) only if you want more operators:
+   - for joins/windows/grouping: use `WorldObserver.observations:derive(...)` (see [Derived streams](derived_streams.md))
+   - for ReactiveX operators: use `:asRx()` (see [ReactiveX primer](../observations/reactivex_primer.md))
 
 ### 2.1 Easiest: use a built-in *stream* helper
 
@@ -69,7 +69,7 @@ local stream = WorldObserver.observations:squares()
 
 Note: These helpers are attached directly to a stream and can act as short-hand filters.
 
-[To read more on Helpers click here](../guides/helpers.md)
+[To read more on Helpers click here](helpers.md)
 
 ### 2.2 Your own per-record filter logic via `:squareFilter(...)` / `:zombieFilter(...)`
 
@@ -84,7 +84,7 @@ local SquareHelper = WorldObserver.helpers.square.record
 
 local stream = WorldObserver.observations:squares()
   :squareFilter(function(squareRecord)
-    return SquareHelper.squareHasCorpse(squareRecord) and SquareHelper.squareHasCorpse(squareRecord) squareRecord.z < 0 --checking for a basement body
+    return SquareHelper.squareHasCorpse(squareRecord) and (squareRecord.z or 0) < 0 -- example: basement corpses
   end)
 ```
 
@@ -99,7 +99,7 @@ local UnicornHelpers = require("YourMod/helpers/unicorns")
 local stream = WorldObserver.observations:squares()
   :withHelpers({
     helperSets = { unicorns = UnicornHelpers },
-    enabled_helpers = { unicorns = "square" }, -- @TODO check the config fields/syntax
+    enabled_helpers = { unicorns = "square" },
   })
 
 -- Fluent call (helpers attach as stream methods by default):
@@ -116,7 +116,7 @@ WorldObserver.observations:registerHelperFamily("unicorns", UnicornHelpers)
 
 local stream = WorldObserver.observations:squares()
   :withHelpers({
-    enabled_helpers = { unicorns = "square" }, -- @TODO check the config fields/syntax
+    enabled_helpers = { unicorns = "square" },
   })
 ```
 
@@ -124,7 +124,7 @@ local stream = WorldObserver.observations:squares()
 
 If you are interested to observe "Unique" facts this one way to achieve it is `:distinct` to avoid repeats for the same underylying fact within a window.
 
-Note: This version of `:distinct` is a high level stream helper which uses the "primary key" of the record to establish uniqueness. If you want more customized distinct behavior look into LQR queries. @TODO add link
+Note: This version of `:distinct` is a high-level stream helper which uses the stream’s dimension mapping (“primary key”) to establish uniqueness. If you need join-aware deduplication or custom distinct keys, use `WorldObserver.observations:derive(...)` (see [Derived streams](derived_streams.md)).
 
 Example: “at most once per square every 10 seconds”:
 
@@ -143,4 +143,4 @@ local rxStream = WorldObserver.observations:squares():asRx()
 rxStream:map(function(o) return o.square.squareId end):subscribe(print)
 ```
 
-More examples: [ReactiveX primer](reactivex_primer.md)
+More examples: [ReactiveX primer](../observations/reactivex_primer.md)

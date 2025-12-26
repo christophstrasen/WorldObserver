@@ -89,7 +89,6 @@ Stream helper method names share a global namespace on the stream. To avoid coll
 
 ## Related docs
 
-- Stream lifecycle and start/stop: `docs/observations/stream_basics.md`
+- Stream lifecycle and start/stop: `docs/guides/stream_basics.md`
 - Derived streams (multi-family observations): `docs/guides/derived_streams.md`
 - Extending record fields (separate from helpers): `docs/guides/extending_records.md`
-

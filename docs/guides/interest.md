@@ -179,7 +179,12 @@ Optional, best-effort visual feedback. Useful while tuning.
 - Zombies: `highlight = true` highlights the floor under the zombie; you can also pass a color table (example: `{ 1, 0.2, 0.2 }`).
 
 Unlike most of the other parameters, `highlight` does not merge across different mods. 
-@TODO so what happens when different mods have differne highlight setting?
+
+Current behavior (today):
+- `highlight` is taken from the first active lease (for that `type` + merged bucket) that provides it.
+- Later leases do not override it.
+
+Recommendation: treat `highlight` as a debugging setting. If you need reliable, per-mod visuals, use the highlight helpers directly in your subscription (see `docs/guides/debugging_and_performance.md`).
 
 ## 5. How WO merges multiple mods’ interest (what to expect)
 
