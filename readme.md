@@ -24,6 +24,10 @@ When multiple mods would otherwise perform heavy scanning in parallel, WorldObse
 
 ---
 
+## System Overview
+
+![Architecture overview](docs/diagrams/architecture_simple.png)
+
 ## Quickstart
 
 This examples shows how you

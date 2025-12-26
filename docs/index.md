@@ -8,9 +8,10 @@ Recommended reading order:
 1. [Quickstart](quickstart.md)
 2. [Glossary](glossary.md)
 3. [Guide: declaring interest](guides/interest.md)
-4. [Lifecycle: subscriptions and interest leases](guides/lifecycle.md)
-5. [Observations](observations/index.md)
-6. [Troubleshooting](troubleshooting.md)
+4. [Observations overview](observations/index.md)
+5. [Lifecycle: subscriptions and interest leases](guides/lifecycle.md)
+6. [Stream basics](guides/stream_basics.md)
+7. [Troubleshooting](troubleshooting.md)
 
 ## Pages
 
@@ -19,21 +20,31 @@ Recommended reading order:
 - [Glossary](glossary.md)
 - [Troubleshooting](troubleshooting.md)
 
-### Guides (workflows)
+### Guides (workflows + concepts)
 - [Declaring interest](guides/interest.md)
-- [Stream basics](guides/stream_basics.md)
+- [Architecture rationale (why WO is built this way)](architecture_rationale.md)
 - [Lifecycle (unsubscribe + stop/renew leases)](guides/lifecycle.md)
+- [Stream basics](guides/stream_basics.md)
+- [Helpers (built-in and extending)](guides/helpers.md)
 - [Debugging and performance](guides/debugging_and_performance.md)
 - [Derived streams (multi-family observations)](guides/derived_streams.md)
 - [Extending record fields](guides/extending_records.md)
 
 ### Observations (what you can subscribe to)
 - [Observations overview](observations/index.md)
+
+Base observation streams:
 - [Squares](observations/squares.md)
 - [Rooms](observations/rooms.md)
+- [Sprites](observations/sprites.md)
 - [Zombies](observations/zombies.md)
+- [Vehicles](observations/vehicles.md)
+- [Items](observations/items.md)
+- [Dead bodies](observations/dead_bodies.md)
+
+Supporting reading:
 - [ReactiveX primer](observations/reactivex_primer.md)
 
-### Diagrams (optional)
-- `docs/diagrams/architecture_simple.drawio`
-- `docs/diagrams/architecture_full.drawio`
+### Diagrams
+- [Architecture (simple)](diagrams/architecture_simple.drawio)
+- [Architecture (full)](diagrams/architecture_full.drawio)

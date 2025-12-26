@@ -160,8 +160,8 @@ end
 		end
 	end
 if SpriteHelpers.stream.removeSpriteObject == nil then
-	function SpriteHelpers.stream.removeSpriteObject(stream, fieldName, ...)
-		return SpriteHelpers.removeSpriteObject(stream, fieldName, ...)
+	function SpriteHelpers.stream.removeSpriteObject(stream, fieldName)
+		return SpriteHelpers.removeSpriteObject(stream, fieldName)
 	end
 end
 
