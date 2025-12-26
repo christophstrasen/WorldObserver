@@ -494,10 +494,10 @@
   - Stream `filter(...)` is now a true end-of-stream filter (applies to what a subscriber sees), and it is chainable.
   - Effectful helpers (like `removeSpriteObject`) run as end-of-stream taps, so they act on the reduced/filtered derived result instead of on intermediate rows.
   - Base stream helpers operate on public schema keys (`square`, `zombie`, `sprite`, …) instead of leaking internal schema names into modder-facing usage and docs.
-- Expanded user-facing derived stream docs to teach the important LQR nuances we hit in practice:
-  - join window vs group window vs distinct windows,
-  - “distinct as raw limiting” vs “distinct/oneShot for join multiplicity control”,
-  - and how these relate to “freshness” vs “rule windows” in domain logic.
+- Added optional “best-effort” visual debugging via Doggy’s VisualMarkers dependency:
+  - `WorldObserver.helpers.square.record.setSquareMarker(squareLike, text, opts)` + `:setSquareMarker(...)` stream sugar (square-like contract: `x/y/z` record or live `IsoGridSquare`),
+  - used in `examples/hedge_trample.lua` to label tiles with `zombiesOnTile` while removal runs.
+- Expanded user-facing derived stream docs to cover the LQR “windows” we hit in practice (join vs group vs distinct) and how they map to “freshness” vs “rule windows” in gameplay logic.
 - Small doc UX cleanup: replaced “knob” with “setting” across user-facing docs for a more neutral tone.
 
 ### Lessons

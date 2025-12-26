@@ -1,6 +1,6 @@
 -- hedge_trample.lua — teaching example: join zombies + sprites on tileLocation and remove hedge tiles.
 --[[ Usage in PZ console:
-require("LQR/util/log").setLevel("info")
+--require("LQR/util/log").setLevel("info")
 ht = require("examples/hedge_trample")
 ht.start()
 -- stop:
@@ -26,6 +26,7 @@ function HedgeTrample.start()
 	HedgeTrample.stop()
 
 	local WorldObserver = require("WorldObserver")
+	local SquareHelper = WorldObserver.helpers.square.record
 	say("[WO hedge_trample] start")
 	leases = {
 		zombies = WorldObserver.factInterest:declare(MOD_ID, "zombies", {
@@ -89,6 +90,7 @@ function HedgeTrample.start()
 		:removeSpriteObject()
 		:subscribe(function(observation)
 			local sprite = observation.sprite
+			SquareHelper.setSquareMarker(sprite, ("zombies=%s"):format(tostring(observation._count.zombie or 0)))
 			say(
 				"[WO hedge_trample] attempted remove zombiesOnTile=%s spriteName=%s tile=%s",
 				tostring(observation._count.zombie or 0),

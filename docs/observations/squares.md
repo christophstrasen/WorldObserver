@@ -70,10 +70,21 @@ local stream = WorldObserver.observations:squares()
 Available today:
 - `:squareHasCorpse()`
 - `:squareHasIsoGridSquare()` (keeps only records that can resolve a live `IsoGridSquare`)
+- `:setSquareMarker(textOrFn, opts)` (best-effort label; requires Doggy's VisualMarkers; accepts square-like records with `x/y/z` or a live `IsoGridSquare`)
 
 Record helpers (use inside `:squareFilter(...)` or inside Rx `:filter(...)` after `:asRx()`):
 - `WorldObserver.helpers.square.record.squareHasCorpse(squareRecord)`
 - `WorldObserver.helpers.square.record.squareHasIsoGridSquare(squareRecord, opts)` (may hydrate/cache `squareRecord.IsoGridSquare`)
+
+Example (sets a label showing the square id, reusing the same marker per square):
+
+```lua
+WorldObserver.observations:squares()
+  :setSquareMarker(function(obs)
+    return ("squareId=%s"):format(tostring(obs.square.squareId))
+  end)
+  :subscribe(function(_) end)
+```
 
 ## Choosing an interest type (why streams can go quiet)
 

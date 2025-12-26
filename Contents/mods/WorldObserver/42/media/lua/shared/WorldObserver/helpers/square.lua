@@ -16,6 +16,42 @@ if type(moduleName) == "string" then
 	SquareHelpers.record = SquareHelpers.record or {}
 	SquareHelpers.stream = SquareHelpers.stream or {}
 
+	local visualMarkersResolved = nil
+	local visualMarkersWarned = false
+	local function resolveVisualMarkers()
+		if visualMarkersResolved ~= nil then
+			return visualMarkersResolved or nil
+		end
+		local ok, markers = pcall(require, "DoggyDebugTools/VisualMarkers")
+		if not ok then
+			visualMarkersResolved = false
+			if not visualMarkersWarned and _G.WORLDOBSERVER_HEADLESS ~= true then
+				visualMarkersWarned = true
+				Log:warn("setSquareMarker unavailable: require('DoggyDebugTools/VisualMarkers') failed")
+			end
+			return nil
+		end
+		visualMarkersResolved = markers
+		return markers
+	end
+
+	local function resolveMarkerColor(opts)
+		if type(opts) ~= "table" then
+			return 1, 0, 0, 1
+		end
+		local r, g, b = nil, nil, nil
+		if type(opts.color) == "table" then
+			r = opts.color[1] or opts.color.r
+			g = opts.color[2] or opts.color.g
+			b = opts.color[3] or opts.color.b
+		end
+		r = opts.r or r or 1
+		g = opts.g or g or 0
+		b = opts.b or b or 0
+		local a = opts.a or opts.alpha or 1
+		return r, g, b, a
+	end
+
 	-- Patch seam: only define when nil so mods can override.
 	if SquareHelpers.record.tileLocationFromCoords == nil then
 		function SquareHelpers.record.tileLocationFromCoords(x, y, z)
@@ -272,6 +308,93 @@ end
 	if SquareHelpers.stream.squareHasIsoGridSquare == nil then
 		function SquareHelpers.stream.squareHasIsoGridSquare(stream, fieldName, ...)
 			return SquareHelpers.squareHasIsoGridSquare(stream, fieldName, ...)
+		end
+	end
+
+	-- Best-effort marker "upsert" for a square-like record (x/y/z) or a live IsoGridSquare.
+	if SquareHelpers.record.setSquareMarker == nil then
+		function SquareHelpers.record.setSquareMarker(squareLike, text, opts)
+			local squareLikeType = type(squareLike)
+			if squareLike == nil then
+				return nil, "noSquare"
+			end
+			if text == nil then
+				return nil, "noText"
+			end
+
+			local markers = resolveVisualMarkers()
+			if markers == nil then
+				return nil, "noMarkers"
+			end
+
+			local isoGridSquare = nil
+			if
+				(squareLikeType == "userdata" or squareLikeType == "table")
+				and type(squareLike.getFloor) == "function"
+				and type(squareLike.getX) == "function"
+				and type(squareLike.getY) == "function"
+			then
+				isoGridSquare = squareLike
+			elseif squareLikeType == "table" then
+				isoGridSquare = SquareHelpers.record.getIsoGridSquare(squareLike, opts)
+				if isoGridSquare == nil then
+					return nil, "noIsoGridSquare"
+				end
+			else
+				return nil, "noSquare"
+			end
+
+			if type(markers.SquareNametags) == "table" then
+				markers.SquareNametags[isoGridSquare] = nil
+			end
+
+			local r, g, b, a = resolveMarkerColor(opts)
+			local yOffset = type(opts) == "table" and (opts.yOffset or opts.y_offset) or nil
+			local ok, err = pcall(markers.AddSquareMarker, isoGridSquare, text, r, g, b, a, yOffset)
+			if not ok then
+				return nil, tostring(err)
+			end
+			return true
+		end
+	end
+
+	-- Stream helper: sets or updates a square marker for each observation.
+	if SquareHelpers.setSquareMarker == nil then
+		function SquareHelpers.setSquareMarker(stream, fieldName, textOrFn, opts)
+			local target = fieldName or "square"
+			local text = textOrFn
+			local options = opts
+			if type(fieldName) ~= "string" then
+				target = "square"
+				text = fieldName
+				options = textOrFn
+			end
+
+			return stream:finalTap(function(observation)
+				local square = squareField(observation, target)
+				if square == nil then
+					return
+				end
+				local value = text
+				if type(text) == "function" then
+					local ok, result = pcall(text, observation, square)
+					if not ok then
+						if _G.WORLDOBSERVER_HEADLESS ~= true then
+							Log:warn("setSquareMarker text function failed: %s", tostring(result))
+						end
+						return
+					end
+					value = result
+				end
+				if value ~= nil then
+					SquareHelpers.record.setSquareMarker(square, value, options)
+				end
+			end)
+		end
+	end
+	if SquareHelpers.stream.setSquareMarker == nil then
+		function SquareHelpers.stream.setSquareMarker(stream, fieldName, ...)
+			return SquareHelpers.setSquareMarker(stream, fieldName, ...)
 		end
 	end
 

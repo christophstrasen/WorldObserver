@@ -6,5 +6,5 @@ poster=poster.png
 icon=icon_64.png
 authors=Karmachameleon
 version=0.1
-require=\StarlitLibrary
-loadModAfer=\StarlitLibrary
+require=\StarlitLibrary,\DoggyLibrary
+loadModAfer=\StarlitLibrary,\DoggyLibrary
