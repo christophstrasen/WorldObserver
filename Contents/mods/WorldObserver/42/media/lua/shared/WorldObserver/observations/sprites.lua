@@ -20,12 +20,12 @@ end
 -- Patch seam: define only when nil so mods can override by reassigning `SpritesObservation.register`.
 if SpritesObservation.register == nil then
 	function SpritesObservation.register(observationRegistry, factRegistry, nextObservationId)
-		observationRegistry:register("sprites", {
-			enabled_helpers = { sprite = "SpriteObservation" },
-			fact_deps = { "sprites" },
-			dimensions = {
-				sprite = {
-					schema = "SpriteObservation",
+			observationRegistry:register("sprites", {
+				enabled_helpers = { sprite = true },
+				fact_deps = { "sprites" },
+				dimensions = {
+					sprite = {
+						schema = "SpriteObservation",
 					keyField = "spriteKey",
 				},
 			},

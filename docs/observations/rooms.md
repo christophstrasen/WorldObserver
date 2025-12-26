@@ -123,4 +123,4 @@ Supported combinations for `type = "rooms"`:
 | onPlayerChangeRoom | player | `target = { player = { id = 0 } }` | Emits when the player changes rooms (engine event). |
 | allLoaded    | n/a        | n/a                              | Scans the room list in the active cell (singleplayer). |
 
-Meaningful knobs for `allLoaded`: `staleness`, `cooldown`, `highlight`.
+Meaningful settings for `allLoaded`: `staleness`, `cooldown`, `highlight`.

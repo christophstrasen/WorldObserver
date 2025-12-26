@@ -20,12 +20,12 @@ end
 -- Patch seam: define only when nil so mods can override by reassigning `DeadBodiesObservation.register`.
 if DeadBodiesObservation.register == nil then
 	function DeadBodiesObservation.register(observationRegistry, factRegistry, nextObservationId)
-		observationRegistry:register("deadBodies", {
-			enabled_helpers = { deadBody = "DeadBodyObservation" },
-			fact_deps = { "deadBodies" },
-			dimensions = {
-				deadBody = {
-					schema = "DeadBodyObservation",
+			observationRegistry:register("deadBodies", {
+				enabled_helpers = { deadBody = true },
+				fact_deps = { "deadBodies" },
+				dimensions = {
+					deadBody = {
+						schema = "DeadBodyObservation",
 					keyField = "deadBodyId",
 				},
 			},

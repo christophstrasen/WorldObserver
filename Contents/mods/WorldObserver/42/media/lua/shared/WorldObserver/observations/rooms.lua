@@ -20,12 +20,12 @@ end
 -- Patch seam: define only when nil so mods can override by reassigning `RoomsObservation.register`.
 if RoomsObservation.register == nil then
 	function RoomsObservation.register(observationRegistry, factRegistry, nextObservationId)
-		observationRegistry:register("rooms", {
-			enabled_helpers = { room = "RoomObservation" },
-			fact_deps = { "rooms" },
-			dimensions = {
-				room = {
-					schema = "RoomObservation",
+			observationRegistry:register("rooms", {
+				enabled_helpers = { room = true },
+				fact_deps = { "rooms" },
+				dimensions = {
+					room = {
+						schema = "RoomObservation",
 					keyField = "roomId",
 				},
 			},
@@ -46,4 +46,3 @@ if RoomsObservation.register == nil then
 end
 
 return RoomsObservation
-

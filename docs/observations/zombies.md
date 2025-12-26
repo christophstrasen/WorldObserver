@@ -97,6 +97,6 @@ Supported combinations for `type = "zombies"`:
 |-----------|------------|--------------|-------|
 | allLoaded | n/a        | n/a          | Scans the loaded zombie list (v0: singleplayer). |
 
-Meaningful knobs: `radius`, `zRange`, `staleness`, `cooldown`, `highlight`.
+Meaningful settings: `radius`, `zRange`, `staleness`, `cooldown`, `highlight`.
 
 Note: `radius` makes emissions leaner, but does not avoid the baseline cost of scanning the loaded zombie list.

@@ -169,18 +169,31 @@ function BaseMethods:asRx()
 	end)
 end
 
-function BaseMethods:filter(predicate)
-	local nextBuilder = self._builder:where(predicate)
-	return newObservationStream(
-		nextBuilder,
-		self._helperMethods,
-		self._dimensions,
+	function BaseMethods:filter(predicate)
+		local nextBuilder = self._builder:finalWhere(predicate)
+		return newObservationStream(
+			nextBuilder,
+			self._helperMethods,
+			self._dimensions,
 		self._factRegistry,
 		self._factDeps,
 		self._helperSets,
-		self._enabled_helpers
-	)
-end
+			self._enabled_helpers
+		)
+	end
+
+	function BaseMethods:finalTap(tapFn)
+		local nextBuilder = self._builder:finalTap(tapFn)
+		return newObservationStream(
+			nextBuilder,
+			self._helperMethods,
+			self._dimensions,
+			self._factRegistry,
+			self._factDeps,
+			self._helperSets,
+			self._enabled_helpers
+		)
+	end
 
 function BaseMethods:distinct(dimension, seconds)
 	local dim = self._dimensions[dimension]
@@ -419,16 +432,16 @@ if ObservationRegistry.derive == nil then
 				mergeUniqueFactDeps(factDeps, factDepsSeen, stream._factDeps)
 			end
 			if type(stream._enabled_helpers) == "table" then
-				for helperKey in pairs(stream._enabled_helpers) do
-					if enabledHelpers[helperKey] == nil then
-						-- Derived streams are built from :getLQR() builders, which are rooted in OUTPUT schemas
-						-- (post-selectSchemas). Helper predicates run before the derived stream's own selection,
-						-- so default to the public schema aliases ("square", "zombie", ...) instead of the
-						-- source stream's internal schema names ("SquareObservation", ...).
-						enabledHelpers[helperKey] = helperKey
+					for helperKey in pairs(stream._enabled_helpers) do
+						if enabledHelpers[helperKey] == nil then
+							-- Derived streams are built from :getLQR() builders, which are rooted in OUTPUT schemas
+							-- (post-selectSchemas). Stream helpers operate on that final output, so default to the
+							-- public schema aliases ("square", "zombie", ...) instead of internal schema names
+							-- ("SquareObservation", ...).
+							enabledHelpers[helperKey] = helperKey
+						end
 					end
 				end
-			end
 			if type(stream._helperSets) == "table" then
 				mergeTablesLastWins(helperSets, stream._helperSets)
 			end

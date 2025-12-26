@@ -20,12 +20,12 @@ end
 -- Patch seam: define only when nil so mods can override by reassigning `ZombiesObservation.register`.
 if ZombiesObservation.register == nil then
 	function ZombiesObservation.register(observationRegistry, factRegistry, nextObservationId)
-		observationRegistry:register("zombies", {
-			enabled_helpers = { zombie = "ZombieObservation" },
-			fact_deps = { "zombies" },
-			dimensions = {
-				zombie = {
-					schema = "ZombieObservation",
+			observationRegistry:register("zombies", {
+				enabled_helpers = { zombie = true },
+				fact_deps = { "zombies" },
+				dimensions = {
+					zombie = {
+						schema = "ZombieObservation",
 					keyField = "zombieId",
 				},
 			},

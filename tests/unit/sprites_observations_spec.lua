@@ -27,12 +27,12 @@ describe("WorldObserver observations.sprites()", function()
 		local received = {}
 		local SpriteHelper = WorldObserver.helpers.sprite.record
 
-		local stream = WorldObserver.observations:sprites():spriteFilter(function(spriteRecord, observation)
-			assert.is_table(observation)
-			assert.is_table(spriteRecord)
-			assert.equals(spriteRecord, observation.SpriteObservation)
-			return SpriteHelper.spriteNameIs(spriteRecord, "fixtures_bathroom_01_0")
-		end)
+			local stream = WorldObserver.observations:sprites():spriteFilter(function(spriteRecord, observation)
+				assert.is_table(observation)
+				assert.is_table(spriteRecord)
+				assert.equals(spriteRecord, observation.sprite)
+				return SpriteHelper.spriteNameIs(spriteRecord, "fixtures_bathroom_01_0")
+			end)
 		stream:subscribe(function(row)
 			received[#received + 1] = row
 		end)
@@ -107,4 +107,5 @@ describe("WorldObserver observations.sprites()", function()
 		assert.equals(isoObject, removed.obj)
 		assert.equals(1, #received)
 	end)
+
 end)

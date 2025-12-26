@@ -22,20 +22,17 @@ end
 -- reloads (tests/console via `package.loaded`) don't clobber an existing patch.
 if SquaresObservation.register == nil then
 	function SquaresObservation.register(observationRegistry, factRegistry, nextObservationId)
-		observationRegistry:register("squares", {
-			-- NOTE: helper stream predicates run as Query.where predicates, which operate on LQR's row-view
-			-- BEFORE any selectSchemas renames are applied. This means helpers must target the pre-selection
-			-- schema name (SquareObservation), even though subscribers later see `observation.square`.
-			enabled_helpers = { square = "SquareObservation" },
-			fact_deps = { "squares" },
-			dimensions = {
-				square = {
-					-- Same reasoning as enabled_helpers: distinct/windowing runs before selectSchemas renames,
-					-- so dimensions must reference the pre-selection schema name.
-					schema = "SquareObservation",
-					keyField = "squareId",
+			observationRegistry:register("squares", {
+				-- Helpers run on the final stream output (after selectSchemas), so they can target `observation.square`.
+				enabled_helpers = { square = true },
+				fact_deps = { "squares" },
+				dimensions = {
+					square = {
+						-- distinct/windowing runs before selectSchemas renames, so dimensions reference the pre-selection schema name.
+						schema = "SquareObservation",
+						keyField = "squareId",
+					},
 				},
-			},
 				build = function()
 					local facts = factRegistry:getObservable("squares")
 					-- Stamp facts with a per-observation id and sourceTime before feeding LQR, then expose as observation.square.

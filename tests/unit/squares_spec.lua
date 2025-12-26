@@ -29,7 +29,7 @@ describe("WorldObserver observations.squares()", function()
 		_G.getWorld = savedGetWorld
 	end)
 
-	it("emits Observation rows with SquareObservation payload", function()
+		it("emits Observation rows with square payload", function()
 		local received = {}
 		local stream = WorldObserver.observations:squares()
 		stream:subscribe(function(row)
@@ -117,15 +117,15 @@ describe("WorldObserver observations.squares()", function()
 		assert.is_equal(2, withCorpse[1].square.squareId)
 	end)
 
-	it("squareFilter passes the square record into the predicate", function()
-		local received = {}
-		local SquareHelper = WorldObserver.helpers.square.record
-		local stream = WorldObserver.observations:squares():squareFilter(function(squareRecord, observation)
-			assert.is_table(observation)
-			assert.is_table(squareRecord)
-			assert.equals(squareRecord, observation.SquareObservation)
-			return SquareHelper.squareHasCorpse(squareRecord)
-		end)
+		it("squareFilter passes the square record into the predicate", function()
+			local received = {}
+			local SquareHelper = WorldObserver.helpers.square.record
+			local stream = WorldObserver.observations:squares():squareFilter(function(squareRecord, observation)
+				assert.is_table(observation)
+				assert.is_table(squareRecord)
+				assert.equals(squareRecord, observation.square)
+				return SquareHelper.squareHasCorpse(squareRecord)
+			end)
 		stream:subscribe(function(row)
 			received[#received + 1] = row
 		end)

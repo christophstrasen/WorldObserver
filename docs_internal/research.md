@@ -87,6 +87,18 @@ MapObjects.OnLoadWithSprite({ "fixtures_bathroom_01_0", "location_shop_mall_01_1
 end, 1)
 ```
 
+# ObjectObservations (warning: VERY generic category)
+
+
+getObjectsInChunk Link icon
+public final ArrayList<GlobalObject> getObjectsInChunk(int wx,
+ int wy)
+getObjectsAdjacentTo Link icon
+public final ArrayList<GlobalObject> getObjectsAdjacentTo(int x,
+ int y,
+ int z)
+
+
 # SoundObservations
 
 https://steamcommunity.com/sharedfiles/filedetails/?id=3367336031

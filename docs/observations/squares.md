@@ -105,6 +105,6 @@ Supported combinations for `type = "squares"`:
 | vision  | player     | `target = { player = { id = 0 } }`            | Probe; only emits squares visible to the player. |
 | onLoad  | n/a        | n/a                                           | Event-driven: emits when squares load. |
 
-Meaningful knobs:
+Meaningful settings:
 - Probe scopes (`near`, `vision`): `radius`, `staleness`, `cooldown`, `highlight`.
 - Event scope (`onLoad`): `cooldown`, `highlight`.

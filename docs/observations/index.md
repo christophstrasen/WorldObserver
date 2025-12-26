@@ -30,7 +30,7 @@ WorldObserver uses the **in-game clock** for timestamps and time windows (same c
 
 You’ll see this in a few places:
 - Record timestamps like `sourceTime` are **milliseconds**.
-- Many knobs in docs are **seconds** (internally converted to ms), e.g. `staleness`, `cooldown`, `:distinct(..., seconds)`.
+- Many settings in docs are **seconds** (internally converted to ms), e.g. `staleness`, `cooldown`, `:distinct(..., seconds)`.
 - Interest lease TTL is also measured on the in-game clock; see [Lifecycle](../guides/lifecycle.md).
 
 ## Available streams

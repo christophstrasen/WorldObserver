@@ -123,7 +123,7 @@ Supported combinations for `type = "deadBodies"`:
 | near         | square     | `target = { square = { x, y, z } }`           | Probe around a fixed square (`z` defaults to 0). |
 | vision       | player     | `target = { player = { id = 0 } }`            | Probe; only emits dead bodies on squares visible to the player. |
 
-Meaningful knobs:
+Meaningful settings:
 - Probe scopes (`near`, `vision`): `radius`, `staleness`, `cooldown`, `highlight`.
 - `playerSquare`: `cooldown`, `highlight`.
 

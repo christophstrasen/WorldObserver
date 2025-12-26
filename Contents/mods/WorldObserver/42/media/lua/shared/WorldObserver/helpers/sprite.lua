@@ -113,36 +113,36 @@ if SpriteHelpers.stream.spriteIdIs == nil then
 	end
 end
 
-if SpriteHelpers.removeSpriteObject == nil then
-	function SpriteHelpers.removeSpriteObject(stream, fieldName)
-		local target = fieldName or "sprite"
-		-- Use filter as a tap: keep chaining intact while firing an effectful removal per observation.
-		return stream:filter(function(observation)
-			local spriteRecord = spriteField(observation, target)
-			if spriteRecord == nil then
-				return true
-			end
+	if SpriteHelpers.removeSpriteObject == nil then
+		function SpriteHelpers.removeSpriteObject(stream, fieldName)
+			local target = fieldName or "sprite"
+			-- Run as a finalTap so derived streams can reduce/group first (and so we don't consume the LQR where slot).
+			return stream:finalTap(function(observation)
+				local spriteRecord = spriteField(observation, target)
+				if spriteRecord == nil then
+					return
+				end
 
-			local isoGridSquare = resolveIsoGridSquare(spriteRecord)
-			if isoGridSquare == nil then
-				Log:warn(
-					"removeSpriteObject: missing IsoGridSquare for spriteKey=%s",
-					tostring(spriteRecord.spriteKey)
-				)
-				return true
-			end
+				local isoGridSquare = resolveIsoGridSquare(spriteRecord)
+				if isoGridSquare == nil then
+					Log:warn(
+						"removeSpriteObject: missing IsoGridSquare for spriteKey=%s",
+						tostring(spriteRecord.spriteKey)
+					)
+					return
+				end
 
-			local isoObject = spriteRecord.IsoObject
-			if isoObject == nil then
-				Log:warn(
-					"removeSpriteObject: missing IsoObject for spriteKey=%s",
-					tostring(spriteRecord.spriteKey)
-				)
-				return true
-			end
+				local isoObject = spriteRecord.IsoObject
+				if isoObject == nil then
+					Log:warn(
+						"removeSpriteObject: missing IsoObject for spriteKey=%s",
+						tostring(spriteRecord.spriteKey)
+					)
+					return
+				end
 
-			local ok, err = pcall(isoGridSquare.RemoveTileObject, isoGridSquare, isoObject)
-			if ok then
+				local ok, err = pcall(isoGridSquare.RemoveTileObject, isoGridSquare, isoObject)
+				if ok then
 				Log:info(
 					"removeSpriteObject: removed spriteName=%s tile=%s",
 					tostring(spriteRecord.spriteName),
@@ -153,14 +153,12 @@ if SpriteHelpers.removeSpriteObject == nil then
 					"removeSpriteObject: failed for spriteName=%s tile=%s err=%s (consider :distinct('sprite', seconds) to reduce log spam)",
 					tostring(spriteRecord.spriteName),
 					tostring(spriteRecord.tileLocation),
-					tostring(err)
-				)
-			end
-
-			return true
-		end)
+						tostring(err)
+					)
+				end
+			end)
+		end
 	end
-end
 if SpriteHelpers.stream.removeSpriteObject == nil then
 	function SpriteHelpers.stream.removeSpriteObject(stream, fieldName, ...)
 		return SpriteHelpers.removeSpriteObject(stream, fieldName, ...)

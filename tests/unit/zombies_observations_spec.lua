@@ -27,12 +27,12 @@ describe("WorldObserver observations.zombies()", function()
 		local received = {}
 		local ZombieHelper = WorldObserver.helpers.zombie.record
 
-		local stream = WorldObserver.observations:zombies():zombieFilter(function(zombieRecord, observation)
-			assert.is_table(observation)
-			assert.is_table(zombieRecord)
-			assert.equals(zombieRecord, observation.ZombieObservation)
-			return ZombieHelper.zombieHasTarget(zombieRecord)
-		end)
+			local stream = WorldObserver.observations:zombies():zombieFilter(function(zombieRecord, observation)
+				assert.is_table(observation)
+				assert.is_table(zombieRecord)
+				assert.equals(zombieRecord, observation.zombie)
+				return ZombieHelper.zombieHasTarget(zombieRecord)
+			end)
 
 		stream:subscribe(function(row)
 			received[#received + 1] = row

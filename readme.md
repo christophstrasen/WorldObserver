@@ -87,7 +87,7 @@ _G.WOHello = {
 ## What you get (that’s painful to hand-roll)
 
 - **Shared work and fairness:** when multiple mods declare overlapping interest, WorldObserver merges leases and runs shared probing/listening work.
-- **Safety knobs:** `radius`, `staleness`, `cooldown` let you express quality expectations while WorldObserver stays within budgets.
+- **Safety settings:** `radius`, `staleness`, `cooldown` let you express quality expectations while WorldObserver stays within budgets.
 - **Signal over noise:** helpers + `distinct` let you compact raw updates into “interesting observations” your mod can act on.
 - **Composability:** build derived streams by combining base streams (joins, windows, distinct). Start here: [Derived streams](docs/guides/derived_streams.md).
 

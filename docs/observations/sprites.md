@@ -132,6 +132,6 @@ Required fields:
   - `%` alone matches all names.
   - Wildcards apply to `near` / `vision` probes only; `onLoadWithSprite` still requires explicit names.
 
-Meaningful knobs:
+Meaningful settings:
 - Probe scopes (`near`, `vision`): `radius`, `staleness`, `cooldown`, `highlight`.
 - `onLoadWithSprite`: `cooldown`, `highlight`.

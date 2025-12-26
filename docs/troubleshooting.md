@@ -39,7 +39,7 @@ If you need ongoing freshness, use a probe scope (`near` or `vision`) and tune `
 ## “My time windows feel wrong” (too fast / too slow)
 
 WorldObserver uses the **in-game clock**:
-- Many knobs and helpers use **seconds** (e.g. `staleness`, `cooldown`, `:distinct(..., seconds)`).
+- Many settings and helper arguments use **seconds** (e.g. `staleness`, `cooldown`, `:distinct(..., seconds)`).
 - Record timestamps are usually **milliseconds** (`sourceTime`).
 
 If you expected real-time seconds, your numbers will feel off.

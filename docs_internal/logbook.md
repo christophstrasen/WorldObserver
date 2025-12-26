@@ -479,3 +479,35 @@
 ### Next steps
 - Add a small “sprite discovery helper” for smoke runs (e.g. dump a sample of nearby sprite names) so users don’t need to guess sprite strings.
 - Consider adding optional wildcard/predicate filtering for sprite names to avoid maintaining long explicit lists.
+
+## day16 – Derived streams “in anger”: hedge_trample, helper semantics, and sprite name wildcards
+
+### Highlights
+- Added a practical “derived streams” teaching example (`examples/hedge_trample.lua`) that joins zombies + sprites on `tileLocation` and then uses LQR grouping + `having` to express a real gameplay rule (“at least N distinct zombies have been on this tile within the last N seconds”).
+- Added `tileLocation` (`"x123y456z7"`) consistently across square-related records so joins/grouping can key off a stable string without requiring live engine objects.
+- Tightened sprite interest ergonomics by supporting prefix wildcards inside `spriteNames`:
+  - trailing `%` means “prefix match” (and `%` alone means “match all”),
+  - invalid patterns warn and are ignored,
+  - `onLoadWithSprite` explicitly does not support wildcards (warn + ignore).
+- Removed a confusing “raw removal” helper direction and kept the user-facing sprite action focused on `removeSpriteObject()` (safe/warn-y; “already gone” is fine).
+- Reworked the post-derive helper semantics to match user expectations:
+  - Stream `filter(...)` is now a true end-of-stream filter (applies to what a subscriber sees), and it is chainable.
+  - Effectful helpers (like `removeSpriteObject`) run as end-of-stream taps, so they act on the reduced/filtered derived result instead of on intermediate rows.
+  - Base stream helpers operate on public schema keys (`square`, `zombie`, `sprite`, …) instead of leaking internal schema names into modder-facing usage and docs.
+- Expanded user-facing derived stream docs to teach the important LQR nuances we hit in practice:
+  - join window vs group window vs distinct windows,
+  - “distinct as raw limiting” vs “distinct/oneShot for join multiplicity control”,
+  - and how these relate to “freshness” vs “rule windows” in domain logic.
+- Small doc UX cleanup: replaced “knob” with “setting” across user-facing docs for a more neutral tone.
+
+### Lessons
+- Users think in terms of “the stream I subscribed to”; helpers that are chained after `derive(...)` must apply to the derived stream output, not to any pre-selection or intermediate row view.
+- Windows are layered tools with different roles:
+  - join windows decide what can meet,
+  - group windows decide what counts “for the rule”,
+  - distinct windows decide what constitutes a unique event and how noisy the pipeline is.
+- If we don’t encode the “join key” as a stable value in records (like `tileLocation`), every interesting cross-family query becomes fragile (requires engine references, hydration, or ad-hoc ID schemes).
+
+### Next steps
+- Ensure the observation docs for each family explicitly call out their stable identity fields (e.g. `zombieId`, `spriteKey`, `tileLocation`) and what they are safe for (join keys vs hydration).
+- Consider shipping one additional “pattern” example beyond hedge trample (e.g. a `groupByEnrich` + `having` that builds a stream containing multiple families) to cement the derived-stream mental model.

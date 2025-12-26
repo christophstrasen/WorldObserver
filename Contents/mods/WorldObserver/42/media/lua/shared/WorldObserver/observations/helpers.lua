@@ -51,15 +51,23 @@ local function resolveEnabledHelpers(overrides, baseEnabled)
 	local resolved = cloneTable(baseEnabled)
 	for helperKey, rawValue in pairs(overrides or {}) do
 		local mapped = nil
-		if rawValue == true then
-			mapped = (baseEnabled and baseEnabled[helperKey]) or helperKey
-		elseif type(rawValue) == "string" then
-			if baseEnabled and baseEnabled[rawValue] ~= nil then
-				mapped = baseEnabled[rawValue]
+			if rawValue == true then
+				mapped = (baseEnabled and baseEnabled[helperKey]) or helperKey
+			elseif type(rawValue) == "string" then
+				if baseEnabled and baseEnabled[rawValue] ~= nil then
+					-- Special case: base streams may declare `enabled_helpers.<family> = true` to mean
+					-- "use the public schema key". When users reference that family name here (e.g.
+					-- enabled_helpers = { unicorns = "square" }), we want to map to "square", not to `true`.
+					local baseValue = baseEnabled[rawValue]
+					if baseValue == true then
+						mapped = rawValue
+					else
+						mapped = baseValue
+					end
+				else
+					mapped = rawValue
+				end
 			else
-				mapped = rawValue
-			end
-		else
 			Log:warn(
 				"enabled_helpers.%s expects true or string, got %s",
 				tostring(helperKey),

@@ -69,62 +69,62 @@ Interest `type` selects the “fact plan” behind the scenes (listener vs probe
   - Target:
     - defaults to `target = { player = { id = 0 } }` if omitted
     - can also be a static anchor: `target = { square = { x = ..., y = ..., z = ... } }` (`z` defaults to 0)
-  - Knobs: `radius`, `staleness`, `cooldown`, `highlight`.
+  - Settings: `radius`, `staleness`, `cooldown`, `highlight`.
 - `type = "squares"` with `scope = "vision"`
   - Probe-driven: like `scope = "near"` with a player target, but only emits squares that are currently visible to the player (line-of-sight / “can see”).
   - Target must be `target = { player = ... }` (defaults to `id = 0`).
-  - Knobs: `radius`, `staleness`, `cooldown`, `highlight`.
+  - Settings: `radius`, `staleness`, `cooldown`, `highlight`.
 - `type = "squares"` with `scope = "onLoad"`
   - Event-driven: emits when squares load (chunk streaming).
-  - Knobs: `cooldown`, `highlight` (other knobs are currently not meaningful for this scope).
+  - Settings: `cooldown`, `highlight` (other settings are currently not meaningful for this scope).
   - Ignores `target`, `radius`, and `staleness`.
 
 ### Zombies
 
 - `type = "zombies"` with `scope = "allLoaded"`
   - Probe-driven: scans the game’s zombie list in loaded areas (singleplayer uses the local player).
-  - Knobs: `radius`, `zRange`, `staleness`, `cooldown`, `highlight`.
+  - Settings: `radius`, `zRange`, `staleness`, `cooldown`, `highlight`.
   - Note: `radius` makes emissions leaner, but does not avoid the baseline cost of scanning the loaded zombie list.
 
 ### Rooms
 
 - `type = "rooms"` with `scope = "allLoaded"`
   - Probe-driven: scans the room list in the active cell (singleplayer).
-  - Knobs: `staleness`, `cooldown`, `highlight`.
+  - Settings: `staleness`, `cooldown`, `highlight`.
 - `type = "rooms"` with `scope = "onSeeNewRoom"`
   - Event-driven: emits when the player sees a new room.
-  - Knobs: `cooldown`, `highlight`.
+  - Settings: `cooldown`, `highlight`.
 - `type = "rooms"` with `scope = "onPlayerChangeRoom"`
   - Event-driven: emits when the player changes rooms (only when a room is detected).
-  - Knobs: `cooldown`, `highlight`.
+  - Settings: `cooldown`, `highlight`.
 
 ### Items
 
 - `type = "items"` with `scope = "playerSquare"`
   - Player-driven: emits items on the square the player stands on.
-  - Knobs: `cooldown`, `highlight`.
+  - Settings: `cooldown`, `highlight`.
 - `type = "items"` with `scope = "near"`
   - Probe-driven: scans squares near a target.
-  - Knobs: `radius`, `staleness`, `cooldown`, `highlight`.
+  - Settings: `radius`, `staleness`, `cooldown`, `highlight`.
 - `type = "items"` with `scope = "vision"`
   - Probe-driven: like `near`, but only emits items on squares visible to the player.
-  - Knobs: `radius`, `staleness`, `cooldown`, `highlight`.
+  - Settings: `radius`, `staleness`, `cooldown`, `highlight`.
 
 ### Dead bodies
 
 - `type = "deadBodies"` with `scope = "playerSquare"`
   - Player-driven: emits dead bodies on the square the player stands on.
-  - Knobs: `cooldown`, `highlight`.
+  - Settings: `cooldown`, `highlight`.
 - `type = "deadBodies"` with `scope = "near"`
   - Probe-driven: scans squares near a target.
-  - Knobs: `radius`, `staleness`, `cooldown`, `highlight`.
+  - Settings: `radius`, `staleness`, `cooldown`, `highlight`.
 - `type = "deadBodies"` with `scope = "vision"`
   - Probe-driven: like `near`, but only emits dead bodies on squares visible to the player.
-  - Knobs: `radius`, `staleness`, `cooldown`, `highlight`.
+  - Settings: `radius`, `staleness`, `cooldown`, `highlight`.
 
-## 4. The knobs (what they mean)
+## 4. The settings (what they mean)
 
-WorldObserver uses “bands” for most knobs:
+WorldObserver uses “bands” for most settings:
 - `desired`: what you *want* when the runtime has headroom.
 - `tolerable`: what you can *accept* when the runtime is under pressure.
 

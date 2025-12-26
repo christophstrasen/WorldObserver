@@ -171,21 +171,21 @@ describe("WorldObserver observations.derive()", function()
 		assert.equals(0, #wrong)
 	end)
 
-	it("requires internal schema keys for base stream helpers", function()
-		local receivedDefault = {}
-		WorldObserver.observations:squares():squareHasCorpse():subscribe(function(row)
-			receivedDefault[#receivedDefault + 1] = row
-		end)
+		it("requires public schema keys for base stream helpers", function()
+			local receivedDefault = {}
+			WorldObserver.observations:squares():squareHasCorpse():subscribe(function(row)
+				receivedDefault[#receivedDefault + 1] = row
+			end)
 
-		local receivedWrong = {}
-		WorldObserver.observations:squares().helpers.square:squareHasCorpse("square"):subscribe(function(row)
-			receivedWrong[#receivedWrong + 1] = row
-		end)
+			local receivedWrong = {}
+			WorldObserver.observations:squares().helpers.square:squareHasCorpse("SquareObservation"):subscribe(function(row)
+				receivedWrong[#receivedWrong + 1] = row
+			end)
 
-		local receivedRight = {}
-		WorldObserver.observations:squares().helpers.square:squareHasCorpse("SquareObservation"):subscribe(function(row)
-			receivedRight[#receivedRight + 1] = row
-		end)
+			local receivedRight = {}
+			WorldObserver.observations:squares().helpers.square:squareHasCorpse("square"):subscribe(function(row)
+				receivedRight[#receivedRight + 1] = row
+			end)
 
 		WorldObserver._internal.facts:emit("squares", {
 			squareId = 1,
@@ -195,8 +195,8 @@ describe("WorldObserver observations.derive()", function()
 			hasCorpse = true,
 		})
 
-		assert.equals(1, #receivedDefault)
-		assert.equals(0, #receivedWrong)
-		assert.equals(1, #receivedRight)
-	end)
+			assert.equals(1, #receivedDefault)
+			assert.equals(0, #receivedWrong)
+			assert.equals(1, #receivedRight)
+		end)
 end)
