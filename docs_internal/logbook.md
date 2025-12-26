@@ -28,7 +28,7 @@
   - ObservationStreams are exposed as `WorldObserver.observations:<name>()`.
   - New ObservationStreams are registered via a small config: `build = …` plus `enabled_helpers = { square = "SquareObs", zombie = "ZombieObs", … }`.
   - Helper sets (square/zombie/spatial/time/etc.) are thin, reusable sugar attached based on `enabled_helpers`, assuming certain fields in the observation records; internal use of LQR join/group/distinct windows is hidden behind semantic helpers.
-  - WorldObserver owns “fact plans” (event + probe strategies) per element type, with strategy selection as an advanced config knob, and never implicitly de‑duplicates observations.
+  - WorldObserver owns “fact plans” (event + probe strategies) per element type, with strategy selection as an advanced config setting, and never implicitly de‑duplicates observations.
 
 - Sketched and refined concrete use cases in API terms:
   - Squares with corpses near the player:
@@ -55,7 +55,7 @@
 - Drafted a focused MVP implementation plan in `docs_internal/drafts/mvp.md`:
   - Scoped MVP to a single, high-quality vertical slice for **squares only** (facts + `observations.squares()` + minimal helpers).
   - Defined a concrete module layout under `WorldObserver/` (`config.lua`, `facts/registry.lua`, `facts/squares.lua`, `observations/core.lua`, `observations/squares.lua`, `helpers/square.lua`, `debug.lua`) with `WorldObserver.lua` as the single public entry point.
-  - Captured must-nots and guardrails (no Situation/Action API yet, no GUI/overlays, no auto-tuning, no persistence, no multiplayer guarantees, no extra config knobs without prior agreement, no backwards-compat shims).
+  - Captured must-nots and guardrails (no Situation/Action API yet, no GUI/overlays, no auto-tuning, no persistence, no multiplayer guarantees, no extra config settings without prior agreement, no backwards-compat shims).
 
 - Refined observation naming and row shapes:
   - Standardized on `observation` (singular) as the callback parameter for stream emissions (`observation.square`, `observation.room`, etc.).
@@ -251,7 +251,7 @@
 
 ### Highlights
 - Introduced a mod-friendly, lease-based **fact interest** API (`WorldObserver.factInterest:declare(...)`) so mods can *declare intent* and refresh/replace it without needing to remember to “turn things off” later (leases expire automatically).
-- Implemented interest merging + adaptive policy (“ladder”) for the core probe knobs:
+- Implemented interest merging + adaptive policy (“ladder”) for the core probe settings:
   - `staleness` (how old results may be), `radius` (spatial scope), `cooldown` (per-key emission gating).
   - Automatic degradation/recovery based on runtime pressure, plus a probe-lag signal when a sweep can’t keep up with requested staleness.
 - Smoothed degradation within declared bands by inserting intermediate ladder steps (e.g. `staleness=1 -> 2 -> 4 -> 8 -> 10`) instead of binary jumps.
@@ -279,7 +279,7 @@
 - Removed legacy “debug causes highlighting” paths so probe visuals are driven exclusively by mod interest (no global toggles needed).
 - For zombies, prefer `IsoZombie:getCurrentSquare()` for square resolution (more stable than deriving from float coordinates), with coordinate/tile fallbacks for robustness.
 - Fixed a major correctness/perf bug in the zombie probe:
-  - The interest policy returns *numeric* effective knobs; treating them as `{desired=...}` bands caused `staleness/cooldown/radius` to collapse to 0, leading to constant sweeps and very high load.
+  - The interest policy returns *numeric* effective settings; treating them as `{desired=...}` bands caused `staleness/cooldown/radius` to collapse to 0, leading to constant sweeps and very high load.
   - After correcting this, the probe obeys staleness and cooldown again and the load dropped as expected.
 - Improved zombie record join ergonomics:
   - Added `tileX/tileY/tileZ` (integer) alongside float `x/y/z` so downstream joins can avoid fuzzy float comparisons.
@@ -289,14 +289,14 @@
 ### Lessons
 - “Declare interest” is a clean seam between **upstream acquisition** and **downstream observation**: it enables coordination and budgeting without entangling mod logic with runtime internals.
 - Separating mechanics (cursor sweep + budgets) from policy (interest ladder + degrade/recover rules) keeps tuning safe and incremental.
-- In-game console debugging needs “live knobs”: reading selected debug overrides at runtime avoids needing module reloads just to change probe logging verbosity.
+- In-game console debugging needs “live settings”: reading selected debug overrides at runtime avoids needing module reloads just to change probe logging verbosity.
 - Not all game objects are safe to highlight directly: zombies can overwrite highlight state every frame; highlighting the *ground object* underneath is more robust and still communicates probe coverage.
 - Visual debugging should match emission semantics: highlighting only on emit avoids misleading “activity” during cooldown/distinct suppression.
 
 ### Next steps
 - Add a small “probe metrics” surface (beyond logs) so modders can inspect: sweep progress, lag ratio, and current effective interest per probe type.
 - Consider a future “drive-by discovery” hook at square-scan time (e.g. “while scanning squares, also sample zombies/items if there’s declared interest”) without introducing new world sweeps.
-- Decide whether non-ladder knobs like `zRange` should become first-class in the policy ladder (with direction-aware degrade semantics).
+- Decide whether non-ladder settings like `zRange` should become first-class in the policy ladder (with direction-aware degrade semantics).
 
 ## day11 – Time semantics, `sourceTime` standardization, and config hygiene
 
@@ -307,15 +307,15 @@
 - Reduced per-query verbosity for time windows by adding a default clock override in LQR and injecting it from WorldObserver:
   - WorldObserver sets LQR’s default window `currentFn` to the same `Time.gameMillis` source used for `sourceTime` stamping.
   - LQR remains consumer-agnostic; the override is optional and re-settable.
-- Did a code-quality sweep of “global config knobs”:
+- Did a code-quality sweep of “global config settings”:
   - Refactored `WorldObserver/config.lua` to be more DRY (explicit override allowlist + generic nested read/merge helpers).
   - Simplified `WorldObserver.lua` bootstrap to read globals via config helpers instead of inline wiring.
-  - Reused config helpers for “live debug override” reads (probe logging knobs) without changing the override shape.
+  - Reused config helpers for “live debug override” reads (probe logging settings) without changing the override shape.
   - Added targeted unit coverage for defaults cloning, override semantics, and runtime option derivation.
 
 ### Lessons
 - A “good default” for time windows is not just `field = "sourceTime"` but also a **clock** that matches the host’s stamped units; mismatches silently produce broken windows.
-- Keeping global overrides on an explicit allowlist makes the supported surface self-documenting and reduces “mystery knobs” while still enabling smoke/debug workflows.
+- Keeping global overrides on an explicit allowlist makes the supported surface self-documenting and reduces “mystery settings” while still enabling smoke/debug workflows.
 
 ### Next steps
 - Consider a tiny WorldObserver helper for time windows (e.g. “last N seconds”) to standardize `{ time, field, currentFn }` shapes across distinct/join/group usage.
@@ -372,13 +372,13 @@
   - Removed headless test noise by suppressing config override warnings in headless and stubbing `Events.OnTick` where highlight fading is exercised.
 
 ### Lessons
-- A single “interest shape” can still support multiple acquisition mechanisms as long as `scope` is treated as the semantic switch and we keep driver-specific knobs explicit (and validated).
-- Writing down the supported combination matrix (type/scope/target + knob applicability) pays off immediately: it drives code structure, tests, and doc correctness, and prevents “accidental API growth”.
+- A single “interest shape” can still support multiple acquisition mechanisms as long as `scope` is treated as the semantic switch and we keep driver-specific settings explicit (and validated).
+- Writing down the supported combination matrix (type/scope/target + setting applicability) pays off immediately: it drives code structure, tests, and doc correctness, and prevents “accidental API growth”.
 - Smoke scripts are part of the public UX: making them minimal, readable, and independently controllable matters as much as the underlying probe/listener mechanics.
 
 ### Next steps
 - Decide whether and how to introduce `scope="allLoaded"` for squares (loaded-cell sweep vs event stream) without blurring probe vs event semantics.
-- Consider adding a small interest-validation test suite that asserts all supported combinations from `docs_internal/interest_combinations.md` remain accepted and that forbidden knobs are rejected/ignored deterministically.
+- Consider adding a small interest-validation test suite that asserts all supported combinations from `docs_internal/interest_combinations.md` remain accepted and that forbidden settings are rejected/ignored deterministically.
 
 ## day14 – Rooms facts, cell room list probing, and stable room IDs
 
@@ -498,7 +498,7 @@
   - `WorldObserver.helpers.square.record.setSquareMarker(squareLike, text, opts)` + `:setSquareMarker(...)` stream sugar (square-like contract: `x/y/z` record or live `IsoGridSquare`),
   - used in `examples/hedge_trample.lua` to label tiles with `zombiesOnTile` while removal runs.
 - Expanded user-facing derived stream docs to cover the LQR “windows” we hit in practice (join vs group vs distinct) and how they map to “freshness” vs “rule windows” in gameplay logic.
-- Small doc UX cleanup: replaced “knob” with “setting” across user-facing docs for a more neutral tone.
+- Small doc UX cleanup: standardized on “setting/settings” across user-facing docs for a more neutral tone.
 - Docs follow-through (removed open TODOs in user docs):
   - moved stream basics from `docs/observations/stream_basics.md` → `docs/guides/stream_basics.md` and fixed cross-links,
   - clarified interest `highlight` merge behavior (“first non-nil lease wins”),

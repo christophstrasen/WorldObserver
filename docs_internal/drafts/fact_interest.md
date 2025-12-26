@@ -96,15 +96,15 @@ Spec fields (illustrative):
 For bucketed targets (like `squares` with scope+target), merging happens **per target bucket**: only declarations that point at the same
 target identity are merged together. Overlapping but distinct targets are intentionally not merged.
 
-We need to be explicit: some knobs become “gentler” when they go **up**, others when they go **down**.
+We need to be explicit: some settings become “gentler” when they go **up**, others when they go **down**.
 
 ### 5.1 Definitions
 
-For each knob we define:
+For each setting we define:
 - **quality direction**: which way is “better quality” (usually higher cost)
 - **degrade direction**: which way reduces work/cost
 
-MVP knobs:
+MVP settings:
 - `staleness` (allowed observation age): **smaller = stricter / higher cost**, degrade by **increasing**.
 - `radius` (coverage): **larger = better coverage / higher cost**, degrade by **decreasing**.
 - `cooldown` (per-key emission gap): **smaller = more frequent / higher cost**, degrade by **increasing**.
@@ -113,7 +113,7 @@ MVP knobs:
 
 When degrading within declared bands, keep values inside the “tolerable band” across all active declarations.
 
-Let each declaration provide a scalar or a band for each knob:
+Let each declaration provide a scalar or a band for each setting:
 - Scalar: `staleness = 10` (the “desired” value). WorldObserver derives a default tolerable value via its policy.
 - Band: `staleness = { desired = 10, tolerable = 20 }` (explicit desired+tolerable).
 
@@ -122,7 +122,7 @@ Then:
 - `radius` may decrease down to: `max( tolerable_i(radius) )`
 - `cooldown` may increase up to: `min( tolerable_i(cooldown) )`
 
-That is the corrected math for “how far can we degrade this knob without violating anyone’s tolerable bound”.
+That is the corrected math for “how far can we degrade this setting without violating anyone’s tolerable bound”.
 
 Notes:
 - If a mod only provides a scalar, it is treated as “desired” and the “tolerable” bound is filled in by defaults.
@@ -136,16 +136,16 @@ Notes:
 Per probe type, maintain a small discrete quality state:
 
 1. Start at “highest quality” (most demanding combined request).
-2. When runtime controller reports “over budget”, degrade knobs in a fixed order:
+2. When runtime controller reports “over budget”, degrade settings in a fixed order:
    1) increase `staleness` (allow older observations),
    2) decrease `radius`,
    3) increase `cooldown`.
-3. Within a knob’s `[desired .. tolerable]` band, degrade in a few **intermediate steps** (rather than jumping straight
+3. Within a setting’s `[desired .. tolerable]` band, degrade in a few **intermediate steps** (rather than jumping straight
    from desired to tolerable), e.g.:
    - `staleness`: `1, 2, 4, 8, 10`
    - `radius`: `20, 15, 12, 9, 8`
    - `cooldown`: `1, 2`
-4. Stop degrading a knob once it hits the **global tolerable bound** (section 5.2), then move to the next knob.
+4. Stop degrading a setting once it hits the **global tolerable bound** (section 5.2), then move to the next setting.
 5. If still over budget after reaching all tolerable bounds, apply **emergency steps** up to 3 times:
    - double `staleness`
    - halve `radius` (floor at 0/1 as appropriate)
@@ -172,7 +172,7 @@ Today we can implement `staleness` as “aim to re-confirm keys often enough tha
 
 Longer-term we can reinterpret it as **max staleness per key** (“don’t re-confirm a key that was observed recently”):
 - If a square was observed by any source (event, probe, luaevent) within the staleness window, a probe pass can skip it.
-- This allows future mixing of events + probes without exposing low-level knobs to users.
+- This allows future mixing of events + probes without exposing low-level settings to users.
 
 This is a later optimization; v1 can remain “interval-based probes”.
 
@@ -182,6 +182,6 @@ This is a later optimization; v1 can remain “interval-based probes”.
 
 - Debug: list active leases and their effective merged plan.
 - Runtime status already exists (`WorldObserver/runtime.lua`): keep emitting window reports + degrade reasons.
-- In-engine probe logging knobs can be toggled live (no module reload): `_G.WORLDOBSERVER_CONFIG_OVERRIDES.facts.squares.probe.infoLogEveryMs` and `.logEachSweep`.
+- In-engine probe logging settings can be toggled live (no module reload): `_G.WORLDOBSERVER_CONFIG_OVERRIDES.facts.squares.probe.infoLogEveryMs` and `.logEachSweep`.
 - When `autoBudget` raises `budgetMs`, probes also scale their per-tick iteration cap up to `maxPerRunHardCap` so they can actually spend the budget.
 - Warnings should point to the effective values and to `WorldObserver.debug.describeFactsMetrics("<type>")`.

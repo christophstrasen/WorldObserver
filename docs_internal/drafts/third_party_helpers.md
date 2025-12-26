@@ -156,7 +156,7 @@ Recommended naming (to avoid collisions when fluent methods are attached by defa
 ## 6) Open questions / decisions
 
 1) Direct helper attachment (fluent methods)
-  Decision: helpers are always attached as fluent methods; no opt-out knob.
+  Decision: helpers are always attached as fluent methods; no opt-out setting.
 2) Do we want `:withHelpers(...)` on **all** streams (base + derived) or only derived at first?
   Answer: Of course it should be possible to attach entirely new and different helpers also to base streams
 3) Do we want to expose `WorldObserver.observations:registerHelperFamily(...)` instead of `WorldObserver.helpers:registerFamily(...)` (or both)?

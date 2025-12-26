@@ -101,7 +101,7 @@ builders, etc.) is considered implementation detail and may change without notic
 - Some ObservationStreams expose a small, semantic configuration helper
   (e.g. `vehiclesUnderAttack():withConfig({ minZombies = 3 })`); these options
   only tune domain semantics (thresholds, filters) and never expose fact
-  strategies or raw LQR knobs. Use such configuration sparingly to avoid
+  strategies or raw LQR settings. Use such configuration sparingly to avoid
   “thick” builders – advanced users are encouraged to drop down to LQR
   directly when they need more control.
 - When defining custom ObservationStreams that do not have a natural stable

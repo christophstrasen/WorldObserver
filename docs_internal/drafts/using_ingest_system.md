@@ -39,7 +39,7 @@ This moves “expensive work” to a controlled cadence and makes overload behav
 - How items are keyed (`key(item)`), how they are classified (`lane(item)`), and lane priorities.
 - Which buffers exist (typically per schema / per fact type).
 - How draining routes items into the appropriate fact stream(s).
-- Strategy mapping: which budgets, priorities, and buffer knobs correspond to `balanced/gentle/intense`.
+- Strategy mapping: which budgets, priorities, and buffer settings correspond to `balanced/gentle/intense`.
 
 ---
 
@@ -137,7 +137,7 @@ Suggested mapping:
 
 Deliverable: `examples/smoke_squares.lua` remains functional but should stop causing burst-driven lag.
 
-Config knobs (current default):
+Config settings (current default):
 ```lua
 WorldObserver.config.facts.squares.probe = {
   enabled = true,
@@ -183,7 +183,7 @@ Approach:
 ## 6. Configuration surface (initial proposal)
 
 WorldObserver should expose a small config that maps strategies to budgets.
-We can start with “internal knobs” and later publish a stable public surface.
+We can start with “internal settings” and later publish a stable public surface.
 
 Proposed config shape (illustrative):
 

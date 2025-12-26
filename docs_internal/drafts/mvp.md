@@ -459,8 +459,8 @@ as hard guardrails unless explicitly revised in docs or during design chats:
   - MVP is designed for single-player / server-side logic in principle, but
     makes no strong guarantees or special handling for multiplayer scenarios.
 
-- **No extra config knobs without prior agreement**
-  - MVP must **not add new configuration knobs** (especially user-facing
+- **No extra config settings without prior agreement**
+  - MVP must **not add new configuration settings** (especially user-facing
     ones) that have not:
     - either been discussed in existing docs (`docs_internal/vision.md`, `docs_internal/drafts/api_proposal.md`,
       `docs_internal/fact_layer.md`), or

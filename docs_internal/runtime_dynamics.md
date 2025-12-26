@@ -179,12 +179,12 @@ Files:
 - `Contents/mods/WorldObserver/42/media/lua/shared/WorldObserver/facts/sensors/square_sweep.lua`
   - `SquareSweep.tick(...)` (collects metas and calls `resolveProbeBudgetMs`)
 
-## 6) Configuration knobs (what to tune, and where)
+## 6) Configuration settings (what to tune, and where)
 
 Most runtime dynamics are intentionally data-driven via config:
 - Defaults + validation live in `Contents/mods/WorldObserver/42/media/lua/shared/WorldObserver/config.lua`
 
-Key knobs:
+Key settings:
 
 **Runtime controller (global)**
 - `runtime.controller.tickBudgetMs`

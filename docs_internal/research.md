@@ -159,6 +159,14 @@ https://pzwiki.net/wiki/OnSpawnVehicleEnd
 https://pzwiki.net/wiki/OnUseVehicle
 https://pzwiki.net/wiki/OnVehicleDamageTexture
 
+isDoingOffroad()
+hasPassenger()
+isSirening()
+isStopped()
+https://demiurgequantified.github.io/ProjectZomboidJavaDocs/zombie/vehicles/BaseVehicle.html#isCharacterAdjacentTo(zombie.characters.IsoGameCharacter) (zombies are  IsoCharacter also)
+WeaponHit(IsoGameCharacter chr, HandWeapon weapon) (to test: Zombies hitting the car triggers?)
+VehicleManager:getVehicleByID(short id)
+
 # VehicleSeatObservation
 
 https://pzwiki.net/wiki/OnSwitchVehicleSeat

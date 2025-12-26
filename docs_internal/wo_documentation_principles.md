@@ -41,7 +41,7 @@ Keep a clear split between user-facing docs and internal design notes:
     - `docs/reference/` — stable API reference once the surface is truly stable.
 
 Additional scope for `docs/` pages (to keep code and docs aligned):
-- Every `docs/observations/<type>.md` page should include the currently supported interest configuration for that type (supported `type` / `scope` / `target` combinations and meaningful knobs), derived from `docs_internal/interest_combinations.md`.
+- Every `docs/observations/<type>.md` page should include the currently supported interest configuration for that type (supported `type` / `scope` / `target` combinations and meaningful settings), derived from `docs_internal/interest_combinations.md`.
 
 - **`docs_internal/` (internal)**
   - Vision, design briefs, experiments, refactor plans, logbook.

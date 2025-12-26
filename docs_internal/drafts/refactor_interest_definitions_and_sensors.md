@@ -20,7 +20,7 @@ Today, interest normalization/validation lives as per-type hardcoding in `WorldO
 
 ## Goals
 
-- Keep the modder-facing interest shape stable and predictable: `type/scope/target` + knobs (bands).
+- Keep the modder-facing interest shape stable and predictable: `type/scope/target` + settings (bands).
 - Make it easy to add new interest types/scopes without growing a big “if/elseif ladder” across files.
 - Share expensive sensing loops (especially square sweeps) across multiple fact types.
 - Keep lifecycle guarantees: facts only run while relevant streams are subscribed (subscriber-gated), and only while there is at least one active interest lease.
@@ -53,7 +53,7 @@ Introduce a central, data-driven table that defines what each interest type supp
 
 - Supported scopes per type.
 - Supported `target` kinds per scope.
-- Which knobs apply per scope (and which are ignored).
+- Which settings apply per scope (and which are ignored).
 - Bucket key strategy (how to group/merge interest).
 - Optional links to shared sensors (e.g. “this type uses squareSweep sensor for near/vision”).
 - keep track of test coverage for combinations and permutations
@@ -84,7 +84,7 @@ The `squareSweep` sensor is a shared implementation of what `facts/squares/probe
 - Scopes:
   - `near`: scan squares in a radius around player.
   - `vision`: same scan, but filter to squares currently visible to the player.
-- Cadence knobs: `radius`, `staleness`, `cooldown` (cooldown influences *emit*, but cadence is driven by staleness + cursor lag).
+- Cadence settings: `radius`, `staleness`, `cooldown` (cooldown influences *emit*, but cadence is driven by staleness + cursor lag).
 - Policy: apply the existing interest ladder/hysteresis logic per bucket key (currently implemented via `facts/interest_effective.lua` + `interest/policy.lua`).
 
 **Key change:** the scan cadence should be shared across **all collectors that use the same sensor + bucket**.
@@ -131,19 +131,19 @@ Add to the supported matrix (alongside existing `squares/zombies/rooms`):
 
 - `type="rooms"`
   - `scope="onPlayerChangeRoom"` + `target=player`
-  - Knobs: `cooldown`, `highlight` (optional); other probe knobs ignored.
+  - Settings: `cooldown`, `highlight` (optional); other probe settings ignored.
 
 - `type="items"`
   - `scope="playerSquare"` + `target=player` (single square underfoot).
   - `scope="near"` + `target=player` (via squareSweep sensor).
   - `scope="vision"` + `target=player` (via squareSweep sensor).
-  - Knobs (initial): `radius`, `staleness`, `cooldown`, `highlight`.
+  - Settings (initial): `radius`, `staleness`, `cooldown`, `highlight`.
 
 - `type="deadBodies"`
   - `scope="playerSquare"` + `target=player`.
   - `scope="near"` + `target=player` (via squareSweep sensor).
   - `scope="vision"` + `target=player` (via squareSweep sensor).
-  - Knobs (initial): `radius`, `staleness`, `cooldown`, `highlight`.
+  - Settings (initial): `radius`, `staleness`, `cooldown`, `highlight`.
 
 ### Observation streams (new)
 
@@ -175,7 +175,7 @@ Engine objects can be included optionally (config) or rehydrated best-effort lat
 
 4) **Containers inside containers**
 - “Include items inside containers” can explode in cost if recursion is unbounded.
-  - MVP should define an explicit bound (e.g. depth=1, only direct contents), and later add an opt-in knob if deeper traversal is needed.
+  - MVP should define an explicit bound (e.g. depth=1, only direct contents), and later add an opt-in setting if deeper traversal is needed.
 
 5) **Subscriber gating with shared sensors**
 - Sensors must not run when nothing is subscribed:
@@ -192,7 +192,7 @@ Engine objects can be included optionally (config) or rehydrated best-effort lat
 ### Interest (refactor)
 
 - `Contents/mods/WorldObserver/42/media/lua/shared/WorldObserver/interest/definitions.lua`
-  - Capability table: per-type scopes, target kinds, knob applicability, bucket key strategy, sensor links.
+  - Capability table: per-type scopes, target kinds, setting applicability, bucket key strategy, sensor links.
 - `Contents/mods/WorldObserver/42/media/lua/shared/WorldObserver/interest/registry.lua`
   - Uses `definitions.lua` for normalization and bucket key derivation.
 - `docs_internal/interest_combinations.md`
@@ -291,7 +291,7 @@ Engine objects can be included optionally (config) or rehydrated best-effort lat
 
 ## Open questions (intentionally deferred)
 
-- Container traversal: depth=1 vs recursive; do we need a knob like `includeContainerItemsDepth`?
+- Container traversal: depth=1 vs recursive; do we need a setting like `includeContainerItemsDepth`?
   - Answer: Yes limit to depth=1
 - Item identity: what do we do when `getID()` is missing/unreliable for some ground objects?
   - Answer: Throw a warning and don't emmit

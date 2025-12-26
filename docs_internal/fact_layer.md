@@ -123,7 +123,7 @@ Lane priorities are a domain decision and may differ by type.
 
 ## 7. Configuration (runtime + interest)
 
-- Ingest and drain are controlled via config knobs:
+- Ingest and drain are controlled via config settings:
   - `WorldObserver.config.ingest.scheduler.maxItemsPerTick`
   - `WorldObserver.config.ingest.scheduler.quantum`
   - `WorldObserver.config.facts.squares.ingest.*`
@@ -131,7 +131,7 @@ Lane priorities are a domain decision and may differ by type.
 - Probe intensity is now shaped by **interest declarations** (`staleness`, `radius`, `cooldown`) merged across mods,
   then passed through the runtime-aware policy (see `WorldObserver/interest/policy.lua`).
 - For bucketed types like `squares` (scoped), the merge happens per scope + target identity (same target only).
-  The old `strategy` preset knob has been removed in favor of explicit interest + policy.
+  The old `strategy` preset setting has been removed in favor of explicit interest + policy.
 
 ---
 

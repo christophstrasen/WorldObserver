@@ -126,7 +126,7 @@ Primary wiring entrypoint:
 ### Interest (why work happens at all)
 WorldObserver is *opt-in*: most probes/listeners are gated by interest leases.
 - Mods declare interest using `WorldObserver.factInterest:declare(modId, key, spec)`.
-- Interest shape is `type/scope/target` + knob bands (e.g. `radius`, `staleness`, `cooldown`) + optional `highlight`.
+- Interest shape is `type/scope/target` + setting bands (e.g. `radius`, `staleness`, `cooldown`) + optional `highlight`.
 - Interests are merged across mods into an **effective plan** (per bucket/target where applicable).
 
 Canonical definition of the supported interest surface:
@@ -180,7 +180,7 @@ Common examples:
 ### Configuration + live overrides
 - `Contents/mods/WorldObserver/42/media/lua/shared/WorldObserver/config.lua`
   - Owns defaults and validates overrides from `_G.WORLDOBSERVER_CONFIG_OVERRIDES`.
-  - Important: “live overrides” are read at runtime for certain debug knobs so smoke scripts can toggle without reload.
+  - Important: “live overrides” are read at runtime for certain debug settings so smoke scripts can toggle without reload.
 
 ### Runtime controller
 - `Contents/mods/WorldObserver/42/media/lua/shared/WorldObserver/runtime.lua`
@@ -194,7 +194,7 @@ Common examples:
 
 ### Interest system (declare → normalize → bucket → merge → effective)
 - `Contents/mods/WorldObserver/42/media/lua/shared/WorldObserver/interest/definitions.lua`
-  - Data-driven type capabilities: scopes, target allowance, ignored knobs, bucketKey strategy.
+  - Data-driven type capabilities: scopes, target allowance, ignored settings, bucketKey strategy.
 - `Contents/mods/WorldObserver/42/media/lua/shared/WorldObserver/interest/registry.lua`
   - Stores leases (TTL) and merges declarations into effective interest bands per bucket.
 - `Contents/mods/WorldObserver/42/media/lua/shared/WorldObserver/interest/policy.lua`
@@ -298,11 +298,11 @@ Example:
 Probes are for “the engine doesn’t tell us” cases. The key design constraints:
 - they must be time-sliced (bounded work per tick),
 - they must run inside the registry tick window (`FactRegistry:attachTickHook`) so runtime budgets can account for them, and
-- interest knobs should be honest about what they control:
-  - **Best case:** a knob reduces *upstream probe cost* (less scanning per tick, or less scanning per second).
-  - **Sometimes unavoidable:** a knob only reduces *emission volume* after scanning (we still do the scan, but we emit fewer records).
+- interest settings should be honest about what they control:
+  - **Best case:** a setting reduces *upstream probe cost* (less scanning per tick, or less scanning per second).
+  - **Sometimes unavoidable:** a setting only reduces *emission volume* after scanning (we still do the scan, but we emit fewer records).
 
-In other words: if a knob looks like a “performance knob”, try to make it actually reduce probe work; if it can’t, document that it’s “output-only”.
+In other words: if a setting looks like a “performance setting”, try to make it actually reduce probe work; if it can’t, document that it’s “output-only”.
 
 Concrete examples:
 - Squares `near`/`vision` via `square_sweep`: smaller `radius` means fewer squares visited; larger `staleness` means the sweep can run less frequently.
@@ -370,13 +370,13 @@ Typical checklist:
 1) Add scope to `interest/definitions.lua`
 2) Add driver code (listener/probe/collector) and gate it by effective interest
 3) Update tests:
-   - normalization/ignored knobs (interest registry tests)
+   - normalization/ignored settings (interest registry tests)
    - driver behavior (scope-specific tests)
 4) Update docs:
    - user-facing: `docs/observations/<type>.md` and/or `docs/guides/interest.md`
    - internal: `docs_internal/interest_combinations.md` and logbook
 
-## 6) Diagnostics and performance knobs (where to look)
+## 6) Diagnostics and performance settings (where to look)
 
 ### Ingest / runtime budgets
 - Global scheduler + buffers: `Contents/mods/WorldObserver/42/media/lua/shared/WorldObserver/facts/registry.lua`

@@ -13,7 +13,7 @@ Purpose: define the currently supported `type` / `scope` / `target` combinations
 | vision  | player     | `target = { player = { id = 0 } }`            | Probe; only emits squares visible to the player. |
 | onLoad  | n/a        | n/a                                           | Event-driven: emits when squares load. Expected a chunked behavior and high volume when the player moves fast or loads for the first time (teleports etc.) |
 
-Knobs:
+Settings:
 - Probe scopes (`near`, `vision`): `radius`, `staleness`, `cooldown`, `highlight`.
 - Event scope (`onLoad`): `cooldown`, `highlight`.
 
@@ -29,7 +29,7 @@ Defaults:
 |-----------|------------|--------------|-------|
 | allLoaded | n/a        | n/a          | Scans the zombie list in the cell of the player (singleplayer). |
 
-Knobs: `radius`, `zRange`, `staleness`, `cooldown`, `highlight`.
+Settings: `radius`, `zRange`, `staleness`, `cooldown`, `highlight`.
 
 Defaults:
 - If `scope` is missing, it defaults to `"allLoaded"`.
@@ -44,7 +44,7 @@ Defaults:
 | onSeeNewRoom | n/a        | n/a          | Event-driven: emits when a room is seen. |
 | onPlayerChangeRoom | player | `target = { player = { id = 0 } }` | Event-driven: emits when the player changes rooms (no emission when room is nil). |
 
-Knobs:
+Settings:
 - Probe scope (`allLoaded`): `staleness`, `cooldown`, `highlight`.
 - Event scopes (`onSeeNewRoom`, `onPlayerChangeRoom`): `cooldown`, `highlight`.
 
@@ -62,7 +62,7 @@ Defaults:
 | near         | square     | `target = { square = { x, y, z } }`           | Probe around a fixed square (`z` defaults to 0). |
 | vision       | player     | `target = { player = { id = 0 } }`            | Probe; only emits items on squares visible to the player. |
 
-Knobs:
+Settings:
 - Probe scopes (`near`, `vision`): `radius`, `staleness`, `cooldown`, `highlight`.
 - `playerSquare`: `cooldown`, `highlight`.
 
@@ -81,7 +81,7 @@ Defaults:
 | near         | square     | `target = { square = { x, y, z } }`           | Probe around a fixed square (`z` defaults to 0). |
 | vision       | player     | `target = { player = { id = 0 } }`            | Probe; only emits dead bodies on squares visible to the player. |
 
-Knobs:
+Settings:
 - Probe scopes (`near`, `vision`): `radius`, `staleness`, `cooldown`, `highlight`.
 - `playerSquare`: `cooldown`, `highlight`.
 
@@ -100,7 +100,7 @@ Defaults:
 | vision           | player     | `target = { player = { id = 0 } }`            | Probe; only emits sprites visible to the player. |
 | onLoadWithSprite | n/a        | n/a                                           | Event-driven: emits when matching sprites load. |
 
-Knobs:
+Settings:
 - Probe scopes (`near`, `vision`): `radius`, `staleness`, `cooldown`, `highlight`, `spriteNames`.
 - Event scope (`onLoadWithSprite`): `cooldown`, `highlight`, `spriteNames` (exact names only).
 

@@ -256,7 +256,7 @@ Right now `facts/squares/probe.lua` includes:
 - budget logic
 - cursor sweep bookkeeping + lag signals
 - per-tick round robin between multiple probes
-- logging knobs (`infoLogEveryMs`, `logEachSweep`)
+- logging settings (`infoLogEveryMs`, `logEachSweep`)
 
 We should extract a shared module (e.g. `WorldObserver/facts/probe_runner.lua`) that:
 - runs N probes per tick under `budgetMs` and `maxPerRun`
@@ -305,7 +305,7 @@ Confirm with a small console snippet:
 ### Phase B — Add the fact family (v1)
 
 1. Config defaults:
-   - Add `facts.zombies.ingest` and `facts.zombies.probe` knobs (mirror squares defaults).
+   - Add `facts.zombies.ingest` and `facts.zombies.probe` settings (mirror squares defaults).
 2. Facts:
    - `facts/zombies.lua` registers fact type `"zombies"` with `latestByKey` keyed by `zombieId`.
    - `facts/zombies/probe.lua` implements a time-sliced cursor over the zombie list.

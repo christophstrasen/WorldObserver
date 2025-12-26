@@ -25,7 +25,7 @@ but should also be used to check where we are in reality
 
 5. MUST allow to create and ship custom and re-usable "observations"
 6. SHOULD expose performance feedback from the system end2end
-7. SHOULD provide knobs for automatic or semi-automatic optimization
+7. SHOULD provide settings for automatic or semi-automatic optimization
 8. COULD provide means to "inherit, modify and publish as new observations" as a way to design
 
 ## Audience and scope
@@ -257,7 +257,7 @@ WorldObserver uses LQR’s join, group, and distinct windows internally when
 building ObservationStreams and helpers. Join windows bound how long records
 stay join‑eligible, group windows define over which slice of time/rows
 aggregates are computed, and distinct windows govern how long keys are
-remembered for de‑duplication. These knobs live inside built‑in streams and
+remembered for de‑duplication. These settings live inside built‑in streams and
 helpers (for example, “once per square” or “rooms with recent zombies”) and
 are not part of normal everyday API usage. Advanced users can still drop down to raw LQR builders when they need full control.
 
