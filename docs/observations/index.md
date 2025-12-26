@@ -40,6 +40,7 @@ Current base streams:
 - [Rooms](rooms.md)
 - [Sprites](sprites.md)
 - [Zombies](zombies.md)
+- [Vehicles](vehicles.md)
 - [Items](items.md)
 - [Dead bodies](dead_bodies.md)
 

@@ -243,6 +243,32 @@ local function defaultBuildDefaults()
 					autoBudgetMinMillisPerTick = nil,
 				},
 			},
+			vehicles = {
+				headless = headless,
+				listener = {
+					enabled = true,
+				},
+				ingest = {
+					enabled = true,
+					mode = "latestByKey",
+					capacity = 5000,
+					ordering = "fifo",
+					priority = 1,
+				},
+				probe = {
+					enabled = true,
+					maxPerRun = 50,
+					maxPerRunHardCap = 200,
+					maxMillisPerTick = 0.75,
+					infoLogEveryMs = 0,
+					autoBudget = false,
+					autoBudgetReserveMs = 0.5,
+					autoBudgetHeadroomFactor = 1.0,
+					autoBudgetMaxMillisPerTick = nil,
+					autoBudgetMinMillisPerTick = nil,
+					logEachSweep = false,
+				},
+			},
 		},
 		ingest = {
 			scheduler = {
@@ -363,6 +389,7 @@ local OVERRIDE_BOOL_PATHS = {
 	{ "facts", "squares", "headless" },
 	{ "facts", "zombies", "headless" },
 	{ "facts", "rooms", "headless" },
+	{ "facts", "vehicles", "headless" },
 }
 
 local OVERRIDE_TABLE_PATHS = {
@@ -375,6 +402,9 @@ local OVERRIDE_TABLE_PATHS = {
 	{ "facts", "rooms", "ingest" },
 	{ "facts", "rooms", "probe" },
 	{ "facts", "rooms", "record" },
+	{ "facts", "vehicles", "listener" },
+	{ "facts", "vehicles", "ingest" },
+	{ "facts", "vehicles", "probe" },
 	{ "ingest", "scheduler" },
 	{ "runtime", "controller" },
 }

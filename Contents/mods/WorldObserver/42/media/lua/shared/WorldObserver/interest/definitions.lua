@@ -146,4 +146,21 @@ Definitions.types.sprites = Definitions.types.sprites or {
 	bucketKey = "squaresTarget",
 }
 
+Definitions.types.vehicles = Definitions.types.vehicles or {
+	defaultScope = "allLoaded",
+	strictScopes = true,
+	allowedScopes = { allLoaded = true },
+	allowTarget = false,
+	ignoreFields = {
+		allLoaded = { target = true, radius = true, zRange = true },
+	},
+	zeroKnobs = {
+		allLoaded = { radius = true, zRange = true },
+	},
+	recommendedFields = {
+		allLoaded = { "staleness", "cooldown" },
+	},
+	bucketKey = "scope",
+}
+
 return Definitions

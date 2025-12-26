@@ -36,6 +36,7 @@ Notes:
 - `scope`: a sub-mode within an interest type (used for grouping and merging).
   - For `type = "squares"`, the supported scopes today are `near`, `vision`, and `onLoad`.
   - For `type = "zombies"`, the supported scope today is `allLoaded`.
+  - For `type = "vehicles"`, the supported scope today is `allLoaded`.
   - For `type = "rooms"`, the supported scopes today are `allLoaded`, `onSeeNewRoom`, and `onPlayerChangeRoom`.
   - For `type = "items"`, the supported scopes today are `playerSquare`, `near`, and `vision`.
   - For `type = "deadBodies"`, the supported scopes today are `playerSquare`, `near`, and `vision`.
@@ -58,6 +59,7 @@ Interest `type` selects the “fact plan” behind the scenes (listener vs probe
 |------|--------|-------------|--------|
 | `squares` | `near`, `vision`, `onLoad` | probe + event | player/square (probe scopes) |
 | `zombies` | `allLoaded` | probe | n/a |
+| `vehicles` | `allLoaded` | probe + event | n/a |
 | `rooms` | `allLoaded`, `onSeeNewRoom`, `onPlayerChangeRoom` | probe + event | player (onPlayerChangeRoom only) |
 | `items` | `playerSquare`, `near`, `vision` | playerSquare driver + probe | player/square (probe scopes) |
 | `deadBodies` | `playerSquare`, `near`, `vision` | playerSquare driver + probe | player/square (probe scopes) |
@@ -85,6 +87,13 @@ Interest `type` selects the “fact plan” behind the scenes (listener vs probe
   - Probe-driven: scans the game’s zombie list in loaded areas (singleplayer uses the local player).
   - Settings: `radius`, `zRange`, `staleness`, `cooldown`, `highlight`.
   - Note: `radius` makes emissions leaner, but does not avoid the baseline cost of scanning the loaded zombie list.
+
+### Vehicles
+
+- `type = "vehicles"` with `scope = "allLoaded"`
+  - Probe-driven: scans the loaded vehicle list.
+  - Event-driven (best-effort): listens for spawn events while interest is active.
+  - Settings: `staleness`, `cooldown`, `highlight`.
 
 ### Rooms
 
@@ -156,6 +165,7 @@ How often the *same key* is allowed to re-emit.
 
 - For squares, the key is `squareId`.
 - For zombies, the key is `zombieId`.
+- For vehicles, the key is `sqlId` when present, otherwise `vehicleId`.
 - For rooms, the key is `roomId`.
 - For items, the key is `itemId`.
 - For dead bodies, the key is `deadBodyId`.

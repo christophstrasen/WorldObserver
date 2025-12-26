@@ -34,6 +34,20 @@ Settings: `radius`, `zRange`, `staleness`, `cooldown`, `highlight`.
 Defaults:
 - If `scope` is missing, it defaults to `"allLoaded"`.
 
+## Vehicles
+
+### type = "vehicles" (probe-driven + event-driven)
+
+| scope     | target key | target shape | Notes |
+|-----------|------------|--------------|-------|
+| allLoaded | n/a        | n/a          | Scans the vehicle list in the active cell (singleplayer) + listens for `OnSpawnVehicleEnd` when interest is active. |
+
+Settings:
+- `staleness`, `cooldown`, `highlight`.
+
+Defaults:
+- If `scope` is missing, it defaults to `"allLoaded"`.
+
 ## Rooms
 
 ### type = "rooms" (probe-driven + event-driven)

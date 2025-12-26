@@ -14,6 +14,7 @@ _G.LQR_HEADLESS = true
 local SquareRecord = require("WorldObserver/facts/squares/record")
 local RoomRecord = require("WorldObserver/facts/rooms/record")
 local ZombieRecord = require("WorldObserver/facts/zombies/record")
+local VehicleRecord = require("WorldObserver/facts/vehicles/record")
 local ItemRecord = require("WorldObserver/facts/items/record")
 local DeadBodyRecord = require("WorldObserver/facts/dead_bodies/record")
 local SpriteRecord = require("WorldObserver/facts/sprites/record")
@@ -157,6 +158,43 @@ describe("record extenders", function()
 		assert.is_true(record.extra.extended)
 
 		ZombieRecord.unregisterZombieRecordExtender(id)
+	end)
+
+	it("extends vehicle records", function()
+		local id = newId("vehicle")
+		local ok = VehicleRecord.registerVehicleRecordExtender(id, function(record)
+			record.extra = record.extra or {}
+			record.extra.extended = true
+		end)
+		assert.is_true(ok)
+
+		local square = {
+			getX = function()
+				return 10
+			end,
+			getY = function()
+				return 20
+			end,
+			getZ = function()
+				return 0
+			end,
+		}
+		local vehicle = {
+			sqlId = 123,
+			getId = function()
+				return 77
+			end,
+			getSquare = function()
+				return square
+			end,
+		}
+
+		local record = VehicleRecord.makeVehicleRecord(vehicle, "probe", { nowMs = 123, headless = true })
+		assert.is_table(record)
+		assert.is_table(record.extra)
+		assert.is_true(record.extra.extended)
+
+		VehicleRecord.unregisterVehicleRecordExtender(id)
 	end)
 
 	it("extends item records", function()

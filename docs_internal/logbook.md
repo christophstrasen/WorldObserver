@@ -483,36 +483,27 @@
 ## day16 – Derived streams “in anger”: hedge_trample, helper semantics, and sprite name wildcards
 
 ### Highlights
-- Added a practical “derived streams” teaching example (`examples/hedge_trample.lua`) that joins zombies + sprites on `tileLocation` and then uses LQR grouping + `having` to express a real gameplay rule (“at least N distinct zombies have been on this tile within the last N seconds”).
-- Added `tileLocation` (`"x123y456z7"`) consistently across square-related records so joins/grouping can key off a stable string without requiring live engine objects.
-- Tightened sprite interest ergonomics by supporting prefix wildcards inside `spriteNames`:
-  - trailing `%` means “prefix match” (and `%` alone means “match all”),
-  - invalid patterns warn and are ignored,
-  - `onLoadWithSprite` explicitly does not support wildcards (warn + ignore).
-- Removed a confusing “raw removal” helper direction and kept the user-facing sprite action focused on `removeSpriteObject()` (safe/warn-y; “already gone” is fine).
-- Reworked the post-derive helper semantics to match user expectations:
-  - Stream `filter(...)` is now a true end-of-stream filter (applies to what a subscriber sees), and it is chainable.
-  - Effectful helpers (like `removeSpriteObject`) run as end-of-stream taps, so they act on the reduced/filtered derived result instead of on intermediate rows.
-  - Base stream helpers operate on public schema keys (`square`, `zombie`, `sprite`, …) instead of leaking internal schema names into modder-facing usage and docs.
-- Added optional “best-effort” visual debugging via Doggy’s VisualMarkers dependency:
-  - `WorldObserver.helpers.square.record.setSquareMarker(squareLike, text, opts)` + `:setSquareMarker(...)` stream sugar (square-like contract: `x/y/z` record or live `IsoGridSquare`),
-  - used in `examples/hedge_trample.lua` to label tiles with `zombiesOnTile` while removal runs.
-- Expanded user-facing derived stream docs to cover the LQR “windows” we hit in practice (join vs group vs distinct) and how they map to “freshness” vs “rule windows” in gameplay logic.
-- Small doc UX cleanup: standardized on “setting/settings” across user-facing docs for a more neutral tone.
-- Docs follow-through (removed open TODOs in user docs):
-  - moved stream basics from `docs/observations/stream_basics.md` → `docs/guides/stream_basics.md` and fixed cross-links,
-  - clarified interest `highlight` merge behavior (“first non-nil lease wins”),
-  - improved `docs/observations/reactivex_primer.md` with practical guidance for multi-family observations and inline deep links where operators are taught,
-  - reinforced “use `x/y/z` as the stable handle” and avoided promising `squareId` stability across reloads.
+- Added a practical derived-stream example (`examples/hedge_trample.lua`) joining zombies + sprites on `tileLocation` and using LQR grouping + `having` to express a real gameplay rule.
+- Standardized `tileLocation` (`"x123y456z7"`) across square-related records so joins/grouping can key off a stable value without engine objects.
+- Tightened derived-stream helper semantics:
+  - `filter(...)` applies at the end of the stream (what subscribers see),
+  - effectful helpers run as end-of-stream taps,
+  - helpers target public schema keys (`square`, `zombie`, `sprite`, …), not internal schema names.
+- Improved sprite interest ergonomics: prefix wildcards inside `spriteNames` (trailing `%`), while `onLoadWithSprite` stays exact-match only.
+- Implemented the base `vehicles` observation family (v0):
+  - acquisition: time-sliced `IsoCell:getVehicles()` probe (`scope="allLoaded"`) + best-effort `Events.OnSpawnVehicleEnd` listener,
+  - record: `sqlId` preferred key with `vehicleId` fallback, tile coords via `vehicle:getSquare()`, best-effort `IsoGridSquare` retained,
+  - stream: `WorldObserver.observations:vehicles()` with required `:vehicleFilter(fn)` helper and square highlight on emit.
+- In-engine smoke validated for vehicles: probe emits and highlights correctly, and ingest stays stable (no drops / no pending growth).
+- Docs follow-through: streamlined stream basics, clarified `highlight` merge behavior, and expanded derived-stream guidance around join vs group vs distinct windows.
 
 ### Lessons
-- Users think in terms of “the stream I subscribed to”; helpers that are chained after `derive(...)` must apply to the derived stream output, not to any pre-selection or intermediate row view.
-- Windows are layered tools with different roles:
-  - join windows decide what can meet,
-  - group windows decide what counts “for the rule”,
-  - distinct windows decide what constitutes a unique event and how noisy the pipeline is.
-- If we don’t encode the “join key” as a stable value in records (like `tileLocation`), every interesting cross-family query becomes fragile (requires engine references, hydration, or ad-hoc ID schemes).
+- Users think in terms of “the stream I subscribed to”; helpers chained after `derive(...)` must apply to the derived stream output, not intermediate rows.
+- Windows are layered tools (join vs rule grouping vs noise control); calling out their roles prevents subtle correctness bugs.
+- Stable join keys in records (like `tileLocation`) avoid fragile cross-family queries (hydration, ad-hoc IDs, engine references).
+- Vehicles: `sqlId` exists in B42 Lua (observed), but stability across save/load is still an empirical requirement; event listeners must be validated with real emissions.
 
 ### Next steps
-- Ensure the observation docs for each family explicitly call out their stable identity fields (e.g. `zombieId`, `spriteKey`, `tileLocation`) and what they are safe for (join keys vs hydration).
-- Consider shipping one additional “pattern” example beyond hedge trample (e.g. a `groupByEnrich` + `having` that builds a stream containing multiple families) to cement the derived-stream mental model.
+- Spawn a vehicle (debug/admin or scripted) and confirm at least one `OnSpawnVehicleEnd` emission + payload args (`source=event`).
+- Do a save/reload check and confirm `sqlId` stability for a known vehicle across sessions (adjust key strategy if needed).
+- Ensure each observation doc calls out stable identity fields and what they’re safe for (join keys vs hydration); consider one additional “pattern” example beyond hedge trample to cement the mental model.

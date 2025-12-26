@@ -36,6 +36,7 @@ end
 	local ItemsFacts = require("WorldObserver/facts/items")
 	local DeadBodiesFacts = require("WorldObserver/facts/dead_bodies")
 	local SpritesFacts = require("WorldObserver/facts/sprites")
+	local VehiclesFacts = require("WorldObserver/facts/vehicles")
 local ObservationsCore = require("WorldObserver/observations/core")
 local SquaresObservations = require("WorldObserver/observations/squares")
 local ZombiesObservations = require("WorldObserver/observations/zombies")
@@ -43,12 +44,14 @@ local RoomsObservations = require("WorldObserver/observations/rooms")
 local ItemsObservations = require("WorldObserver/observations/items")
 local DeadBodiesObservations = require("WorldObserver/observations/dead_bodies")
 local SpritesObservations = require("WorldObserver/observations/sprites")
+local VehiclesObservations = require("WorldObserver/observations/vehicles")
 local SquareHelpers = require("WorldObserver/helpers/square")
 local ZombieHelpers = require("WorldObserver/helpers/zombie")
 local RoomHelpers = require("WorldObserver/helpers/room")
 local ItemHelpers = require("WorldObserver/helpers/item")
 	local DeadBodyHelpers = require("WorldObserver/helpers/dead_body")
 	local SpriteHelpers = require("WorldObserver/helpers/sprite")
+	local VehicleHelpers = require("WorldObserver/helpers/vehicle")
 	local InterestRegistry = require("WorldObserver/interest/registry")
 	local Debug = require("WorldObserver/debug")
 	local Runtime = require("WorldObserver/runtime")
@@ -63,6 +66,7 @@ local ItemHelpers = require("WorldObserver/helpers/item")
 	assert(type(config.facts.items) == "table", "WorldObserver config must include facts.items")
 	assert(type(config.facts.deadBodies) == "table", "WorldObserver config must include facts.deadBodies")
 	assert(type(config.facts.sprites) == "table", "WorldObserver config must include facts.sprites")
+	assert(type(config.facts.vehicles) == "table", "WorldObserver config must include facts.vehicles")
 	assert(type(config.runtime) == "table", "WorldObserver config must include runtime")
 	assert(type(config.runtime.controller) == "table", "WorldObserver config must include runtime.controller")
 
@@ -131,6 +135,7 @@ RoomsFacts.register(factRegistry, config, interestRegistry)
 ItemsFacts.register(factRegistry, config, interestRegistry)
 DeadBodiesFacts.register(factRegistry, config, interestRegistry)
 SpritesFacts.register(factRegistry, config, interestRegistry)
+VehiclesFacts.register(factRegistry, config, interestRegistry)
 
 local observationRegistry = ObservationsCore.new({
 	factRegistry = factRegistry,
@@ -142,6 +147,7 @@ local observationRegistry = ObservationsCore.new({
 		item = ItemHelpers,
 		deadBody = DeadBodyHelpers,
 		sprite = SpriteHelpers,
+		vehicle = VehicleHelpers,
 	},
 })
 
@@ -151,6 +157,7 @@ RoomsObservations.register(observationRegistry, factRegistry, ObservationsCore.n
 ItemsObservations.register(observationRegistry, factRegistry, ObservationsCore.nextObservationId)
 DeadBodiesObservations.register(observationRegistry, factRegistry, ObservationsCore.nextObservationId)
 SpritesObservations.register(observationRegistry, factRegistry, ObservationsCore.nextObservationId)
+VehiclesObservations.register(observationRegistry, factRegistry, ObservationsCore.nextObservationId)
 
 WorldObserver = {
 	config = config,
@@ -184,6 +191,7 @@ WorldObserver = {
 		item = ItemHelpers,
 		deadBody = DeadBodyHelpers,
 		sprite = SpriteHelpers,
+		vehicle = VehicleHelpers,
 	},
 	highlight = SquareHelpers.highlight,
 	debug = nil,

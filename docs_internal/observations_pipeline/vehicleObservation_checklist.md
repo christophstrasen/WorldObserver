@@ -14,17 +14,17 @@
 
 ## Implementation Status
 
-- Status: ☑ idea ☐ prototyping ☐ in progress ☐ test-complete ☐ documented ☐ shipped
+- Status: ☐ idea ☐ prototyping ☐ in progress ☑ test-complete ☑ documented ☐ shipped
 - What is done:
-  - ☐ Interest surface defined + documented
-  - ☐ Fact acquisition wired (listener/probe) + ingest lanes
-  - ☐ Record schema stable + key stability documented
-  - ☐ Observation stream + helpers wired
-  - ☐ Unit tests passing (`busted tests`)
-  - ☐ Smoke test example works in-game (or via `pz_smoke.lua` if applicable)
+  - ☑ Interest surface defined + documented
+  - ☑ Fact acquisition wired (listener/probe) + ingest lanes
+  - ☑ Record schema stable + key stability documented
+  - ☑ Observation stream + helpers wired
+  - ☑ Unit tests passing (`busted tests`)
+  - ☑ Smoke test example works in-game (or via `pz_smoke.lua` if applicable)
 - Open tasks / blockers:
-  - Confirm vehicle identity surface: `BaseVehicle.sqlId` exists in B42 Lua and is stable across save/load.
-  - Confirm we can consistently read vehicle square coords via `vehicle:getSquare():getX()/getY()/getZ()` in Lua (nil-safe).
+  - Confirm `BaseVehicle.sqlId` stability across save/load (existence confirmed empirically; stability still uncertain).
+  - Confirm `OnSpawnVehicleEnd` payload shape by spawning a vehicle and seeing at least one `source=event` emission.
 - Known risks (perf/correctness/staleness/hydration):
   - `vehicle.sqlId` stability (save/load, MP) is currently assumed; must be proven before committing to it as a long-term key.
   - Event payload shapes and availability in Build 42 Lua must be verified in-engine (PZWiki lists events, but argument contracts need confirmation).
@@ -34,7 +34,7 @@
 ## 0) Problem Statement + Modder UX
 
 - What does the modder want to accomplish (not implementation): A Base observation stream that covers basic scenarios and that can be used for at least one advanced scenario.
-- “Smallest useful” copy/paste example (declare interest + subscribe): **EARLY DRAFT (assumes `scope="allLoaded"` and basic record fields; update once `vehicles` exists)**
+- “Smallest useful” copy/paste example (declare interest + subscribe): (validated in-engine via `examples/smoke_vehicles.lua`)
 
 ```lua
 local WorldObserver = require("WorldObserver")
@@ -49,7 +49,7 @@ local lease = WorldObserver.factInterest:declare(MOD_ID, "vehicles.demo", {
   highlight = true,             -- highlight the floor square under the vehicle
 })
 
-local sub = WorldObserver.observations:vehicles() -- TODO: confirm public API shape (`:vehicles()` vs `:vehicles`)
+local sub = WorldObserver.observations:vehicles()
   :distinct("vehicle", 10)                       -- keep output low-noise (dedup by sqlId, else vehicleId)
   :subscribe(function(observation)
     local v = observation.vehicle
@@ -109,8 +109,8 @@ Define the supported combinations and settings first (data-driven truth).
     - `radius` without a target (does not apply)
     - `target` (no near/vision yet)
 - Update the central truth:
-  - ☐ `WorldObserver/interest/definitions.lua` updated
-  - ☐ `docs_internal/interest_combinations.md` updated
+  - ☑ `WorldObserver/interest/definitions.lua` updated
+  - ☑ `docs_internal/interest_combinations.md` updated
   - ☐ `docs/guides/interest.md` updated (only if user-facing surface changed)
 
 ---
@@ -127,7 +127,7 @@ Key rule: produce *small records* and call `ctx.ingest(record)` (don’t do down
 - Probe sources (active scans):
   - Probe driver/sensor: `IsoCell:getVehicles()`
   - Scan focus: `allLoaded`
-  - Time-slicing + caps (how work is bounded): EARLY ASSUMPTION (mirror `zombies` `allLoaded`): run a cursor over the `IsoCell:getVehicles()` list on tick, ingesting only up to a per-tick CPU-time budget and a hard per-run item cap, then resume next tick from the cursor; full sweep cadence is driven by effective `staleness`, and per-vehicle re-emits are gated by `cooldown`.
+- Time-slicing + caps (how work is bounded): mirror `zombies` `allLoaded`: run a cursor over the `IsoCell:getVehicles()` list on tick, ingesting up to a per-tick CPU-time budget and per-run item cap, then resume next tick; sweep cadence is driven by effective `staleness`, and per-vehicle re-emits are gated by `cooldown`.
 - Failure behavior:
   - Missing engine APIs: if `IsoCell:getVehicles()` or `OnSpawnVehicleEnd` is not available in Lua, the type must log a single actionable warning (outside headless) and disable the missing source.
   - Nil / stale engine objects: treat `BaseVehicle` as ephemeral; compute records immediately and never retain engine objects long-term on the record.
@@ -204,15 +204,12 @@ Keep this section compact. It should summarize what section 3 implies for subscr
 
 Keep helpers small, composable, and discoverable. Prefer record predicates + thin stream sugar.
 
-- Record helpers (predicates/utilities): `[...]`
-  - ☐ Pure predicate helpers
-  - ☐ Hydration helpers (safe `nil`, may cache)
-- Stream helpers (chainable sugar): `[...]`
-  - Naming: follows `<family><Predicate>` / `<family>Filter(fn)` conventions
-- Effectful helpers (rare; clearly named): `[...]`
-  - Best-effort `pcall` + actionable warnings: `[...]`
+- Record helpers (predicates/utilities): none in v0 (keep minimal)
+- Stream helpers (chainable sugar): `vehicleFilter(fn)` (required baseline helper)
+  - Naming: follows `<family>Filter(fn)` conventions
+- Effectful helpers (rare; clearly named): none in v0
 - Documentation:
-  - ☐ listed in `docs/observations/<family>.md`
+  - ☐ listed in `docs/observations/vehicles.md`
 
 ---
 
@@ -232,14 +229,14 @@ Keep helpers small, composable, and discoverable. Prefer record predicates + thi
 ## 10) Verification: Tests (headless) + Engine Checks
 
 - Unit tests added/updated:
-  - ☐ record builder spec: `tests/unit/...`
+  - ☑ record builder spec: `tests/unit/vehicles_spec.lua`
   - ☐ collector/probe/listener spec (as applicable): `tests/unit/...`
-  - ☐ observation stream spec: `tests/unit/...`
-  - ☐ record extenders spec updated (if extenders added): `tests/unit/record_extenders_spec.lua`
-  - ☐ contract spec still passes: `tests/unit/interest_definitions_contract_spec.lua`
+  - ☑ observation stream spec: `tests/unit/vehicles_observations_spec.lua`
+  - ☑ record extenders spec updated (if extenders added): `tests/unit/record_extenders_spec.lua`
+  - ☑ contract spec still passes: `tests/unit/interest_definitions_contract_spec.lua`
 - Headless test run command: `busted tests`
 - Engine verification checklist:
-  - ☐ APIs confirmed in PZ LuaDocs / empirical check
+  - ☑ APIs confirmed empirically: `IsoCell:getVehicles()`, `BaseVehicle.sqlId`, `BaseVehicle:getId()`, `BaseVehicle:getSquare()`, `IsoGridSquare:getX()/getY()/getZ()`
   - ☐ Works with nil/missing objects (unloaded squares, despawned entities)
   - ☐ No unbounded work per tick (caps/budgets verified)
 
@@ -248,8 +245,9 @@ Keep helpers small, composable, and discoverable. Prefer record predicates + thi
 ## 11) Documentation (user-facing + internal)
 
 - User-facing docs:
-  - ☐ add/update `docs/observations/<family>.md`
-  - ☐ update `docs/observations/index.md` (if new base stream)
+  - ☑ add/update `docs/observations/vehicles.md`
+  - ☑ update `docs/observations/index.md` (if new base stream)
+  - ☑ update `docs/guides/interest.md` (surface lists)
   - ☐ update `docs/guides/*` (only if new concepts are introduced)
 - Internal docs (keep architecture coherent):
   - ☐ `docs_internal/fact_layer.md` updated (if new acquisition patterns)
@@ -261,10 +259,10 @@ Keep helpers small, composable, and discoverable. Prefer record predicates + thi
 ## 12) Showcase + Smoke Test
 
 - Example script added/updated (where): `Contents/mods/WorldObserver/42/media/lua/shared/examples/smoke_vehicles.lua`
-- Minimal smoke scenario (“how to see it in action quickly”): declare `vehicles` allLoaded with `highlight=true` and print a single line per emitted vehicle (dedup by `sqlId`)
+- Minimal smoke scenario (“how to see it in action quickly”): declare `vehicles` allLoaded with `highlight=true` and print a single line per emitted vehicle (dedup by `sqlId`, fallback to `vehicleId`)
 - Lease renewal: not required for the smoke test (default lease TTL is long enough for a short demo).
 - Workshop sync smoke (`pz_smoke.lua` / `watch-workshop-sync.sh`) considerations:
-  - ☐ `require(...)` paths compatible with PZ runtime (no `init.lua` assumptions)
+  - ☑ `require(...)` paths compatible with PZ runtime (no `init.lua` assumptions)
   - ☐ Works in vanilla Lua 5.1 headless where intended
 
 ---
