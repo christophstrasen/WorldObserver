@@ -1,6 +1,5 @@
 -- hedge_trample.lua — minimal example: inner join zombies + sprites on tileLocation.
 --[[ Usage in PZ console:
-package.loaded["examples/hedge_trample"] = nil -- optional, if you edited the file and want to reload it
 ht = require("examples/hedge_trample")
 ht.setEnableRemove(true) -- optional safety toggle (default: false)
 ht.start()
@@ -34,6 +33,14 @@ local function say(fmt, ...)
 	end
 end
 
+local function fmtNumber(value)
+	if type(value) == "number" then
+		-- Avoid scientific notation for large millisecond timestamps in Kahlua/Java Double printing.
+		return string.format("%.0f", value)
+	end
+	return tostring(value)
+end
+
 local function isoObjectPresentOnSquare(isoGridSquare, isoObject)
 	if isoGridSquare == nil or isoObject == nil then
 		return nil
@@ -62,6 +69,8 @@ function HedgeTrample.start()
 	HedgeTrample.stop()
 
 	local WorldObserver = require("WorldObserver")
+	local LQR = require("LQR")
+	local Query = LQR.Query
 	local Time = require("WorldObserver/helpers/time")
 	local joinWindowMillis = 50 * 1000
 	local accumulateMillis = 10 * 1000
@@ -72,8 +81,9 @@ function HedgeTrample.start()
 	local dedupMillis = 1500
 	local joinWindow = { time = joinWindowMillis }
 	local distinctWindow = { time = dedupMillis }
-	-- Grouping runs on the LQR row-view (row.zombie, row.sprite), so use a dot-path for event time.
-	local groupWindow = { time = accumulateMillis, field = "zombie.RxMeta.sourceTime", currentFn = Time.gameMillis }
+	-- Grouping runs on the LQR row-view (row.zombie, row.sprite). We group on the zombie event-time.
+	-- LQR's default window clock is configured by WorldObserver.lua to use Time.gameMillis(), so we don't pass currentFn.
+	local groupWindow = { time = accumulateMillis, field = "zombie.sourceTime" }
 
 	say(
 		"[WO hedge_trample] start enabledRemove=%s accumulateMillis=%s dedupMillis=%s joinWindowMillis=%s",
@@ -86,7 +96,7 @@ function HedgeTrample.start()
 	leases = {
 		zombies = WorldObserver.factInterest:declare(MOD_ID, "zombies", {
 			type = "zombies",
-			scope = "allLoaded",
+			scope = "near",
 			radius = { desired = 25 },
 			zRange = { desired = 1 },
 			staleness = { desired = 1 },
@@ -123,9 +133,79 @@ function HedgeTrample.start()
 		zombies = WorldObserver.observations:zombies(),
 		sprites = WorldObserver.observations:sprites(),
 	}, function(lqr)
-		local query = lqr
-			.zombies
-			:innerJoin(lqr.sprites)
+		local watchedSpriteTiles = {}
+
+		-- Debug taps on the source streams (pre-join), so we can verify we’re feeding the join what we expect.
+		--
+		-- Important: `withFinalTap` is attached to a QueryBuilder. If we would call `lqr.zombies:withFinalTap(...):innerJoin(...)`,
+		-- the tap would move to the *final query*, not the source. We intentionally wrap the tapped builders via `Query.from(...)`
+		-- so the tap stays on the source stage.
+		local zombiesTapped = lqr.zombies:withFinalTap(function(value)
+			local zombie = nil
+			if type(value) == "table" and type(value.get) == "function" then
+				zombie = value:get("zombie")
+			elseif type(value) == "table" then
+				zombie = value.zombie
+			end
+			if type(zombie) ~= "table" then
+				if type(value) == "table" and type(value.schemaNames) == "function" then
+					say("[WO hedge_trample src.zombies] unexpected schemas=%s", table.concat(value:schemaNames(), ","))
+				end
+				return
+			end
+
+			-- Keep debug manageable: only log zombies that are on tiles where we currently see a target sprite.
+			local tileLocation = zombie.tileLocation
+			if tileLocation == nil or watchedSpriteTiles[tileLocation] ~= true then
+				return
+			end
+			if state.removedTileLocations[tileLocation] == true then
+				return
+			end
+
+			say(
+				"[WO hedge_trample src.zombies] zombieId=%s tile=%s time=%s",
+				tostring(zombie.zombieId),
+				tostring(zombie.tileLocation),
+				fmtNumber(zombie.sourceTime)
+			)
+		end)
+
+		local spritesTapped = lqr.sprites:withFinalTap(function(value)
+			local sprite = nil
+			if type(value) == "table" and type(value.get) == "function" then
+				sprite = value:get("sprite")
+			elseif type(value) == "table" then
+				sprite = value.sprite
+			end
+			if type(sprite) ~= "table" then
+				if type(value) == "table" and type(value.schemaNames) == "function" then
+					say("[WO hedge_trample src.sprites] unexpected schemas=%s", table.concat(value:schemaNames(), ","))
+				end
+				return
+			end
+
+			if sprite.tileLocation ~= nil then
+				watchedSpriteTiles[sprite.tileLocation] = true
+			end
+			if sprite.tileLocation ~= nil and state.removedTileLocations[sprite.tileLocation] == true then
+				return
+			end
+
+			say(
+				"[WO hedge_trample src.sprites] spriteKey=%s spriteName=%s tile=%s time=%s",
+				tostring(sprite.spriteKey),
+				tostring(sprite.spriteName),
+				tostring(sprite.tileLocation),
+				fmtNumber(sprite.sourceTime)
+			)
+		end)
+
+		local zombiesSource = Query.from(zombiesTapped, "zombie")
+		local spritesSource = Query.from(spritesTapped, "sprite")
+
+		local query = zombiesSource
+			:innerJoin(spritesSource)
 			:using({ zombie = "tileLocation", sprite = "tileLocation" })
 			:joinWindow(joinWindow)
 			:distinct("sprite", { by = "spriteKey", window = distinctWindow })
@@ -140,9 +220,9 @@ function HedgeTrample.start()
 			)
 			:groupWindow(groupWindow)
 			:aggregates({
-				-- NOTE: In LQR, `aggregates.count` is computed only when `row_count` is enabled.
-				-- Because we provide an explicit `count` entry below, LQR will not use the default per-schema row counts.
-				row_count = true,
+				-- We don’t need the generic row count (`_count_all`) here; we want a distinct zombie count.
+				-- LQR computes explicit count aggregates even when row_count=false.
+				row_count = false,
 				count = {
 					{
 						path = "zombie.zombieId",
@@ -164,12 +244,8 @@ function HedgeTrample.start()
 			local zombie = observation and observation.zombie or nil
 			local sprite = observation and observation.sprite or nil
 			local nowMs = Time.gameMillis()
-			local zombieTime = (type(zombie) == "table" and zombie.RxMeta and zombie.RxMeta.sourceTime)
-				or (type(zombie) == "table" and zombie.sourceTime)
-				or nil
-			local spriteTime = (type(sprite) == "table" and sprite.RxMeta and sprite.RxMeta.sourceTime)
-				or (type(sprite) == "table" and sprite.sourceTime)
-				or nil
+			local zombieTime = type(zombie) == "table" and zombie.sourceTime or nil
+			local spriteTime = type(sprite) == "table" and sprite.sourceTime or nil
 			local zombieAge = (type(nowMs) == "number" and type(zombieTime) == "number") and (nowMs - zombieTime) or nil
 			local spriteAge = (type(nowMs) == "number" and type(spriteTime) == "number") and (nowMs - spriteTime) or nil
 
@@ -204,8 +280,8 @@ function HedgeTrample.start()
 				tostring(spriteKey),
 				tostring(sprite and sprite.tileLocation),
 				tostring(beforePresent),
-				tostring(zombieAge),
-				tostring(spriteAge)
+				fmtNumber(zombieAge),
+				fmtNumber(spriteAge)
 			)
 
 			-- We only remove once we have seen at least two distinct zombies on this tile within the window.
