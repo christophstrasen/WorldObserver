@@ -4,3 +4,6 @@
 [submodule "external/lua-reactivex"]
 	path = external/lua-reactivex
 	url = git@github.com:christophstrasen/lua-reactivex
+[submodule "external/PromiseKeeper"]
+	path = external/PromiseKeeper
+	url = git@github.com:christophstrasen/PromiseKeeper
