@@ -135,6 +135,19 @@ local function defaultBuildDefaults()
 					logEachSweep = false,
 				},
 			},
+			players = {
+				headless = headless,
+				listener = {
+					enabled = true,
+				},
+				ingest = {
+					enabled = true,
+					mode = "latestByKey",
+					capacity = 5000,
+					ordering = "fifo",
+					priority = 1,
+				},
+			},
 			rooms = {
 				headless = headless,
 				listener = {

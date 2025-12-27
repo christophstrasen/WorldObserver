@@ -35,6 +35,7 @@ Notes:
   - Example: `type = "squares"` or `type = "zombies"`.
 - `scope`: a sub-mode within an interest type (used for grouping and merging).
   - For `type = "squares"`, the supported scopes today are `near`, `vision`, and `onLoad`.
+  - For `type = "players"`, the supported scopes today are `onPlayerMove` and `onPlayerUpdate`.
   - For `type = "zombies"`, the supported scope today is `allLoaded`.
   - For `type = "vehicles"`, the supported scope today is `allLoaded`.
   - For `type = "rooms"`, the supported scopes today are `allLoaded`, `onSeeNewRoom`, and `onPlayerChangeRoom`.
@@ -58,6 +59,7 @@ Interest `type` selects the “fact plan” behind the scenes (listener vs probe
 | type | scopes | acquisition | target |
 |------|--------|-------------|--------|
 | `squares` | `near`, `vision`, `onLoad` | probe + event | player/square (probe scopes) |
+| `players` | `onPlayerMove`, `onPlayerUpdate` | event | n/a |
 | `zombies` | `allLoaded` | probe | n/a |
 | `vehicles` | `allLoaded` | probe + event | n/a |
 | `rooms` | `allLoaded`, `onSeeNewRoom`, `onPlayerChangeRoom` | probe + event | player (onPlayerChangeRoom only) |
@@ -80,6 +82,15 @@ Interest `type` selects the “fact plan” behind the scenes (listener vs probe
   - Event-driven: emits when squares load (chunk streaming).
   - Settings: `cooldown`, `highlight` (other settings are currently not meaningful for this scope).
   - Ignores `target`, `radius`, and `staleness`.
+
+### Players
+
+- `type = "players"` with `scope = "onPlayerMove"`
+  - Event-driven: emits when players move (engine event).
+  - Settings: `cooldown`, `highlight`.
+- `type = "players"` with `scope = "onPlayerUpdate"`
+  - Event-driven: emits on player updates (engine event).
+  - Settings: `cooldown`, `highlight`.
 
 ### Zombies
 
@@ -164,6 +175,7 @@ How far around the player WO should look.
 How often the *same key* is allowed to re-emit.
 
 - For squares, the key is `squareId`.
+- For players, the key is `playerKey`.
 - For zombies, the key is `zombieId`.
 - For vehicles, the key is `sqlId` when present, otherwise `vehicleId`.
 - For rooms, the key is `roomId` (alias: `roomLocation` for foreign-key joins).

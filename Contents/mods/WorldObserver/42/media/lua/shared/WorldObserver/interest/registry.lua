@@ -60,6 +60,10 @@ local DEFAULTS = {
 		cooldown = { desired = 2, tolerable = 4 },
 		highlight = nil,
 	},
+	["players"] = {
+		cooldown = { desired = 0.2, tolerable = 0.4 },
+		highlight = nil,
+	},
 	["rooms"] = {
 		staleness = { desired = 60, tolerable = 120 },
 		radius = { desired = 0, tolerable = 0 },

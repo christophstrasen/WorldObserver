@@ -34,6 +34,20 @@ Settings: `radius`, `zRange`, `staleness`, `cooldown`, `highlight`.
 Defaults:
 - If `scope` is missing, it defaults to `"allLoaded"`.
 
+## Players
+
+### type = "players" (event-driven)
+
+| scope | target key | target shape | Notes |
+|-------|------------|--------------|-------|
+| onPlayerMove | n/a | n/a | Emits when players move (engine event). |
+| onPlayerUpdate | n/a | n/a | Emits on player updates (engine event). |
+
+Settings: `cooldown`, `highlight`.
+
+Defaults:
+- If `scope` is missing, it defaults to `"onPlayerMove"`.
+
 ## Vehicles
 
 ### type = "vehicles" (probe-driven + event-driven)

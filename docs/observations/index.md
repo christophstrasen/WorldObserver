@@ -37,6 +37,7 @@ You’ll see this in a few places:
 
 Current base streams:
 - [Squares](squares.md)
+- [Players](players.md)
 - [Rooms](rooms.md)
 - [Sprites](sprites.md)
 - [Zombies](zombies.md)

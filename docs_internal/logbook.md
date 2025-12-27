@@ -507,3 +507,27 @@
 - Spawn a vehicle (debug/admin or scripted) and confirm at least one `OnSpawnVehicleEnd` emission + payload args (`source=event`).
 - Do a save/reload check and confirm `sqlId` stability for a known vehicle across sessions (adjust key strategy if needed).
 - Ensure each observation doc calls out stable identity fields and what they’re safe for (join keys vs hydration); consider one additional “pattern” example beyond hedge trample to cement the mental model.
+
+## day17 – Checklist v2, room join keys, source logging polish, and player observations (v0)
+
+### Highlights
+- Upgraded the observation checklist template and created/finalized `playerObservation_checklist.md` to match current best practices (200ms cadence guidance, `playerKey`, `roomLocation` joins, and explicit engine userdata fields).
+- Removed `sourceTime` boilerplate from fact builders by relying on ingest auto-stamping (shared default behavior).
+- Added a join-friendly `roomLocation` field to room records (alias of `roomId`) and updated tests + docs.
+- Standardized source labeling in logs (logging-only): records keep coarse `record.source` but debug output prints a qualified label (`event.onPlayerMove`, etc).
+- Implemented the new `players` fact + observation family:
+  - Interest scopes: `onPlayerMove`, `onPlayerUpdate` (event-driven).
+  - Record schema includes `playerKey`, spatial anchors (`tileLocation`), room/building join keys (`roomLocation`, `buildingId`), and best-effort engine objects (`IsoPlayer`, `IsoGridSquare`, `IsoRoom`, `IsoBuilding`).
+  - Highlight support: highlights the square the player is on when emitting.
+  - Added minimal helper surface: `:playerFilter(fn)`.
+- Added player docs + interest docs updates, plus a minimal in-engine smoke script: `examples/smoke_players.lua`.
+
+### Notes / observations
+- In singleplayer, `steamId` / `onlineId` may appear as `0`, so `playerKey` can read like `steamId0` (still useful as a per-session key, but not a stable cross-session identity).
+
+### Tests
+- Headless unit tests pass (`busted tests`: 128 successes).
+
+### Next steps
+- Decide whether to treat numeric `0` IDs as “missing” when building `playerKey` (to prefer any real non-zero id in MP).
+- Add a tiny in-engine-only validation note to `docs/observations/players.md` for verifying room joins (walk indoors and confirm `roomLocation` changes).

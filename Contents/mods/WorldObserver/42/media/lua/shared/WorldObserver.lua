@@ -32,6 +32,7 @@ end
 	local FactRegistry = require("WorldObserver/facts/registry")
 	local SquaresFacts = require("WorldObserver/facts/squares")
 	local ZombiesFacts = require("WorldObserver/facts/zombies")
+	local PlayersFacts = require("WorldObserver/facts/players")
 	local RoomsFacts = require("WorldObserver/facts/rooms")
 	local ItemsFacts = require("WorldObserver/facts/items")
 	local DeadBodiesFacts = require("WorldObserver/facts/dead_bodies")
@@ -40,6 +41,7 @@ end
 local ObservationsCore = require("WorldObserver/observations/core")
 local SquaresObservations = require("WorldObserver/observations/squares")
 local ZombiesObservations = require("WorldObserver/observations/zombies")
+local PlayersObservations = require("WorldObserver/observations/players")
 local RoomsObservations = require("WorldObserver/observations/rooms")
 local ItemsObservations = require("WorldObserver/observations/items")
 local DeadBodiesObservations = require("WorldObserver/observations/dead_bodies")
@@ -47,6 +49,7 @@ local SpritesObservations = require("WorldObserver/observations/sprites")
 local VehiclesObservations = require("WorldObserver/observations/vehicles")
 local SquareHelpers = require("WorldObserver/helpers/square")
 local ZombieHelpers = require("WorldObserver/helpers/zombie")
+local PlayerHelpers = require("WorldObserver/helpers/player")
 local RoomHelpers = require("WorldObserver/helpers/room")
 local ItemHelpers = require("WorldObserver/helpers/item")
 	local DeadBodyHelpers = require("WorldObserver/helpers/dead_body")
@@ -62,6 +65,7 @@ local ItemHelpers = require("WorldObserver/helpers/item")
 	assert(type(config) == "table", "WorldObserver config must be a table")
 	assert(type(config.facts) == "table", "WorldObserver config must include facts")
 	assert(type(config.facts.squares) == "table", "WorldObserver config must include facts.squares")
+	assert(type(config.facts.players) == "table", "WorldObserver config must include facts.players")
 	assert(type(config.facts.rooms) == "table", "WorldObserver config must include facts.rooms")
 	assert(type(config.facts.items) == "table", "WorldObserver config must include facts.items")
 	assert(type(config.facts.deadBodies) == "table", "WorldObserver config must include facts.deadBodies")
@@ -131,6 +135,7 @@ end
 
 SquaresFacts.register(factRegistry, config, interestRegistry)
 ZombiesFacts.register(factRegistry, config, interestRegistry)
+PlayersFacts.register(factRegistry, config, interestRegistry)
 RoomsFacts.register(factRegistry, config, interestRegistry)
 ItemsFacts.register(factRegistry, config, interestRegistry)
 DeadBodiesFacts.register(factRegistry, config, interestRegistry)
@@ -143,6 +148,7 @@ local observationRegistry = ObservationsCore.new({
 	helperSets = {
 		square = SquareHelpers,
 		zombie = ZombieHelpers,
+		player = PlayerHelpers,
 		room = RoomHelpers,
 		item = ItemHelpers,
 		deadBody = DeadBodyHelpers,
@@ -153,6 +159,7 @@ local observationRegistry = ObservationsCore.new({
 
 SquaresObservations.register(observationRegistry, factRegistry, ObservationsCore.nextObservationId)
 ZombiesObservations.register(observationRegistry, factRegistry, ObservationsCore.nextObservationId)
+PlayersObservations.register(observationRegistry, factRegistry, ObservationsCore.nextObservationId)
 RoomsObservations.register(observationRegistry, factRegistry, ObservationsCore.nextObservationId)
 ItemsObservations.register(observationRegistry, factRegistry, ObservationsCore.nextObservationId)
 DeadBodiesObservations.register(observationRegistry, factRegistry, ObservationsCore.nextObservationId)
@@ -187,6 +194,7 @@ WorldObserver = {
 	helpers = {
 		square = SquareHelpers,
 		zombie = ZombieHelpers,
+		player = PlayerHelpers,
 		room = RoomHelpers,
 		item = ItemHelpers,
 		deadBody = DeadBodyHelpers,
