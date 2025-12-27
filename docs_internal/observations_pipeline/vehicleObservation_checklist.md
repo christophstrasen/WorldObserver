@@ -148,7 +148,7 @@ Design constraints:
   - Spatial anchor (match zombie naming; when `vehicle:getSquare()` is available):
     - `tileX`, `tileY`, `tileZ` from `vehicle:getSquare():getX()/getY()/getZ()`
     - `x`, `y`, `z` set equal to `tileX/tileY/tileZ` for schema consistency and to support square hydration helpers
-  - Timing: `sourceTime` (ms, in-game clock)
+  - Timing: `sourceTime` (ms, in-game clock; auto-stamped at ingest if omitted)
   - Provenance: `source` (string, producer/lane)
 - Optional fields (cheap, high leverage):
   - `name` via `getObjectName()`, `scriptName` via `getScriptName()`, `skin` via `getSkin()`, `type` via `getVehicleType()`

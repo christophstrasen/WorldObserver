@@ -1,6 +1,5 @@
 -- facts/rooms/record.lua -- builds stable room fact records from IsoRoom objects.
 local Log = require("LQR/util/log").withTag("WO.FACTS.rooms")
-local Time = require("WorldObserver/helpers/time")
 local JavaList = require("WorldObserver/helpers/java_list")
 local SafeCall = require("WorldObserver/helpers/safe_call")
 local SquareHelpers = require("WorldObserver/helpers/square")
@@ -80,10 +79,6 @@ if Record.applyRoomRecordExtenders == nil then
 			end
 		end
 	end
-end
-
-local function nowMillis()
-	return Time.gameMillis() or math.floor(os.time() * 1000)
 end
 
 local function rectangleToTable(rect)
@@ -205,7 +200,6 @@ if Record.makeRoomRecord == nil then
 			return nil
 		end
 		opts = opts or {}
-		local ts = opts.nowMs or nowMillis()
 
 		local roomDef = SafeCall.safeCall(room, "getRoomDef") or room.def
 		local building = SafeCall.safeCall(room, "getBuilding")
@@ -257,6 +251,7 @@ if Record.makeRoomRecord == nil then
 
 		local record = {
 			roomId = roomId,
+			roomLocation = tileLocation or roomId,
 			tileLocation = tileLocation or roomId,
 			roomDefId = roomDefId,
 			buildingId = buildingId,
@@ -270,7 +265,6 @@ if Record.makeRoomRecord == nil then
 			windowsCount = listSizeSafe(windows, "windows", roomMeta),
 			waterSourcesCount = listSizeSafe(waterSources, "waterSources", roomMeta),
 			hasWater = hasWater == true,
-			sourceTime = ts,
 			source = source,
 		}
 
@@ -289,7 +283,6 @@ if Record.makeRoomRecord == nil then
 	end
 end
 
-Record._internal.nowMillis = nowMillis
 Record._internal.safeCall = SafeCall.safeCall
 Record._internal.listSize = JavaList.size
 Record._internal.rectangleToTable = rectangleToTable

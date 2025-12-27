@@ -61,8 +61,9 @@ local sub = WorldObserver.observations:rooms()
   :distinct("room", 10)
   :subscribe(function(observation)
     local r = observation.room
-    print(("[WO] roomId=%s type=%s buildingId=%s hasWater=%s windows=%s"):format(
+    print(("[WO] roomId=%s roomLocation=%s type=%s buildingId=%s hasWater=%s windows=%s"):format(
       tostring(r.roomId),
+      tostring(r.roomLocation),
       tostring(r.name),
       tostring(r.buildingId),
       tostring(r.hasWater),
@@ -79,6 +80,7 @@ Remember to stop:
 
 Common fields on the room record:
 - ids: `roomId`, `roomDefId`, `buildingId`
+- join-ready: `roomLocation` (alias of `roomId` for foreign-key joins)
 - name: `name` (example: `"kitchen"`)
 - `bounds` (best-effort `{ x, y, width, height }` when available)
 - counts: `rectsCount`, `bedsCount`, `windowsCount`, `waterSourcesCount`
@@ -88,6 +90,7 @@ Common fields on the room record:
 
 Notes:
 - `roomId` is derived from the first square of the room as `"x123y456z7"` (string) to avoid large engine IDs losing precision in Lua numbers.
+- `roomLocation` is the same value as `roomId`, provided as a clearer foreign-key name for joins.
 
 Engine objects:
 - Off by default; can be enabled in config via `facts.rooms.record.includeIsoRoom`, `.includeRoomDef`, `.includeBuilding`.

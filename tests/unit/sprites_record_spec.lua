@@ -49,7 +49,7 @@ describe("sprite records", function()
 			end,
 		}
 
-		local record = Record.makeSpriteRecord(isoObject, square, "probe", { nowMs = 123 })
+		local record = Record.makeSpriteRecord(isoObject, square, "probe")
 		assert.is_table(record)
 		assert.equals("fixtures_bathroom_01_0ID120000x10y20z0i3", record.spriteKey)
 		assert.equals("fixtures_bathroom_01_0", record.spriteName)
@@ -60,7 +60,7 @@ describe("sprite records", function()
 		assert.equals("x10y20z0", record.tileLocation)
 		assert.equals(999, record.squareId)
 		assert.equals(3, record.objectIndex)
-		assert.equals(123, record.sourceTime)
+		assert.is_nil(record.sourceTime)
 		assert.equals("probe", record.source)
 	end)
 
@@ -96,7 +96,7 @@ describe("sprite records", function()
 			end,
 		}
 
-		local record = Record.makeSpriteRecord(isoObject, square, "player", { nowMs = 456 })
+		local record = Record.makeSpriteRecord(isoObject, square, "player")
 		assert.is_table(record)
 		assert.equals(isoObject, record.IsoObject)
 		assert.equals(square, record.IsoGridSquare)

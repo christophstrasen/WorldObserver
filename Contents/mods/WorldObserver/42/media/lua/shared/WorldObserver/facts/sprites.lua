@@ -179,7 +179,6 @@ local spritesCollector = function(ctx, cursor, square, _playerIndex, nowMs, effe
 			return
 		end
 		local record = sprites.makeSpriteRecord(obj, square, cursor and cursor.source or "probe", {
-			nowMs = nowMs,
 			sprite = extra and extra.sprite or nil,
 			spriteName = extra and extra.spriteName or nil,
 			spriteId = extra and extra.spriteId or nil,
@@ -341,7 +340,6 @@ local function onLoadHandler(state, emitFn)
 		local cooldownMs = math.max(0, cooldownSeconds * 1000)
 
 		local record = Sprites.makeSpriteRecord(isoObject, square, "event", {
-			nowMs = nowMs,
 			sprite = sprite,
 			spriteName = spriteName,
 			spriteId = spriteId,

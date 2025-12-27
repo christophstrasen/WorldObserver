@@ -1,6 +1,5 @@
 -- facts/dead_bodies/record.lua -- builds stable dead body fact records from IsoDeadBody objects.
 local Log = require("LQR/util/log").withTag("WO.FACTS.deadBodies")
-local Time = require("WorldObserver/helpers/time")
 local SafeCall = require("WorldObserver/helpers/safe_call")
 local SquareHelpers = require("WorldObserver/helpers/square")
 
@@ -81,10 +80,6 @@ if Record.applyDeadBodyRecordExtenders == nil then
 	end
 end
 
-local function nowMillis()
-	return Time.gameMillis() or math.floor(os.time() * 1000)
-end
-
 local function coordOf(square, getterName)
 	if square and type(square[getterName]) == "function" then
 		local ok, value = pcall(square[getterName], square)
@@ -120,7 +115,6 @@ if Record.makeDeadBodyRecord == nil then
 			return nil
 		end
 		opts = opts or {}
-		local ts = opts.nowMs or nowMillis()
 
 		if square == nil then
 			square = opts.square
@@ -153,7 +147,6 @@ if Record.makeDeadBodyRecord == nil then
 			z = z,
 			tileLocation = SquareHelpers.record.tileLocationFromCoords(x, y, z),
 			squareId = deriveSquareId(square, x, y, z),
-			sourceTime = ts,
 			source = source,
 		}
 
@@ -166,7 +159,6 @@ if Record.makeDeadBodyRecord == nil then
 	end
 end
 
-Record._internal.nowMillis = nowMillis
 Record._internal.coordOf = coordOf
 Record._internal.deriveSquareId = deriveSquareId
 

@@ -126,7 +126,7 @@ describe("zombies interest and records", function()
 			speedType = 2,
 		}
 
-		local record = Record.makeZombieRecord(zombie, "probe", { nowMs = 123 })
+		local record = Record.makeZombieRecord(zombie, "probe")
 		assert.is_truthy(record)
 		assert.equals(42, record.zombieId)
 		assert.equals(8, record.zombieOnlineId)
@@ -140,8 +140,7 @@ describe("zombies interest and records", function()
 		assert.equals(99, record.targetId)
 		assert.equals(654, record.targetSquareId)
 		assert.equals("TestOutfit", record.outfitName)
-		assert.equals(123, record.sourceTime)
-		assert.equals(123, record.sourceTime)
+		assert.is_nil(record.sourceTime)
 	end)
 
 	it("rehydrates a zombie by id from the cell list", function()

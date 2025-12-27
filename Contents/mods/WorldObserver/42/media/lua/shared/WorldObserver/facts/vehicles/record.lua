@@ -1,6 +1,5 @@
 -- facts/vehicles/record.lua -- builds stable vehicle fact records from BaseVehicle objects.
 local Log = require("LQR/util/log").withTag("WO.FACTS.vehicles")
-local Time = require("WorldObserver/helpers/time")
 local SafeCall = require("WorldObserver/helpers/safe_call")
 local SquareHelpers = require("WorldObserver/helpers/square")
 
@@ -19,10 +18,6 @@ end
 Record._internal = Record._internal or {}
 Record._extensions = Record._extensions or {}
 Record._extensions.vehicleRecord = Record._extensions.vehicleRecord or { order = {}, orderCount = 0, byId = {} }
-
-local function nowMillis()
-	return Time.gameMillis() or math.floor(os.time() * 1000)
-end
 
 local function shouldWarn(opts)
 	if type(opts) == "table" and opts.headless == true then
@@ -127,7 +122,6 @@ if Record.makeVehicleRecord == nil then
 			return nil
 		end
 		opts = opts or {}
-		local ts = opts.nowMs or nowMillis()
 
 		local sqlId = resolveSqlId(vehicle)
 		local vehicleId = SafeCall.safeCall(vehicle, "getId")
@@ -163,7 +157,6 @@ if Record.makeVehicleRecord == nil then
 			hasPassenger = SafeCall.safeCall(vehicle, "hasPassenger") == true,
 			isSirening = SafeCall.safeCall(vehicle, "isSirening") == true,
 			isStopped = SafeCall.safeCall(vehicle, "isStopped") == true,
-			sourceTime = ts,
 			source = source,
 		}
 
@@ -180,7 +173,6 @@ if Record.makeVehicleRecord == nil then
 	end
 end
 
-Record._internal.nowMillis = nowMillis
 Record._internal.resolveSqlId = resolveSqlId
 
 return Record

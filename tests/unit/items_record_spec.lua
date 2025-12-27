@@ -49,7 +49,7 @@ describe("items records", function()
 			end,
 		}
 
-		local record = Record.makeItemRecord(item, square, "probe", { nowMs = 123, worldItem = worldItem })
+		local record = Record.makeItemRecord(item, square, "probe", { worldItem = worldItem })
 		assert.is_table(record)
 		assert.equals(123, record.itemId)
 		assert.equals(10, record.x)
@@ -59,7 +59,7 @@ describe("items records", function()
 		assert.equals(999, record.squareId)
 		assert.equals("Apple", record.itemType)
 		assert.equals("Base.Apple", record.itemFullType)
-		assert.equals(123, record.sourceTime)
+		assert.is_nil(record.sourceTime)
 	end)
 
 	it("includes container metadata and uses inventory id when world id is missing", function()
@@ -98,7 +98,6 @@ describe("items records", function()
 		}
 
 		local record = Record.makeItemRecord(item, square, "player", {
-			nowMs = 456,
 			containerItem = containerItem,
 		})
 		assert.is_table(record)
@@ -107,6 +106,6 @@ describe("items records", function()
 		assert.equals(900, record.containerItemId)
 		assert.equals("Bag", record.containerItemType)
 		assert.equals("Base.Bag", record.containerItemFullType)
-		assert.equals(456, record.sourceTime)
+		assert.is_nil(record.sourceTime)
 	end)
 end)

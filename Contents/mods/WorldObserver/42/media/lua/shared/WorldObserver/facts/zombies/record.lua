@@ -1,6 +1,5 @@
 -- facts/zombies/record.lua -- builds stable zombie fact records from IsoZombie objects.
 local Log = require("LQR/util/log").withTag("WO.FACTS.zombies")
-local Time = require("WorldObserver/helpers/time")
 local SafeCall = require("WorldObserver/helpers/safe_call")
 local SquareHelpers = require("WorldObserver/helpers/square")
 
@@ -81,10 +80,6 @@ if Record.applyZombieRecordExtenders == nil then
 	end
 end
 
-local function nowMillis()
-	return Time.gameMillis() or math.floor(os.time() * 1000)
-end
-
 local function deriveLocomotion(isCrawling, isRunning, isMoving)
 	if isCrawling then
 		return "crawler"
@@ -161,7 +156,6 @@ if Record.makeZombieRecord == nil then
 			return nil
 		end
 		opts = opts or {}
-		local ts = opts.nowMs or nowMillis()
 
 		local x = SafeCall.safeCall(zombie, "getX")
 		local y = SafeCall.safeCall(zombie, "getY")
@@ -227,7 +221,6 @@ if Record.makeZombieRecord == nil then
 				)
 			or nil,
 			outfitName = outfitName,
-			sourceTime = ts,
 			source = source,
 		}
 
@@ -240,7 +233,6 @@ if Record.makeZombieRecord == nil then
 	end
 end
 
-Record._internal.nowMillis = nowMillis
 Record._internal.deriveLocomotion = deriveLocomotion
 Record._internal.deriveSquareId = deriveSquareId
 Record._internal.deriveTargetKind = deriveTargetKind

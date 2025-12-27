@@ -29,6 +29,7 @@ Engine callbacks and probes should not do downstream work directly. They create 
 Core files:
 - Fact registry + ingest scheduler: `Contents/mods/WorldObserver/42/media/lua/shared/WorldObserver/facts/registry.lua:1`
 - Fact layer notes: `docs_internal/fact_layer.md`
+ - Ingest auto-stamps `record.sourceTime` (ms, game clock) when missing so record builders can stay focused on schema fields.
 
 ### Opt-in by interest, and gated by subscribers
 We do work because someone asked for it:

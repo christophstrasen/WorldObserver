@@ -166,7 +166,7 @@ How often the *same key* is allowed to re-emit.
 - For squares, the key is `squareId`.
 - For zombies, the key is `zombieId`.
 - For vehicles, the key is `sqlId` when present, otherwise `vehicleId`.
-- For rooms, the key is `roomId`.
+- For rooms, the key is `roomId` (alias: `roomLocation` for foreign-key joins).
 - For items, the key is `itemId`.
 - For dead bodies, the key is `deadBodyId`.
 - Larger `cooldown` means fewer repeats (lower cost + less spam).

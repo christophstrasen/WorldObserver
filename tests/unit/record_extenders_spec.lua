@@ -94,7 +94,7 @@ describe("record extenders", function()
 			end,
 		}
 
-		local record = RoomRecord.makeRoomRecord(room, "probe", { nowMs = 123 })
+		local record = RoomRecord.makeRoomRecord(room, "probe")
 		assert.is_table(record)
 		assert.is_table(record.extra)
 		assert.is_true(record.extra.extended)
@@ -152,7 +152,7 @@ describe("record extenders", function()
 			speedType = 2,
 		}
 
-		local record = ZombieRecord.makeZombieRecord(zombie, "probe", { nowMs = 123 })
+		local record = ZombieRecord.makeZombieRecord(zombie, "probe")
 		assert.is_table(record)
 		assert.is_table(record.extra)
 		assert.is_true(record.extra.extended)
@@ -189,7 +189,7 @@ describe("record extenders", function()
 			end,
 		}
 
-		local record = VehicleRecord.makeVehicleRecord(vehicle, "probe", { nowMs = 123, headless = true })
+		local record = VehicleRecord.makeVehicleRecord(vehicle, "probe", { headless = true })
 		assert.is_table(record)
 		assert.is_table(record.extra)
 		assert.is_true(record.extra.extended)
@@ -228,7 +228,7 @@ describe("record extenders", function()
 			end,
 		}
 
-		local record = ItemRecord.makeItemRecord(item, square, "probe", { nowMs = 123 })
+		local record = ItemRecord.makeItemRecord(item, square, "probe")
 		assert.is_table(record)
 		assert.is_table(record.extra)
 		assert.is_true(record.extra.extended)
@@ -264,7 +264,7 @@ describe("record extenders", function()
 			end,
 		}
 
-		local record = DeadBodyRecord.makeDeadBodyRecord(body, square, "probe", { nowMs = 123 })
+		local record = DeadBodyRecord.makeDeadBodyRecord(body, square, "probe")
 		assert.is_table(record)
 		assert.is_table(record.extra)
 		assert.is_true(record.extra.extended)
@@ -314,7 +314,7 @@ describe("record extenders", function()
 			end,
 		}
 
-		local record = SpriteRecord.makeSpriteRecord(isoObject, square, "probe", { nowMs = 123 })
+		local record = SpriteRecord.makeSpriteRecord(isoObject, square, "probe")
 		assert.is_table(record)
 		assert.is_table(record.extra)
 		assert.is_true(record.extra.extended)

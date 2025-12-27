@@ -1,6 +1,6 @@
 # AI Context — WorldObserver
 
-Repo-wide guidance for AI agents.
+Repo-wide guidance for AI agents. Please keep this in your context loaded at all times and follow the instructions.
 
 ## Interaction Rules
 - Assume this context is attached for every task; call out missing info instead of guessing.

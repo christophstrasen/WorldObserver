@@ -35,7 +35,7 @@ describe("dead body records", function()
 			end,
 		}
 
-		local record = Record.makeDeadBodyRecord(body, square, "probe", { nowMs = 123 })
+		local record = Record.makeDeadBodyRecord(body, square, "probe")
 		assert.is_table(record)
 		assert.equals(42, record.deadBodyId)
 		assert.equals(10, record.x)
@@ -43,7 +43,7 @@ describe("dead body records", function()
 		assert.equals(0, record.z)
 		assert.equals("x10y20z0", record.tileLocation)
 		assert.equals(999, record.squareId)
-		assert.equals(123, record.sourceTime)
+		assert.is_nil(record.sourceTime)
 		assert.equals("probe", record.source)
 	end)
 
@@ -69,7 +69,6 @@ describe("dead body records", function()
 		}
 
 		local record = Record.makeDeadBodyRecord(body, nil, "player", {
-			nowMs = 456,
 			includeIsoDeadBody = true,
 		})
 		assert.is_table(record)

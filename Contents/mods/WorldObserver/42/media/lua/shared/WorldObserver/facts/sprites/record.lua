@@ -1,6 +1,5 @@
 -- facts/sprites/record.lua -- builds stable sprite fact records from IsoObject instances.
 local Log = require("LQR/util/log").withTag("WO.FACTS.sprites")
-local Time = require("WorldObserver/helpers/time")
 local SafeCall = require("WorldObserver/helpers/safe_call")
 local SquareHelpers = require("WorldObserver/helpers/square")
 
@@ -79,10 +78,6 @@ if Record.applySpriteRecordExtenders == nil then
 			end
 		end
 	end
-end
-
-local function nowMillis()
-	return Time.gameMillis() or math.floor(os.time() * 1000)
 end
 
 local function coordOf(square, getterName)
@@ -164,7 +159,6 @@ if Record.makeSpriteRecord == nil then
 			return nil
 		end
 		opts = opts or {}
-		local ts = opts.nowMs or nowMillis()
 
 		if square == nil then
 			square = opts.square
@@ -220,7 +214,6 @@ if Record.makeSpriteRecord == nil then
 			tileLocation = SquareHelpers.record.tileLocationFromCoords(x, y, z),
 			squareId = deriveSquareId(square, x, y, z),
 			objectIndex = objectIndex,
-			sourceTime = ts,
 			source = source,
 		}
 

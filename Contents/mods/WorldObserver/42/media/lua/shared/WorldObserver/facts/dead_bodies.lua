@@ -92,13 +92,12 @@ local deadBodiesCollector = GroundEntities.buildSquareCollector({
 	collectOnSquare = function(square, _recordOpts, visitor)
 		return collectDeadBodiesOnSquare(square, visitor)
 	end,
-	makeRecord = function(ctx, body, square, source, nowMs, recordOpts, _extra)
+	makeRecord = function(ctx, body, square, source, _nowMs, recordOpts, _extra)
 		local deadBodies = ctx and ctx.deadBodies
 		if not (deadBodies and type(deadBodies.makeDeadBodyRecord) == "function") then
 			return nil
 		end
 		return deadBodies.makeDeadBodyRecord(body, square, source, {
-			nowMs = nowMs,
 			includeIsoDeadBody = recordOpts and recordOpts.includeIsoDeadBody,
 		})
 	end,
@@ -129,13 +128,12 @@ local function tickPlayerSquare(ctx)
 		collectOnSquare = function(square, _recordOpts, visitor)
 			return collectDeadBodiesOnSquare(square, visitor)
 		end,
-		makeRecord = function(innerCtx, body, square, source, nowMs, recordOpts, _extra)
+		makeRecord = function(innerCtx, body, square, source, _nowMs, recordOpts, _extra)
 			local deadBodies = innerCtx and innerCtx.deadBodies
 			if not (deadBodies and type(deadBodies.makeDeadBodyRecord) == "function") then
 				return nil
 			end
 			return deadBodies.makeDeadBodyRecord(body, square, source, {
-				nowMs = nowMs,
 				includeIsoDeadBody = recordOpts and recordOpts.includeIsoDeadBody,
 			})
 		end,

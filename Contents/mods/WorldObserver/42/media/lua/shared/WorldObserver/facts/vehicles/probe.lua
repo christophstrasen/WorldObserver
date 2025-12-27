@@ -195,7 +195,7 @@ if Probe.tick == nil then
 			state.sweepProcessed = (state.sweepProcessed or 0) + 1
 
 			if vehicle then
-				local record = makeVehicleRecord(vehicle, "probe", { nowMs = nowMs, headless = ctx.headless })
+				local record = makeVehicleRecord(vehicle, "probe", { headless = ctx.headless })
 				local key = record and Record.keyFromRecord(record) or nil
 				if key ~= nil and Cooldown.shouldEmit(state.lastEmittedById, key, nowMs, cooldownMs) then
 					if ctx.emitFn then

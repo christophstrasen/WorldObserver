@@ -14,7 +14,7 @@ _G.LQR_HEADLESS = true
 local Record = require("WorldObserver/facts/rooms/record")
 
 describe("rooms records", function()
-	it("stamps sourceTime consistently", function()
+	it("builds a stable room record", function()
 		local roomDef = {
 			getID = function()
 				return 99
@@ -55,15 +55,16 @@ describe("rooms records", function()
 			end,
 		}
 
-		local record = Record.makeRoomRecord(room, "event", { nowMs = 123 })
+		local record = Record.makeRoomRecord(room, "event")
 		assert.is_table(record)
 		assert.equals("x10y20z3", record.roomId)
+		assert.equals("x10y20z3", record.roomLocation)
 		assert.equals("x10y20z3", record.tileLocation)
 		assert.equals(99, record.roomDefId)
 		assert.equals(7, record.buildingId)
 		assert.equals("kitchen", record.name)
 		assert.is_true(record.hasWater)
-		assert.equals(123, record.sourceTime)
+		assert.is_nil(record.sourceTime)
 	end)
 
 	it("falls back to first square id when roomDef id is unavailable", function()
@@ -89,9 +90,10 @@ describe("rooms records", function()
 			end,
 		}
 
-		local record = Record.makeRoomRecord(room, "probe", { nowMs = 456 })
+		local record = Record.makeRoomRecord(room, "probe")
 		assert.is_table(record)
 		assert.equals("x10y20z3", record.roomId)
+		assert.equals("x10y20z3", record.roomLocation)
 		assert.equals("x10y20z3", record.tileLocation)
 		assert.is_nil(record.roomDefId)
 	end)
@@ -123,9 +125,10 @@ describe("rooms records", function()
 			end,
 		}
 
-		local record = Record.makeRoomRecord(room, "probe", { nowMs = 789 })
+		local record = Record.makeRoomRecord(room, "probe")
 		assert.is_table(record)
 		assert.equals("x1y2z0", record.roomId)
+		assert.equals("x1y2z0", record.roomLocation)
 		assert.equals("x1y2z0", record.tileLocation)
 		assert.equals(99, record.roomDefId)
 	end)

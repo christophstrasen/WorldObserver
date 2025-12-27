@@ -74,6 +74,55 @@ describe("FactRegistry with ingest", function()
 		assert.is.equal(1, received[1].id)
 	end)
 
+	it("stamps sourceTime on ingest when missing", function()
+		local received = {}
+
+		local runtime = Runtime.new({ windowTicks = 2, reportEveryWindows = 0 })
+		runtime._wallClock = function()
+			return 4242
+		end
+
+		local registry = FactRegistry.new({
+			ingest = {
+				scheduler = {
+					maxItemsPerTick = 10,
+					quantum = 1,
+				},
+			},
+			testfacts = {
+				ingest = {
+					enabled = true,
+					mode = "latestByKey",
+					capacity = 10,
+					ordering = "fifo",
+					priority = 1,
+				},
+			},
+		}, runtime)
+
+		registry:register("testfacts", {
+			ingest = {
+				mode = "latestByKey",
+				key = function(item)
+					return item.id
+				end,
+			},
+			start = function(ctx)
+				ctx.ingest({ id = 1 })
+			end,
+		})
+
+		registry:getObservable("testfacts"):subscribe(function(item)
+			table.insert(received, item)
+		end)
+
+		registry:onSubscribe("testfacts")
+		registry:drainSchedulerOnceForTests()
+
+		assert.is.equal(1, #received)
+		assert.is.equal(4242, received[1].sourceTime)
+	end)
+
 	it("emergency reset clears ingest buffers and resets metrics", function()
 		local runtime = Runtime.new({ windowTicks = 2, reportEveryWindows = 0 })
 		local registry = FactRegistry.new({

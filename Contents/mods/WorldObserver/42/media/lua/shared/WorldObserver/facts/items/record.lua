@@ -1,6 +1,5 @@
 -- facts/items/record.lua -- builds stable item fact records from world/inventory item objects.
 local Log = require("LQR/util/log").withTag("WO.FACTS.items")
-local Time = require("WorldObserver/helpers/time")
 local SafeCall = require("WorldObserver/helpers/safe_call")
 local SquareHelpers = require("WorldObserver/helpers/square")
 
@@ -81,10 +80,6 @@ if Record.applyItemRecordExtenders == nil then
 	end
 end
 
-local function nowMillis()
-	return Time.gameMillis() or math.floor(os.time() * 1000)
-end
-
 local function coordOf(square, getterName)
 	if square and type(square[getterName]) == "function" then
 		local ok, value = pcall(square[getterName], square)
@@ -140,7 +135,6 @@ if Record.makeItemRecord == nil then
 			return nil
 		end
 		opts = opts or {}
-		local ts = opts.nowMs or nowMillis()
 		local worldItem = opts.worldItem
 		local containerItem = opts.containerItem
 		local containerWorldItem = opts.containerWorldItem
@@ -179,7 +173,6 @@ if Record.makeItemRecord == nil then
 			z = z,
 			tileLocation = SquareHelpers.record.tileLocationFromCoords(x, y, z),
 			squareId = deriveSquareId(square, x, y, z),
-			sourceTime = ts,
 			source = source,
 		}
 
@@ -201,7 +194,6 @@ if Record.makeItemRecord == nil then
 	end
 end
 
-Record._internal.nowMillis = nowMillis
 Record._internal.coordOf = coordOf
 Record._internal.deriveSquareId = deriveSquareId
 Record._internal.resolveItemId = resolveItemId

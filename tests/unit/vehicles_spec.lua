@@ -38,7 +38,7 @@ describe("vehicles records", function()
 			end,
 		}
 
-		local record = Record.makeVehicleRecord(vehicle, "probe", { nowMs = 123, headless = true })
+		local record = Record.makeVehicleRecord(vehicle, "probe", { headless = true })
 		assert.is_table(record)
 		assert.equals(123, record.sqlId)
 		assert.equals(77, record.vehicleId)
@@ -50,7 +50,7 @@ describe("vehicles records", function()
 		assert.equals(0, record.z)
 		assert.equals("Base.CarNormal", record.scriptName)
 		assert.equals(square, record.IsoGridSquare)
-		assert.equals(123, record.sourceTime)
+		assert.is_nil(record.sourceTime)
 		assert.equals("probe", record.source)
 	end)
 
@@ -75,7 +75,7 @@ describe("vehicles records", function()
 			end,
 		}
 
-		local record = Record.makeVehicleRecord(vehicle, "event", { nowMs = 10, headless = true })
+		local record = Record.makeVehicleRecord(vehicle, "event", { headless = true })
 		assert.is_table(record)
 		assert.is_nil(record.sqlId)
 		assert.equals(5, record.vehicleId)
@@ -99,7 +99,7 @@ describe("vehicles records", function()
 			end,
 		}
 
-		local record = Record.makeVehicleRecord(vehicle, "probe", { nowMs = 20, headless = true })
+		local record = Record.makeVehicleRecord(vehicle, "probe", { headless = true })
 		assert.is_nil(record)
 	end)
 end)

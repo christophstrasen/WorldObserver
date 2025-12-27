@@ -145,14 +145,13 @@ local itemsCollector = GroundEntities.buildSquareCollector({
 		return (ctx and ctx.recordOpts) or Items._defaults.recordOpts
 	end,
 	collectOnSquare = collectItemsOnSquareForGroundEntities,
-	makeRecord = function(ctx, item, square, source, nowMs, recordOpts, extra)
+	makeRecord = function(ctx, item, square, source, _nowMs, recordOpts, extra)
 		local items = ctx and ctx.items
 		if not (items and type(items.makeItemRecord) == "function") then
 			return nil
 		end
 		extra = extra or {}
 		return items.makeItemRecord(item, square, source, {
-			nowMs = nowMs,
 			worldItem = extra.worldItem,
 			containerItem = extra.containerItem,
 			containerWorldItem = extra.containerWorldItem,
@@ -183,14 +182,13 @@ local function tickPlayerSquare(ctx)
 			return (innerCtx and innerCtx.recordOpts) or Items._defaults.recordOpts
 		end,
 		collectOnSquare = collectItemsOnSquareForGroundEntities,
-		makeRecord = function(innerCtx, item, square, source, nowMs, recordOpts, extra)
+		makeRecord = function(innerCtx, item, square, source, _nowMs, recordOpts, extra)
 			extra = extra or {}
 			local items = innerCtx and innerCtx.items
 			if not (items and type(items.makeItemRecord) == "function") then
 				return nil
 			end
 			return items.makeItemRecord(item, square, source, {
-				nowMs = nowMs,
 				worldItem = extra.worldItem,
 				containerItem = extra.containerItem,
 				containerWorldItem = extra.containerWorldItem,

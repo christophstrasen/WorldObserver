@@ -44,7 +44,7 @@ local function emitWithCooldown(ctx, vehicle, effective)
 	local emittedByKey = state._onSpawn.lastEmittedById
 
 	local nowMs = nowMillis()
-	local record = ctx.makeVehicleRecord(vehicle, "event", { nowMs = nowMs, headless = ctx.headless })
+	local record = ctx.makeVehicleRecord(vehicle, "event", { headless = ctx.headless })
 	if record == nil then
 		return false
 	end

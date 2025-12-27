@@ -3,6 +3,7 @@ local rx = require("reactivex")
 local Ingest = require("LQR/ingest")
 local Log = require("LQR/util/log").withTag("WO.FACTS")
 local IngestLog = require("LQR/util/log").withTag("WO.INGEST")
+local SourceHelpers = require("WorldObserver/helpers/source")
 local Time = require("WorldObserver/helpers/time")
 
 local FactRegistry = {}
@@ -12,22 +13,57 @@ local function nowMillis()
 	return Time.gameMillis()
 end
 
+local function resolveRecordSourceTime(runtime, record)
+	if type(record) ~= "table" then
+		return nil
+	end
+	if type(record.sourceTime) == "number" then
+		return record.sourceTime
+	end
+	local meta = record.RxMeta
+	if type(meta) == "table" and type(meta.sourceTime) == "number" then
+		return meta.sourceTime
+	end
+	if runtime and type(runtime.nowWall) == "function" then
+		local ts = runtime:nowWall()
+		if type(ts) == "number" then
+			return ts
+		end
+	end
+	local ts = nowMillis()
+	if type(ts) == "number" then
+		return ts
+	end
+	return nil
+end
+
+local function stampRecordSourceTime(runtime, record)
+	if type(record) ~= "table" then
+		return record
+	end
+	if type(record.sourceTime) ~= "number" then
+		local ts = resolveRecordSourceTime(runtime, record)
+		if type(ts) == "number" then
+			record.sourceTime = ts
+		end
+	end
+	return record
+end
+
 local function defaultContext(self, entry)
 	-- Lazy start hooks get a tiny context; ingest defaults to direct emit when ingest is disabled.
+	local function emitRecord(record)
+		if record ~= nil then
+			stampRecordSourceTime(self._runtime, record)
+			entry.rxSubject:onNext(record)
+		end
+	end
 	return {
 		config = entry.config or {},
 		state = entry.state,
 		runtime = self._runtime,
-		emit = function(record)
-			if record ~= nil then
-				entry.rxSubject:onNext(record)
-			end
-		end,
-		ingest = function(record)
-			if record ~= nil then
-				entry.rxSubject:onNext(record)
-			end
-		end,
+		emit = emitRecord,
+		ingest = emitRecord,
 	}
 end
 
@@ -362,6 +398,7 @@ end
 				end
 				ctx.ingest = function(record)
 					if record ~= nil then
+						stampRecordSourceTime(self._runtime, record)
 						entry.buffer:ingest({
 							payload = record,
 							__emit = emitFn,
@@ -524,10 +561,11 @@ function FactRegistry:drainSchedulerOnce()
 			local emitFn = item.__emit
 			local record = item.payload or item
 			if type(record) == "table" and (record.hasCorpse == true or record.hasBloodSplat == true or record.hasTrashItems == true) then
+				local qualifiedSource = SourceHelpers.record and SourceHelpers.record.qualifiedSource and SourceHelpers.record.qualifiedSource(record) or nil
 				IngestLog:debug(
 					"Draining record squareId=%s source=%s corpse=%s blood=%s trash=%s sourceTime=%s",
 					tostring(record.squareId),
-					tostring(record.source),
+					tostring(qualifiedSource or record.source),
 					tostring(record.hasCorpse),
 					tostring(record.hasBloodSplat),
 					tostring(record.hasTrashItems),

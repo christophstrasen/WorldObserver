@@ -1,5 +1,6 @@
 -- debug.lua -- minimal debug helpers to introspect whether facts/streams are registered.
 local Log = require("LQR/util/log").withTag("WO.DIAG")
+local SourceHelpers = require("WorldObserver/helpers/source")
 
 local moduleName = ...
 local Debug = {}
@@ -103,7 +104,14 @@ local function formatRecordCompact(record, opts)
 			parts[#parts + 1] = "…"
 			break
 		end
-		parts[#parts + 1] = ("%s=%s"):format(k, formatValue(record[k]))
+		local value = record[k]
+		if k == "source" then
+			local qualified = SourceHelpers.record and SourceHelpers.record.qualifiedSource and SourceHelpers.record.qualifiedSource(record) or nil
+			if qualified ~= nil then
+				value = qualified
+			end
+		end
+		parts[#parts + 1] = ("%s=%s"):format(k, formatValue(value))
 		fieldCount = fieldCount + 1
 	end
 

@@ -61,8 +61,8 @@ Goal: validate stable keys, required fields, and optional hydration fields.
 
 Pattern:
 - Stub the minimum “Iso*” surface as plain Lua tables with methods.
-- Call `Record.makeXRecord(..., { nowMs = <fixed> })` when supported.
-- Assert key fields + `sourceTime`.
+- Call `Record.makeXRecord(...)` with the minimum options required for the record shape.
+- Assert key fields. `sourceTime` is stamped at ingest, so record builders should usually leave it `nil` unless explicitly overridden.
 
 Examples in the suite:
 - `tests/unit/items_record_spec.lua`

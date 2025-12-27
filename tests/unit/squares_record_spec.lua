@@ -14,7 +14,7 @@ _G.LQR_HEADLESS = true
 local Record = require("WorldObserver/facts/squares/record")
 
 describe("squares records", function()
-	it("stamps sourceTime consistently", function()
+	it("does not stamp sourceTime by default", function()
 		local square = {
 			getX = function()
 				return 1
@@ -36,6 +36,6 @@ describe("squares records", function()
 		local record = Record.makeSquareRecord(square, "probe")
 		assert.is_table(record)
 		assert.equals("x1y2z0", record.tileLocation)
-		assert.is_number(record.sourceTime)
+		assert.is_nil(record.sourceTime)
 	end)
 end)

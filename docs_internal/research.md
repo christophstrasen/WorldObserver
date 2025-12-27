@@ -121,13 +121,14 @@ https://pzwiki.net/wiki/OnHitZombie
 
 https://pzwiki.net/wiki/OnNewFire
 
-# PlayerDamageObservation
-
-https://pzwiki.net/wiki/OnPlayerGetDamage
-
-# PlayerMovementObservation
+# PlayerObservationn
 
 https://pzwiki.net/wiki/OnPlayerMove
+OnPlayerUpdate
+
+## PlayerDamageObservation
+
+https://pzwiki.net/wiki/OnPlayerGetDamage
 
 # RoomObservation
 
@@ -185,6 +186,8 @@ https://pzwiki.net/wiki/OnWeaponHitCharacter
 https://pzwiki.net/wiki/OnWeaponHitThumpable
 https://pzwiki.net/wiki/OnWeaponHitTree
 https://pzwiki.net/wiki/OnWeaponHitXp
+
+https://demiurgequantified.github.io/ProjectZomboidLuaDocs/md_Hooks.html like WeaponSwing
 
 # WeaponUseObservation
 

@@ -269,7 +269,7 @@ if Probe.tick == nil then
 			state.sweepProcessed = (state.sweepProcessed or 0) + 1
 
 			if zombie then
-				local record = makeZombieRecord(zombie, "probe", { nowMs = nowMs })
+				local record = makeZombieRecord(zombie, "probe")
 				if record and record.zombieId ~= nil then
 					local inRange = false
 					for i = 1, #players do
