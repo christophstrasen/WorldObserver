@@ -19,6 +19,12 @@ local stream = WorldObserver.observations:squares()
   :distinct("square", 10)
 ```
 
+```lua
+local stream = WorldObserver.observations:zombies()
+  :hasOutfit("Biker")
+  :distinct("zombie", 10)
+```
+
 2) **As namespaced helpers** (explicit + avoids name collisions)
 
 ```lua
@@ -39,6 +45,15 @@ local SquareHelper = WorldObserver.helpers.square.record
 local stream = WorldObserver.observations:squares()
   :squareFilter(function(squareRecord)
     return SquareHelper.squareHasCorpse(squareRecord)
+  end)
+```
+
+```lua
+local ZombieHelper = WorldObserver.helpers.zombie.record
+
+local stream = WorldObserver.observations:zombies()
+  :zombieFilter(function(zombieRecord)
+    return ZombieHelper.zombieHasOutfit(zombieRecord, { "Biker", "Police" })
   end)
 ```
 

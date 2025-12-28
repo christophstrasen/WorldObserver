@@ -37,8 +37,9 @@ end
 	local ItemsFacts = require("WorldObserver/facts/items")
 	local DeadBodiesFacts = require("WorldObserver/facts/dead_bodies")
 	local SpritesFacts = require("WorldObserver/facts/sprites")
-	local VehiclesFacts = require("WorldObserver/facts/vehicles")
+local VehiclesFacts = require("WorldObserver/facts/vehicles")
 local ObservationsCore = require("WorldObserver/observations/core")
+local SituationsRegistry = require("WorldObserver/situations/registry")
 local SquaresObservations = require("WorldObserver/observations/squares")
 local ZombiesObservations = require("WorldObserver/observations/zombies")
 local PlayersObservations = require("WorldObserver/observations/players")
@@ -157,6 +158,8 @@ local observationRegistry = ObservationsCore.new({
 	},
 })
 
+local situationsRegistry = SituationsRegistry.new()
+
 SquaresObservations.register(observationRegistry, factRegistry, ObservationsCore.nextObservationId)
 ZombiesObservations.register(observationRegistry, factRegistry, ObservationsCore.nextObservationId)
 PlayersObservations.register(observationRegistry, factRegistry, ObservationsCore.nextObservationId)
@@ -169,6 +172,7 @@ VehiclesObservations.register(observationRegistry, factRegistry, ObservationsCor
 WorldObserver = {
 	config = config,
 	observations = observationRegistry:api(),
+	situations = situationsRegistry:api(),
 	factInterest = {
 		declare = function(_, modId, key, spec, opts)
 			return interestRegistry:declare(modId, key, spec, opts)
@@ -210,6 +214,7 @@ WorldObserver = {
 		runtime = runtime,
 		facts = factRegistry,
 		observationRegistry = observationRegistry,
+		situations = situationsRegistry,
 		factInterest = interestRegistry,
 		runtimeDiagnosticsHandle = nil,
 	},

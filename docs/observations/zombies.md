@@ -71,6 +71,7 @@ If you need extra fields on `observation.zombie`, register a record extender:
 ```lua
 local stream = WorldObserver.observations:zombies()
   :zombieHasTarget()
+  :hasOutfit("Biker")
   :distinct("zombie", 2)
 ```
 
@@ -85,9 +86,11 @@ local stream = WorldObserver.observations:zombies()
 
 Available today:
 - `:zombieHasTarget()` (keeps only zombies that currently have a target)
+- `:hasOutfit(nameOrList)` (keeps only zombies whose `outfitName` matches a string or list)
 
 Record helpers (use inside `:zombieFilter(...)` or inside Rx `:filter(...)` after `:asRx()`):
 - `WorldObserver.helpers.zombie.record.zombieHasTarget(zombieRecord)`
+- `WorldObserver.helpers.zombie.record.zombieHasOutfit(zombieRecord, nameOrList)`
 
 ## Supported interest configuration (today)
 

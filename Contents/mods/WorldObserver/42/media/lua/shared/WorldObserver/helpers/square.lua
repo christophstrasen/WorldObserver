@@ -155,22 +155,6 @@ end
 
 	local GRASS_PREFIX = "blends_natural"
 
-	local KNOWN_HEDGE_SPRITES = {
-	-- Tall Hedge sprites. (Keep this list small and curated.)
-	vegetation_ornamental_01_0 = true,
-	vegetation_ornamental_01_1 = true,
-	vegetation_ornamental_01_2 = true,
-	vegetation_ornamental_01_3 = true,
-	vegetation_ornamental_01_4 = true,
-	vegetation_ornamental_01_5 = true,
-	vegetation_ornamental_01_6 = true,
-	vegetation_ornamental_01_7 = true,
-	vegetation_ornamental_01_10 = true,
-	vegetation_ornamental_01_11 = true,
-	vegetation_ornamental_01_12 = true,
-	vegetation_ornamental_01_13 = true,
-}
-
 	local function validateIsoGridSquare(squareRecord, isoGridSquare)
 		if type(squareRecord) ~= "table" then
 			return nil
@@ -423,40 +407,6 @@ end
 			end
 
 		return Highlight.highlightTarget(floor, opts)
-	end
-end
-
-if SquareHelpers.squareHasHedge == nil then
-	function SquareHelpers.squareHasHedge(square)
-		if not square then
-			return false
-		end
-
-		local list = square:getLuaTileObjectList()
-		if not list then
-			return false
-		end
-
-		for i = 1, #list do
-			local obj = list[i]
-			if obj then
-				local sn = obj:getSpriteName()
-				if sn then
-					-- Fast exact match first.
-					if KNOWN_HEDGE_SPRITES[sn] then
-						return true
-					end
-
-					-- Optional slow fallback: avoid if you can maintain a real list.
-					-- If you keep it, do a case-sensitive find first (cheaper, no alloc).
-					if string.find(sn, "hedge", 1, true) ~= nil then
-						return true
-					end
-				end
-			end
-		end
-
-		return false
 	end
 end
 

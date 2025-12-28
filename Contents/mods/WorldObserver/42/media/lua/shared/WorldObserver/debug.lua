@@ -20,13 +20,22 @@ local function isScalar(valueType)
 	return valueType == "string" or valueType == "number" or valueType == "boolean"
 end
 
-local function formatValue(value)
-	local t = type(value)
-	if isScalar(t) then
-		return tostring(value)
-	end
-	if value == nil then
-		return "nil"
+	local function formatValue(value)
+		local t = type(value)
+		if t == "number" then
+			-- Large timestamps (ms) are common in WorldObserver (sourceTime). Lua may render them in scientific
+			-- notation, which is hard to read in logs. Prefer an integer-like formatting for large numbers.
+			local abs = math.abs(value)
+			if abs >= 1e9 then
+				return string.format("%.0f", value)
+			end
+			return tostring(value)
+		end
+		if isScalar(t) then
+			return tostring(value)
+		end
+		if value == nil then
+			return "nil"
 	end
 	return "<" .. t .. ">"
 end

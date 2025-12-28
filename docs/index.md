@@ -11,7 +11,8 @@ Recommended reading order:
 4. [Observations overview](observations/index.md)
 5. [Lifecycle: subscriptions and interest leases](guides/lifecycle.md)
 6. [Stream basics](guides/stream_basics.md)
-7. [Troubleshooting](troubleshooting.md)
+7. [Situation factories (named situations)](guides/situation_factories.md)
+8. [Troubleshooting](troubleshooting.md)
 
 ## Pages
 
@@ -25,6 +26,7 @@ Recommended reading order:
 - [Architecture rationale (why WO is built this way)](architecture_rationale.md)
 - [Lifecycle (unsubscribe + stop/renew leases)](guides/lifecycle.md)
 - [Stream basics](guides/stream_basics.md)
+- [Situation factories (named situations)](guides/situation_factories.md)
 - [Helpers (built-in and extending)](guides/helpers.md)
 - [Debugging and performance](guides/debugging_and_performance.md)
 - [Derived streams (multi-family observations)](guides/derived_streams.md)

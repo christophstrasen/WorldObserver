@@ -88,8 +88,40 @@ local function zombieHasTarget(zombieRecord)
 	return type(zombieRecord) == "table" and zombieRecord.hasTarget == true
 end
 
+local function outfitMatches(outfitName, expected)
+	if type(outfitName) ~= "string" or outfitName == "" then
+		return false
+	end
+	if type(expected) == "string" then
+		return outfitName == expected
+	end
+	if type(expected) == "table" then
+		for key, value in pairs(expected) do
+			if type(key) == "number" and type(value) == "string" then
+				if outfitName == value then
+					return true
+				end
+			elseif type(key) == "string" and value == true then
+				if outfitName == key then
+					return true
+				end
+			end
+		end
+	end
+	return false
+end
+
 if ZombieHelpers.record.zombieHasTarget == nil then
 	ZombieHelpers.record.zombieHasTarget = zombieHasTarget
+end
+
+if ZombieHelpers.record.zombieHasOutfit == nil then
+	function ZombieHelpers.record.zombieHasOutfit(zombieRecord, expected)
+		if type(zombieRecord) ~= "table" then
+			return false
+		end
+		return outfitMatches(zombieRecord.outfitName, expected)
+	end
 end
 
 -- Stream sugar: apply a predicate to the zombie record directly.
@@ -147,6 +179,33 @@ end
 if ZombieHelpers.stream.zombieHasTarget == nil then
 	function ZombieHelpers.stream.zombieHasTarget(stream, fieldName, ...)
 		return ZombieHelpers.zombieHasTarget(stream, fieldName, ...)
+	end
+end
+
+-- Filter zombies by outfit name (string) or by a list/set of outfit names (table).
+if ZombieHelpers.hasOutfit == nil then
+	function ZombieHelpers.hasOutfit(stream, fieldName, expected)
+		local target = fieldName or "zombie"
+		return stream:filter(function(observation)
+			local zombieRecord = zombieField(observation, target)
+			return ZombieHelpers.record.zombieHasOutfit(zombieRecord, expected)
+		end)
+	end
+end
+if ZombieHelpers.stream.hasOutfit == nil then
+	function ZombieHelpers.stream.hasOutfit(stream, fieldName, ...)
+		return ZombieHelpers.hasOutfit(stream, fieldName, ...)
+	end
+end
+
+if ZombieHelpers.zombieHasOutfit == nil then
+	function ZombieHelpers.zombieHasOutfit(stream, fieldName, ...)
+		return ZombieHelpers.hasOutfit(stream, fieldName, ...)
+	end
+end
+if ZombieHelpers.stream.zombieHasOutfit == nil then
+	function ZombieHelpers.stream.zombieHasOutfit(stream, fieldName, ...)
+		return ZombieHelpers.zombieHasOutfit(stream, fieldName, ...)
 	end
 end
 

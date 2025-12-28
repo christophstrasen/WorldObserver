@@ -176,7 +176,7 @@ Common examples:
 ### Public facade
 - `Contents/mods/WorldObserver/42/media/lua/shared/WorldObserver.lua`
   - Loads config, creates runtime + registries, registers fact types and observation streams.
-  - Exposes the public API table: `WorldObserver.config`, `WorldObserver.observations.*`, `WorldObserver.factInterest`, `WorldObserver.helpers.*`, `WorldObserver.runtime`, `WorldObserver.debug`.
+  - Exposes the public API table: `WorldObserver.config`, `WorldObserver.observations.*`, `WorldObserver.situations.*`, `WorldObserver.factInterest`, `WorldObserver.helpers.*`, `WorldObserver.runtime`, `WorldObserver.debug`.
 
 ### Configuration + live overrides
 - `Contents/mods/WorldObserver/42/media/lua/shared/WorldObserver/config.lua`
@@ -257,6 +257,21 @@ Observation streams are thin wrappers over fact observables:
   - Registers stream builders, wraps schemas, attaches helper methods, ensures facts are started on subscribe.
 - `Contents/mods/WorldObserver/42/media/lua/shared/WorldObserver/observations/*.lua`
   - One per type (`squares`, `zombies`, `rooms`, `items`, `deadBodies`).
+
+### Situations layer (named, parameterized stream factories)
+Situation factories are a small registry that lets mods name and parameterize “situation streams” (subscribable streams that emit observations). Instead of carrying around the subscription to an observation stream (which in our domain counts as a situation), this allows user to access them via a registry when needed. 
+This registry is lightweight and un-opinionated. The complexity of parameterization and “templating” is entirely up to the modder.
+
+This is also the only "truly namespaced" part of WorldObserver.
+
+Key file:
+- `Contents/mods/WorldObserver/42/media/lua/shared/WorldObserver/situations/registry.lua`
+  - Owns the in-memory registry, overwrite semantics, and the namespaced facade returned by `WorldObserver.situations.namespace("<modId>")`.
+
+Important boundary notes:
+- Situation factories do not declare interest; they are a packaging/reuse mechanism on top of `WorldObserver.observations:*` streams.
+- For lifecycle safety, prefer factories that return an `ObservationStream` (or a derived stream built via `WorldObserver.observations:derive(...)`).
+  - If you subscribe to the lower-level query directly, WorldObserver may not notice that you’re listening. That can lead to missing data (facts never start) or surprising “it stops when other subscribers stop” behavior, and you lose the “safe by default” lifecycle expectations.
 
 ### Helpers (stream helpers + safe engine access)
 Helpers serve two roles:

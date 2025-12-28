@@ -31,8 +31,9 @@ Keep a clear split between user-facing docs and internal design notes:
     - `docs/observations/` — what’s available (“squares”, “zombies”, …) + what each emits.
     - `docs/guides/` — workflows (declare interest, make a derived observation, debug).
       - `docs/guides/interest.md` — how to declare interest, pick interest `type`, and tune `radius`/`staleness`/`cooldown` (incl. trade-offs).
-      - `docs/guides/debugging_and_performance.md` — how to confirm WO is running, inspect merged interest, enable diagnostics, and tune for safety/cost.
-      - `docs/guides/derived_streams.md` — multi-family derived streams (streams whose observations carry more than one family, e.g. both `observation.square` and `observation.zombie`) and safe consumption patterns.
+    - `docs/guides/debugging_and_performance.md` — how to confirm WO is running, inspect merged interest, enable diagnostics, and tune for safety/cost.
+    - `docs/guides/situation_factories.md` — how to name and parameterize reusable “situation streams” on top of observations (and how to subscribe/stop cleanly).
+    - `docs/guides/derived_streams.md` — multi-family derived streams (streams whose observations carry more than one family, e.g. both `observation.square` and `observation.zombie`) and safe consumption patterns.
         - Explain how to read and guard multi-family observations (only use fields you expect; don’t assume every family is present).
         - Show how to filter with family sugar (`:squareFilter(...)`, `:zombieFilter(...)`) when you only care about one family.
         - Show how to handle “both are present” logic (e.g. “zombie has target and is on a bloody square”) without turning it into a big nil-check mess.

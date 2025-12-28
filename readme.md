@@ -113,6 +113,7 @@ Docs:
 - [Docs index](docs/index.md) (start here)
 - [Quickstart](docs/quickstart.md) (copy/paste first working example)
 - [Observations overview](docs/observations/index.md) (what you can subscribe to)
+- [Situation factories](docs/guides/situation_factories.md) (name and reuse situation streams)
 - [Glossary](docs/glossary.md) (canonical terminology)
 - [Troubleshooting](docs/troubleshooting.md)
 
