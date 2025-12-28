@@ -22,10 +22,10 @@ LQR_DEST="$DEST_WRAPPER/Contents/mods/$MOD_NAME/42/media/lua/shared/LQR"
 REACTIVEX_SRC="external/lua-reactivex"
 REACTIVEX_DEST="$DEST_WRAPPER/Contents/mods/$MOD_NAME/42/media/lua/shared"
 
-# PromiseKeeper lives in the SceneBuilder repo but is shipped as a library payload.
-# We mirror only the Lua payload (PromiseKeeper/ + PromiseKeeper.lua) into SceneBuilder's shared root.
-PROMISEKEEPER_SRC="external/PromiseKeeper/Contents/mods/SceneBuilder/42/media/lua/shared"
-PROMISEKEEPER_DEST="$DEST_WRAPPER/Contents/mods/SceneBuilder/42/media/lua/shared"
+# PromiseKeeper is shipped as its own mod payload.
+# We mirror the entire mod folder into the Workshop mod root.
+PROMISEKEEPER_SRC="external/PromiseKeeper/Contents/mods/PromiseKeeper"
+PROMISEKEEPER_DEST="$DEST_WRAPPER/Contents/mods/PromiseKeeper"
 
 # Root-level shims so PZ can require folder modules without init.lua auto-loading.
 SHIM_DEST="$DEST_WRAPPER/Contents/mods/$MOD_NAME/42/media/lua/shared"
@@ -44,8 +44,7 @@ RSYNC_EXCLUDES=(
   "--exclude=tmp/" "--exclude=__pycache__/" "--exclude=node_modules/" "--exclude=external/"
   "--exclude=docs/" "--exclude=tests/" "--exclude=.DS_Store"
   "--exclude=Contents/mods/$MOD_NAME/42/media/lua/shared/LQR/"
-  "--exclude=Contents/mods/SceneBuilder/42/media/lua/shared/PromiseKeeper/"
-  "--exclude=Contents/mods/SceneBuilder/42/media/lua/shared/PromiseKeeper.lua"
+  "--exclude=Contents/mods/PromiseKeeper/"
 )
 
 check_png_plausible() {
@@ -163,16 +162,10 @@ sync_once() {
     echo "[warn] reactivex operators.lua missing at $REACTIVEX_SRC/operators.lua; operators preload may fail"
   fi
 
-  # Ship PromiseKeeper payload into the SceneBuilder shared root (PromiseKeeper/ + PromiseKeeper.lua).
-  if [ -d "$PROMISEKEEPER_SRC/PromiseKeeper" ]; then
+  # Ship PromiseKeeper payload into the PromiseKeeper mod root (no filtering).
+  if [ -d "$PROMISEKEEPER_SRC" ]; then
     mkdir -p "$PROMISEKEEPER_DEST"
-    rsync -a --delete --include='*/' --include='*.lua' --exclude='*' \
-      "$PROMISEKEEPER_SRC/PromiseKeeper/" "$PROMISEKEEPER_DEST/PromiseKeeper/"
-    if [ -f "$PROMISEKEEPER_SRC/PromiseKeeper.lua" ]; then
-      rsync -a "$PROMISEKEEPER_SRC/PromiseKeeper.lua" "$PROMISEKEEPER_DEST/PromiseKeeper.lua"
-    else
-      echo "[warn] PromiseKeeper shim missing at $PROMISEKEEPER_SRC/PromiseKeeper.lua; skipped"
-    fi
+    rsync -a --delete "$PROMISEKEEPER_SRC/" "$PROMISEKEEPER_DEST/"
   else
     echo "[warn] PromiseKeeper submodule missing at $PROMISEKEEPER_SRC; skipped PromiseKeeper sync"
   fi
