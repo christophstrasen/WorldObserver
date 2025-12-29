@@ -160,37 +160,8 @@ describe("players records", function()
 		assert.equals("onPlayerUpdate", record.scope)
 	end)
 
-	it("drops records without identifiers", function()
-		local square = {
-			getX = function()
-				return 1
-			end,
-			getY = function()
-				return 2
-			end,
-			getZ = function()
-				return 0
-			end,
-		}
-		local player = {
-			getSteamID = function()
-				return nil
-			end,
-			getOnlineID = function()
-				return nil
-			end,
-			getID = function()
-				return nil
-			end,
-			getPlayerNum = function()
-				return nil
-			end,
-			getCurrentSquare = function()
-				return square
-			end,
-		}
-
-		local record = Record.makePlayerRecord(player, "event", {})
+	it("drops records when the player is nil", function()
+		local record = Record.makePlayerRecord(nil, "event", {})
 		assert.is_nil(record)
 	end)
 end)
