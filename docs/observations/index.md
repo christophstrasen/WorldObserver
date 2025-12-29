@@ -35,6 +35,9 @@ You’ll see this in a few places:
 
 ## Available streams
 
+Base fact overview (scopes, targets, `woKey` sources):
+- [Base observable facts](base_observable_facts.md)
+
 Current base streams:
 - [Squares](squares.md)
 - [Players](players.md)

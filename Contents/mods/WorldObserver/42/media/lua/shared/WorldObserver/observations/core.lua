@@ -85,8 +85,7 @@ function BaseMethods:subscribe(callback, onError, onCompleted)
 			local ok, reason = WoMeta.attachWoMeta(value)
 			if not ok then
 				local detail = Debug.describeWoKey and Debug.describeWoKey(value) or tostring(value)
-				WoMetaLog:warn("skip reason=%s %s", tostring(reason), tostring(detail))
-				return
+				WoMetaLog:warn("missing_key reason=%s %s", tostring(reason), tostring(detail))
 			end
 			return callback(value)
 		end

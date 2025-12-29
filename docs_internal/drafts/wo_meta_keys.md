@@ -6,7 +6,7 @@
 This RFC introduces a **domain-level stable key** for WorldObserver emissions:
 
 - A new metadata table: `WoMeta`
-- A single required field (v1): `WoMeta.key` (always a string)
+- A single field (v1): `WoMeta.key` (string when available; may be missing)
 
 The goal is to make it easy for downstream systems (especially PromiseKeeper) to do durable, idempotent work without having to understand WorldObserver/LQR internals or write repetitive mapping code.
 
@@ -36,7 +36,7 @@ We do **not** want to store domain concerns in `RxMeta` (too low-level, “id vs
 
 - Add a **domain-level key** to every emission.
 - Keep the data structure **simple**: one new meta table (`WoMeta`) and one field (`key`).
-- Keep `WoMeta.key` **string-only** (simple persistence, simple hashing, simple logs).
+- Keep `WoMeta.key` **string-only when present** (simple persistence, simple hashing, simple logs).
 - Make keys deterministic and readable:
   - single-family: `#square(123)`
   - multi-family: `#square(123)#zombie(456)` (lexicographic family order, `#` separator)
@@ -44,7 +44,7 @@ We do **not** want to store domain concerns in `RxMeta` (too low-level, “id vs
   - **The entire observation is the “subject”** for PromiseKeeper Tier‑C.
   - WO does not decide “safe-to-mutate subject”; that remains downstream logic.
 - Preserve existing “native” entity ids (squareId, zombieId, roomLocation, etc.) as-is; add stable keys alongside.
-- If we can’t compute a key for an emission (missing `schemaMap` or missing `woKey`), **warn and skip the emission** rather than emitting a “half-keyed” observation.
+- If we can’t compute a key for an emission (missing `schemaMap` or missing `woKey`), **warn and emit** with a missing `WoMeta.key`.
 
 ### Non-goals
 
@@ -71,9 +71,10 @@ We do **not** want to store domain concerns in `RxMeta` (too low-level, “id vs
 ### 4.1 `WoMeta` on emissions
 
 - Each emitted observation object gets a `WoMeta` table:
-  - `observation.WoMeta = { key = "..." }`
-- `WoMeta.key` is the **only required field** in this RFC.
-- `WoMeta.key` is **always a string**.
+  - `observation.WoMeta = { key = "..." }` when available
+  - `observation.WoMeta = { key = nil }` when missing (warned)
+- `WoMeta.key` is the **primary field** in this RFC.
+- `WoMeta.key` is a string **when present**.
 
 ### 4.2 `record.woKey` on fact records
 
@@ -260,11 +261,11 @@ Implementation note:
 1) Determine emission shape:
    - If `observation.RxMeta.shape == "join_result"`:
      - Determine family names from `observation.RxMeta.schemaMap` keys (required).
-       - If `schemaMap` is missing, **warn and skip** the emission.
+      - If `schemaMap` is missing, **warn and emit** with a missing key.
      - For each family name in lexicographic order:
        - If `observation[familyName]` is a table and has `woKey` (string), append `#familyName(woKey)`.
        - If the family record is missing (`nil`), omit the segment (no nil encoding).
-       - If the family record is present but its `woKey` is missing or not a string, **warn and skip** the emission.
+      - If the family record is present but its `woKey` is missing or not a string, **warn and emit** with a missing key.
      - Attach `observation.WoMeta.key` to the container.
 
 2) If the emission is a single record shape:
@@ -272,7 +273,7 @@ Implementation note:
      - family name: `observation.RxMeta.schema`
      - record key: `observation.woKey`
      - `WoMeta.key = "#<schema>(<woKey>)"`
-     - If `observation.woKey` is missing or not a string, **warn and skip** the emission.
+    - If `observation.woKey` is missing or not a string, **warn and emit** with a missing key.
 
 ### 6.3 Emission time (group shapes)
 
@@ -289,7 +290,7 @@ If `observation.RxMeta.shape` is `group_enriched`:
   - Find all top-level fields on the row (excluding `RxMeta`/`WoMeta`) where the value is a table with `woKey` (string).
   - Sort those field names lexicographically.
   - Concatenate segments: `#<familyName>(<familyRecordKey>)`.
-- If we can’t compute a compound key (no eligible families, or a present family is missing `woKey`), **warn and skip** the emission.
+- If we can’t compute a compound key (no eligible families, or a present family is missing `woKey`), **warn and emit** with a missing key.
 
 ---
 
@@ -332,7 +333,7 @@ Rationale:
      - `occurrenceId = observation.WoMeta.key`
      - `subject = observation`
    - Behavior when `WoMeta.key` is missing:
-     - **warn and drop/skip** the observation for now.
+     - **warn and emit**; downstream should handle a missing key.
 
 3) **Third-party base families**
    - Deferred, but we should later define how mods can register a family and its `woKey` strategy.
@@ -346,7 +347,7 @@ This is a foundational refactor that touches both the *record layer* and the *em
 The main moving parts:
 - Add `record.woKey` (string) to each fact record type.
 - Add emission-time `observation.WoMeta.key` computation on the outgoing edge.
-- Provide tests that pin down the key format and failure/skip semantics.
+- Provide tests that pin down the key format and failure behavior.
 
 ### Phase 1 — Implement the shared keying utility (pure functions)
 
@@ -364,6 +365,7 @@ The main moving parts:
   - `computeKeyFromGroupEnriched(row)` → compound key from present family records with string `woKey`
   - `attachWoMeta(observation)` → `true | false, reason`
     - Mutates `observation.WoMeta = { key = ... }` when successful
+    - Mutates `observation.WoMeta = { key = nil }` when missing (warned)
     - Returns `false, reason` when key can’t be computed (caller will warn+skip)
 
 - Add a debug helper directly to `Contents/mods/WorldObserver/42/media/lua/shared/WorldObserver/debug.lua`:
@@ -387,7 +389,7 @@ The main moving parts:
   - File: `Contents/mods/WorldObserver/42/media/lua/shared/WorldObserver/observations/core.lua`
   - In `BaseMethods:subscribe(callback, ...)` wrap the callback:
     - call `wo_meta.attachWoMeta(observation)`
-    - if it returns `false`, warn and **do not call** the subscriber callback (skip emission)
+   - if it returns `false`, warn and still call the subscriber (missing key)
   - Logging:
     - add a dedicated tag (example: `WO.WOMETA`) and log `reason` + `WorldObserver.debug.describeWoKey(observation)`
 - Add a targeted smoke/prototype:
@@ -407,19 +409,19 @@ We can (and should) write most of the busted coverage immediately after Phase 2,
     - “nil members are omitted”
     - group_aggregate keying (`#groupName(groupKey)`)
     - group_enriched keying uses compound key (not group identity)
-    - failure reasons (missing schemaMap, missing record.woKey, wrong types) return `false` and are skippable
+  - failure reasons (missing schemaMap, missing record.woKey, wrong types) return `false` and still emit
 
 **Prototype-focused updates:**
 - Extend the square record/stream tests to assert:
   - `record.woKey` exists and is a string
-  - `observation.WoMeta.key` exists and matches the expected format
+  - `observation.WoMeta.key` matches the expected format when present
 
 Why busted coverage matters here:
-- We’re introducing a *new hard dependency* (“key exists or emission is skipped”), so regression risk is high and will otherwise show up only as “nothing happens” in-game.
+- We’re introducing a *new dependency* (“key exists or WoMeta.key is missing”), so regression risk is higher and will show up as warnings in-game.
 
 ### Phase 4 — Roll out `record.woKey` to the remaining fact record types (family-by-family, with tests in lockstep)
 
-**Goal:** once the outgoing-edge behavior is enabled globally, any stream that emits a family record must have `woKey`, otherwise emissions will be skipped.
+**Goal:** once the outgoing-edge behavior is enabled globally, any stream that emits a family record should have `woKey`, otherwise emissions will still flow but log warnings.
 
 Add `woKey` to each record builder (exact strategies can be refined case-by-case, but keep them string-only and “stable-ish”), and update the corresponding record specs at the same time:
 
@@ -457,13 +459,13 @@ Add `woKey` to each record builder (exact strategies can be refined case-by-case
   - `docs/guides/stream_basics.md` (or a new guide) to mention:
     - `record.woKey` (record-local, family-owned)
     - `observation.WoMeta.key` (emission-level, compound for derived streams)
-    - “warn + skip” behavior when key cannot be computed
+    - “warn + emit” behavior when key cannot be computed
 
 ---
 
 ## 11) What may still be missing from this plan
 
 - **Deciding the “best” `woKey` per family** (especially zombies, where id availability may differ by mode).
-- **Logging ergonomics**: for now, noisy `warn + skip` logs are acceptable; no throttling in the first implementation.
+- **Logging ergonomics**: for now, noisy `warn + emit` logs are acceptable; no throttling in the first implementation.
 - **Debug tooling**: ship `WorldObserver.debug.describeWoKey(observation)` as part of the first implementation PR.
 - **Derived stream edge cases**: confirm which shapes we see in practice (especially `group_enriched`) and add a small smoke that exercises them.

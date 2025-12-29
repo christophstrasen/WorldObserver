@@ -226,11 +226,11 @@ local function attachWoMeta(observation)
 		end
 	end
 
+	observation.WoMeta = observation.WoMeta or {}
 	if not key then
+		observation.WoMeta.key = nil
 		return false, reason or "missing_key"
 	end
-
-	observation.WoMeta = observation.WoMeta or {}
 	observation.WoMeta.key = key
 	return true, nil
 end

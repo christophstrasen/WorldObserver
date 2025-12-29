@@ -26,6 +26,7 @@ Recommended reading order:
 - [Architecture rationale (why WO is built this way)](architecture_rationale.md)
 - [Lifecycle (unsubscribe + stop/renew leases)](guides/lifecycle.md)
 - [Stream basics](guides/stream_basics.md)
+- [Base observable facts (overview table)](observations/base_observable_facts.md)
 - [Situation factories (named situations)](guides/situation_factories.md)
 - [Helpers (built-in and extending)](guides/helpers.md)
 - [Debugging and performance](guides/debugging_and_performance.md)

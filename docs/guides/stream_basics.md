@@ -51,7 +51,11 @@ WorldObserver attaches a stable-ish domain key to every emission:
 - Each record has `record.woKey` (string), computed in the record builder.
 - Each observation has `observation.WoMeta.key`, built from those record keys.
 - Multi-family observations use compound keys (example: `#square(x1y2z0)#zombie(4512)`).
-- If a key can’t be computed, the emission is **skipped** and a warning is logged.
+- If a key can’t be computed, a warning is logged and `WoMeta.key` is left missing.
+  - Downstream should treat `WoMeta.key` as **best-effort** and handle `nil`.
+
+Overview (what each base family uses as `woKey` + stability notes):
+- [Base observable facts](../observations/base_observable_facts.md)
 
 ## 2. Filtering
 
