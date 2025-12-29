@@ -558,3 +558,24 @@
 - Decide how we want situation-level defaults to interact with `withOccurrenceKey` (operator-only vs opt-in at define time).
 - Clarify the WorldObserver → PromiseKeeper Tier-C handoff using `occurranceKey` as the default durable identity when present.
 - Consider small ergonomic tooling for debugging keys (already started via `WorldObserver.debug.describeWoKey`).
+
+## day19 – Namespaced WorldObserver facade and smoke alignment
+
+### Highlights
+- Added `WorldObserver.namespace("<modId>")` as a thin, explicit facade:
+  - pins `situations` + `factInterest` to a namespace,
+  - leaves `observations` global (no hidden current-namespace state).
+- Updated user-facing docs to show the new convenience shape (stream basics, situation factories, interest).
+- Updated smoke tests to use the facade:
+  - `smoke_situation_factory_squares.lua` (WO)
+  - `smoke_pk_worldobserver.lua` (PK)
+- Added minimal unit coverage for the facade (`tests/unit/namespace_spec.lua`).
+- Architecture docs now call out the facade and its intent.
+
+### Notes / observations
+- The facade is intentionally additive: all existing call sites remain valid.
+- This brings WorldObserver ergonomics closer to PromiseKeeper (`wo = WorldObserver.namespace(ns)`, `pk = PromiseKeeper.namespace(ns)`).
+
+### Next steps
+- Decide whether to expand the facade to include more registry-like surfaces (if any are introduced later).
+- Keep an eye on docs/examples for consistency (use facade where it reduces repetition, but avoid heavy rewrites).

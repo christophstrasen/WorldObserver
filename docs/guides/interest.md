@@ -25,6 +25,22 @@ local lease = WorldObserver.factInterest:declare("YourModId", "featureKey", {
 })
 ```
 
+Optional convenience (same behavior, no repeated mod id):
+
+```lua
+local WorldObserver = require("WorldObserver")
+local wo = WorldObserver.namespace("YourModId")
+
+local lease = wo.factInterest:declare("featureKey", {
+  type = "squares",
+  scope = "near",
+  target = { player = { id = 0 } },
+  radius = { desired = 8 },
+  staleness = { desired = 5 },
+  cooldown = { desired = 2 },
+})
+```
+
 Notes:
 - `modId` + `key` identify your feature. Calling `declare` again for the same pair replaces your spec.
 - The returned `lease` must be managed (renew/stop); see [Lifecycle](lifecycle.md).
