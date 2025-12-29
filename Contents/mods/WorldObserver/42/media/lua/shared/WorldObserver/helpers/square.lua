@@ -77,39 +77,15 @@ if type(moduleName) == "string" then
 	return square
 end
 
-local function squareHasCorpse(squareRecord)
-	-- This predicate is used by stream helpers after they extracted `square` from an observation.
-	-- It expects the WorldObserver square record shape (a table) and may use best-effort hydration.
-	if type(squareRecord) ~= "table" then
-		return false
-	end
-
-		-- Preferred: fact already materialized the boolean.
-		if squareRecord.hasCorpse ~= nil then
-			return squareRecord.hasCorpse == true
-		end
-
-		local isoGridSquare = squareRecord.IsoGridSquare
-		if isoGridSquare == nil and SquareHelpers.record and SquareHelpers.record.getIsoGridSquare then
-			isoGridSquare = SquareHelpers.record.getIsoGridSquare(squareRecord)
-		end
-		if isoGridSquare == nil then
+	local function squareHasCorpse(squareRecord)
+		-- This predicate is used by stream helpers after they extracted `square` from an observation.
+		-- It expects the WorldObserver square record shape (a table) and only checks its fields.
+		if type(squareRecord) ~= "table" then
 			return false
 		end
 
-		-- Prefer the direct boolean getter when available (matches how facts compute hasCorpse).
-		if type(isoGridSquare.hasCorpse) == "function" then
-			local ok, value = pcall(isoGridSquare.hasCorpse, isoGridSquare)
-			return ok and value == true
-		end
-
-		-- Fallback: IsoGridSquare:getDeadBody() returns one body (or nil), getDeadBodys() returns a List.
-		if type(isoGridSquare.getDeadBody) == "function" then
-			local ok, body = pcall(isoGridSquare.getDeadBody, isoGridSquare)
-			return ok and body ~= nil
-		end
-
-		return false
+		-- This helper is intentionally simple: it only trusts the fact's `hasCorpse` field.
+		return squareRecord.hasCorpse == true
 	end
 
 	-- Stream sugar: apply a predicate to the square record directly.

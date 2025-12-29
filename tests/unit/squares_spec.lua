@@ -85,7 +85,7 @@ describe("WorldObserver observations.squares()", function()
 		assert.is_equal(1, #received)
 	end)
 
-		it("squareHasCorpse filters expected observations", function()
+	it("squareHasCorpse filters expected observations", function()
 			local withCorpse = {}
 			local stream = WorldObserver.observations:squares():squareHasCorpse()
 			stream:subscribe(function(row)
@@ -117,7 +117,21 @@ describe("WorldObserver observations.squares()", function()
 		assert.is_equal(2, withCorpse[1].square.squareId)
 	end)
 
-		it("squareFilter passes the square record into the predicate", function()
+	it("squareHasCorpse only checks the record field", function()
+		local SquareHelper = WorldObserver.helpers.square.record
+		local record = {
+			IsoGridSquare = {
+				hasCorpse = function()
+					return true
+				end,
+			},
+		}
+		assert.is_false(SquareHelper.squareHasCorpse(record))
+		record.hasCorpse = true
+		assert.is_true(SquareHelper.squareHasCorpse(record))
+	end)
+
+	it("squareFilter passes the square record into the predicate", function()
 			local received = {}
 			local SquareHelper = WorldObserver.helpers.square.record
 			local stream = WorldObserver.observations:squares():squareFilter(function(squareRecord, observation)
