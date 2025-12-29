@@ -43,6 +43,97 @@ local function nowMillis()
 	return resolvedNowMillis()
 end
 
+local function normalizeOccurranceKey(value)
+	if type(value) == "string" and value ~= "" then
+		return value
+	end
+	return nil
+end
+
+local function normalizeFamilyList(spec)
+	local families = {}
+	local seen = {}
+	if type(spec) == "string" then
+		if spec ~= "" then
+			families[1] = spec
+		end
+	elseif type(spec) == "table" then
+		for _, value in ipairs(spec) do
+			if type(value) == "string" and value ~= "" and not seen[value] then
+				seen[value] = true
+				families[#families + 1] = value
+			end
+		end
+	end
+	table.sort(families)
+	return families
+end
+
+local function computeOccurranceKeyFromFamilies(observation, spec)
+	if type(observation) ~= "table" then
+		return nil, "not_table"
+	end
+	local families = normalizeFamilyList(spec)
+	if #families == 0 then
+		return nil, "no_families"
+	end
+
+	local segments = {}
+	for _, familyName in ipairs(families) do
+		local record = observation[familyName]
+		if record == nil then
+			return nil, "missing_family"
+		end
+		if type(record) ~= "table" then
+			return nil, "bad_record"
+		end
+		local recordKey = record.woKey
+		if type(recordKey) ~= "string" or recordKey == "" then
+			return nil, "missing_record_woKey"
+		end
+		local segment = WoMeta.buildSegment(familyName, recordKey)
+		if not segment then
+			return nil, "bad_segment"
+		end
+		segments[#segments + 1] = segment
+	end
+	if #segments == 0 then
+		return nil, "no_segments"
+	end
+	return table.concat(segments), nil
+end
+
+local function resolveOccurranceKey(observation, spec)
+	if spec == nil then
+		local woMeta = type(observation) == "table" and observation.WoMeta or nil
+		local key = type(woMeta) == "table" and woMeta.key or nil
+		local normalized = normalizeOccurranceKey(key)
+		if normalized ~= nil then
+			return normalized, nil
+		end
+		return nil, "missing_wometa_key"
+	end
+
+	local specType = type(spec)
+	if specType == "function" then
+		local ok, result = pcall(spec, observation)
+		if not ok then
+			return nil, "override_error"
+		end
+		local normalized = normalizeOccurranceKey(result)
+		if normalized == nil then
+			return nil, "bad_occurrance_key"
+		end
+		return normalized, nil
+	end
+
+	if specType == "string" or specType == "table" then
+		return computeOccurranceKeyFromFamilies(observation, spec)
+	end
+
+	return nil, "bad_spec"
+end
+
 local cloneTable = HelperSupport.cloneTable
 local mergeTablesLastWins = HelperSupport.mergeTablesLastWins
 local mergeTablesFirstWins = HelperSupport.mergeTablesFirstWins
@@ -61,6 +152,7 @@ local function newObservationStream(builder, helperMethods, dimensions, factRegi
 		_factDeps = factDeps or {},
 		_helperSets = helperSets or {},
 		_enabled_helpers = enabled,
+		_occurranceKeySpec = nil,
 		helpers = {},
 	}
 	stream.helpers = buildHelperNamespaces(stream._helperSets, enabled, stream)
@@ -82,11 +174,29 @@ function BaseMethods:subscribe(callback, onError, onCompleted)
 	local onNext = callback
 	if type(callback) == "function" then
 		onNext = function(value)
+			local hasOverride = self._occurranceKeySpec ~= nil
 			local ok, reason = WoMeta.attachWoMeta(value)
 			if not ok then
 				local detail = Debug.describeWoKey and Debug.describeWoKey(value) or tostring(value)
-				WoMetaLog:warn("missing_key reason=%s %s", tostring(reason), tostring(detail))
+				if hasOverride then
+					WoMetaLog:warn("missing_key reason=%s occurranceKey=override %s", tostring(reason), tostring(detail))
+				else
+					WoMetaLog:warn("occurranceKey missing source=default reason=%s %s", tostring(reason), tostring(detail))
+				end
 			end
+
+			local occurranceKey, occurranceReason = resolveOccurranceKey(value, self._occurranceKeySpec)
+			value.WoMeta = value.WoMeta or {}
+			value.WoMeta.occurranceKey = occurranceKey
+			if occurranceKey == nil and hasOverride then
+				local detail = Debug.describeWoKey and Debug.describeWoKey(value) or tostring(value)
+				WoMetaLog:warn(
+					"occurranceKey missing source=override reason=%s %s",
+					tostring(occurranceReason),
+					tostring(detail)
+				)
+			end
+
 			return callback(value)
 		end
 	end
@@ -186,7 +296,7 @@ end
 
 	function BaseMethods:filter(predicate)
 		local nextBuilder = self._builder:finalWhere(predicate)
-		return newObservationStream(
+		local stream = newObservationStream(
 			nextBuilder,
 			self._helperMethods,
 			self._dimensions,
@@ -195,11 +305,13 @@ end
 		self._helperSets,
 			self._enabled_helpers
 		)
+		stream._occurranceKeySpec = self._occurranceKeySpec
+		return stream
 	end
 
 	function BaseMethods:finalTap(tapFn)
 		local nextBuilder = self._builder:finalTap(tapFn)
-		return newObservationStream(
+		local stream = newObservationStream(
 			nextBuilder,
 			self._helperMethods,
 			self._dimensions,
@@ -208,6 +320,8 @@ end
 			self._helperSets,
 			self._enabled_helpers
 		)
+		stream._occurranceKeySpec = self._occurranceKeySpec
+		return stream
 	end
 
 function BaseMethods:distinct(dimension, seconds)
@@ -236,7 +350,7 @@ function BaseMethods:distinct(dimension, seconds)
 	end
 
 	local nextBuilder = self._builder:distinct(dim.schema, { by = by, window = window })
-	return newObservationStream(
+	local stream = newObservationStream(
 		nextBuilder,
 		self._helperMethods,
 		self._dimensions,
@@ -245,6 +359,8 @@ function BaseMethods:distinct(dimension, seconds)
 		self._helperSets,
 		self._enabled_helpers
 	)
+	stream._occurranceKeySpec = self._occurranceKeySpec
+	return stream
 end
 
 function BaseMethods:withHelpers(opts)
@@ -271,7 +387,7 @@ function BaseMethods:withHelpers(opts)
 	local helperMethods = buildHelperMethods(mergedHelperSets, enabledHelpers)
 	mergeTablesFirstWins(helperMethods, self._helperMethods)
 
-	return newObservationStream(
+	local stream = newObservationStream(
 		self._builder,
 		helperMethods,
 		self._dimensions,
@@ -280,6 +396,28 @@ function BaseMethods:withHelpers(opts)
 		mergedHelperSets,
 		enabledHelpers
 	)
+	stream._occurranceKeySpec = self._occurranceKeySpec
+	return stream
+end
+
+function BaseMethods:withOccurrenceKey(spec)
+	assert(spec ~= nil, "withOccurrenceKey expects a spec")
+	local specType = type(spec)
+	assert(
+		specType == "string" or specType == "table" or specType == "function",
+		"withOccurrenceKey expects a string, table, or function"
+	)
+	local stream = newObservationStream(
+		self._builder,
+		self._helperMethods,
+		self._dimensions,
+		self._factRegistry,
+		self._factDeps,
+		self._helperSets,
+		self._enabled_helpers
+	)
+	stream._occurranceKeySpec = spec
+	return stream
 end
 
 ObservationStream.__index = function(self, key)

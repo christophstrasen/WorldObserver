@@ -53,6 +53,7 @@ function SmokeSituationFactorySquares.start(opts)
 		if args.distinctSeconds ~= nil then
 			stream = stream:distinct("square", args.distinctSeconds)
 		end
+		stream = stream:withOccurrenceKey("square")
 		return stream
 	end)
 
@@ -61,7 +62,9 @@ function SmokeSituationFactorySquares.start(opts)
 	local subscription = stream:subscribe(function(observation)
 		WorldObserver.debug.printObservation(observation, { prefix = "[situation] square observed" })
 		local woKey = observation.WoMeta and observation.WoMeta.key or "<missing>"
+		local occurranceKey = observation.WoMeta and observation.WoMeta.occurranceKey or "<missing>"
 		Log.info("[situation] woKey=%s", tostring(woKey))
+		Log.info("[situation] occurranceKey=%s", tostring(occurranceKey))
 	end)
 
 	return {

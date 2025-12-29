@@ -531,3 +531,30 @@
 ### Next steps
 - Decide whether to treat numeric `0` IDs as “missing” when building `playerKey` (to prefer any real non-zero id in MP).
 - Add a tiny in-engine-only validation note to `docs/observations/players.md` for verifying room joins (walk indoors and confirm `roomLocation` changes).
+
+## day18 – WoMeta keys, occurrence preparation, and situation factory ergonomics
+
+### Highlights
+- Shipped **WoMeta** as WorldObserver-owned metadata attached on the outgoing edge of streams.
+  - `observation.WoMeta.key` is now a best-effort domain key (string when available, may be missing).
+  - Keys are derived from per-family `record.woKey` fields and support derived stream shapes (join_result, group_aggregate, group_enriched).
+- Rolled out `record.woKey` across the current base fact families and validated in-engine with square and group_enriched smokes.
+- Relaxed the pipeline to **warn + emit** when `WoMeta.key` can’t be computed (instead of warn + skip), so downstream code can choose its own tolerance.
+- Added an explicit downstream idempotence hook:
+  - New stream operator `:withOccurrenceKey(...)` which sets `observation.WoMeta.occurranceKey`.
+  - Supports different override shapes: single-family, multi-family, or custom function.
+  - Override failures do **not** fall back to `WoMeta.key` (warn + emit with missing occurranceKey).
+- Improved doc coverage and discoverability:
+  - Added a user-facing overview table of base observable facts (scopes/targets/woKey source/stability).
+  - Updated stream basics, situation factories, and internal architecture docs to reflect WoMeta + occurranceKey.
+- Added/expanded tests:
+  - Headless unit coverage for WoMeta key computation and the `withOccurrenceKey` operator.
+
+### RFC status
+- RFC `docs_internal/drafts/wo_meta_keys.md` is substantially implemented (about ~80%).
+  - Remaining work is mainly refinement and follow-on decisions around third-party families and situation-level defaults for downstream consumers.
+
+### Next steps
+- Decide how we want situation-level defaults to interact with `withOccurrenceKey` (operator-only vs opt-in at define time).
+- Clarify the WorldObserver → PromiseKeeper Tier-C handoff using `occurranceKey` as the default durable identity when present.
+- Consider small ergonomic tooling for debugging keys (already started via `WorldObserver.debug.describeWoKey`).

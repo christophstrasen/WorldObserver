@@ -126,11 +126,12 @@ Primary wiring entrypoint:
 
 ### Observation metadata: RxMeta vs WoMeta
 - **RxMeta** is low-level, LQR-owned metadata (shape, ids, sourceTime, schemaMap).
-- **WoMeta** is WorldObserver-owned metadata; currently it carries a single domain key:
-  - `observation.WoMeta.key` (string).
+- **WoMeta** is WorldObserver-owned metadata:
+  - `observation.WoMeta.key` (default domain key, string when present).
+  - `observation.WoMeta.occurranceKey` (optional override for downstream idempotence).
 - **record.woKey** is computed in each record builder and is used to build `WoMeta.key`.
 - WoMeta is attached at the outgoing edge in `WorldObserver/observations/core.lua:BaseMethods:subscribe(...)`.
-  - If a key cannot be computed, the emission is **warned and skipped**.
+  - If a key cannot be computed, the emission is **warned and still delivered**.
 
 ### Interest (why work happens at all)
 WorldObserver is *opt-in*: most probes/listeners are gated by interest leases.

@@ -156,6 +156,12 @@ local function describeWoKey(observation)
 	else
 		parts[#parts + 1] = "key=<missing>"
 	end
+	if type(woMeta) == "table" then
+		local occurranceKey = woMeta.occurranceKey
+		if occurranceKey ~= nil then
+			parts[#parts + 1] = ("occurranceKey=%s"):format(formatValue(occurranceKey))
+		end
+	end
 
 	if type(rxMeta) == "table" then
 		local groupName = rxMeta.groupName or rxMeta.schema

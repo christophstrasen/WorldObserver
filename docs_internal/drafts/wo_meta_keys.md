@@ -6,7 +6,8 @@
 This RFC introduces a **domain-level stable key** for WorldObserver emissions:
 
 - A new metadata table: `WoMeta`
-- A single field (v1): `WoMeta.key` (string when available; may be missing)
+- A default key: `WoMeta.key` (string when available; may be missing)
+- An optional override: `WoMeta.occurranceKey` (string when provided; may be missing)
 
 The goal is to make it easy for downstream systems (especially PromiseKeeper) to do durable, idempotent work without having to understand WorldObserver/LQR internals or write repetitive mapping code.
 
@@ -70,11 +71,14 @@ We do **not** want to store domain concerns in `RxMeta` (too low-level, “id vs
 
 ### 4.1 `WoMeta` on emissions
 
-- Each emitted observation object gets a `WoMeta` table:
+- Each emitted observation object gets a `WoMeta` table.
+- `WoMeta.key` is the default identity for emissions:
   - `observation.WoMeta = { key = "..." }` when available
   - `observation.WoMeta = { key = nil }` when missing (warned)
-- `WoMeta.key` is the **primary field** in this RFC.
-- `WoMeta.key` is a string **when present**.
+- `WoMeta.occurranceKey` is an optional override for downstream idempotence:
+  - By default it mirrors `WoMeta.key`.
+  - When a stream uses `:withOccurrenceKey(...)`, it is computed from that override.
+  - If the override produces `nil`, we **warn and emit** (no fallback).
 
 ### 4.2 `record.woKey` on fact records
 
@@ -137,6 +141,18 @@ For `group_enriched`, the key identifies the **concrete family members on the ro
 When this refactor is implemented:
 - No shims, aliases, or compatibility wrappers for old id fields.
 - Call sites, tests, and docs are updated in one hard cut.
+
+### 4.7 Optional override for downstream occurrance identity
+
+WorldObserver streams can opt into a different “occurrance key” for downstream systems:
+
+- `stream:withOccurrenceKey("square")`
+- `stream:withOccurrenceKey({ "square", "zombie" })`
+- `stream:withOccurrenceKey(function(observation) return "customKey" end)`
+
+Behavior:
+- When used, the override sets `observation.WoMeta.occurranceKey`.
+- If the override returns `nil` or cannot be computed, we **warn and emit** and do **not** fall back to `WoMeta.key`.
 
 ---
 
@@ -317,7 +333,7 @@ Rationale:
   - base streams
   - derived/joined streams
   - group aggregate/enriched streams
-- Update docs and examples to reference `WoMeta.key` (and later, PromiseKeeper Tier‑C can default `occurrenceId` to it).
+- Update docs and examples to reference `WoMeta.key` (and later, PromiseKeeper Tier‑C can default `occurranceKey` to it).
 - No compatibility layer; tests + call sites are updated in the same change set.
 
 ---
@@ -325,12 +341,12 @@ Rationale:
 ## 9) Pending decisions / open questions
 
 1) **Override mechanism at `situations.define(...)`**
-   - How can a modder override which key becomes the “occurrence key” for a situation?
+   - How can a modder override which key becomes the “occurrance key” for a situation?
    - (This is explicitly a follow-up discussion, but this RFC is the foundation.)
 
 2) **PromiseKeeper WorldObserver adapter**
    - If Tier‑C is adopted, PK can default to:
-     - `occurrenceId = observation.WoMeta.key`
+     - `occurranceKey = observation.WoMeta.key`
      - `subject = observation`
    - Behavior when `WoMeta.key` is missing:
      - **warn and emit**; downstream should handle a missing key.
@@ -460,12 +476,3 @@ Add `woKey` to each record builder (exact strategies can be refined case-by-case
     - `record.woKey` (record-local, family-owned)
     - `observation.WoMeta.key` (emission-level, compound for derived streams)
     - “warn + emit” behavior when key cannot be computed
-
----
-
-## 11) What may still be missing from this plan
-
-- **Deciding the “best” `woKey` per family** (especially zombies, where id availability may differ by mode).
-- **Logging ergonomics**: for now, noisy `warn + emit` logs are acceptable; no throttling in the first implementation.
-- **Debug tooling**: ship `WorldObserver.debug.describeWoKey(observation)` as part of the first implementation PR.
-- **Derived stream edge cases**: confirm which shapes we see in practice (especially `group_enriched`) and add a small smoke that exercises them.

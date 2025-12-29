@@ -78,6 +78,23 @@ _G.MySituationHandle = {
 }
 ```
 
+### Occurrance key override (optional)
+
+If a downstream system wants a different “act once per …” key, you can opt in per situation:
+
+```lua
+situations.define("zombiesWithOutfit", function(args)
+  args = args or {}
+  return WorldObserver.observations:zombies()
+    :hasOutfit(args.outfitName)
+    :withOccurrenceKey("zombie")
+end)
+```
+
+Notes:
+- The override sets `observation.WoMeta.occurranceKey`.
+- If the override yields `nil`, the emission still flows and a warning is logged.
+
 ## 5) Stream semantics (important)
 
 - `situations.get(...)` returns a stream that is **not subscribed** yet.

@@ -53,6 +53,9 @@ WorldObserver attaches a stable-ish domain key to every emission:
 - Multi-family observations use compound keys (example: `#square(x1y2z0)#zombie(4512)`).
 - If a key can’t be computed, a warning is logged and `WoMeta.key` is left missing.
   - Downstream should treat `WoMeta.key` as **best-effort** and handle `nil`.
+- Streams can opt into an explicit idempotence key:
+  - `stream:withOccurrenceKey(...)` sets `observation.WoMeta.occurranceKey`.
+  - If the override fails, we warn and emit with `occurranceKey = nil` (no fallback).
 
 Overview (what each base family uses as `woKey` + stability notes):
 - [Base observable facts](../observations/base_observable_facts.md)
