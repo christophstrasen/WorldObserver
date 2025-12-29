@@ -388,7 +388,7 @@
 - Added `helpers/java_list.lua` for defensive Java-backed list access in Kahlua (including “empty but non-indexable” values that stringify like `[]`).
 - Shared square-sweep “internal sensor” pattern:
   - `facts/sensors/square_sweep.lua` time-slices square scanning once and fans out to collectors for `squares`, `items`, and `deadBodies` (no duplicate sweeps).
-  - Probe log labels use `-` (display) instead of the earlier `DOUBLECOLON` encoding.
+  - Probe log labels use `-` (display) instead of the earlier `COLON` encoding.
 - New ground-entity fact families on the shared sweep:
   - `type="items"` and `type="deadBodies"` with `scope="playerSquare" | "near" | "vision"`.
   - Items emit ground items plus direct container contents (depth=1) with a guardrail cap `facts.items.record.maxContainerItemsPerSquare` (default 200).

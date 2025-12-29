@@ -172,7 +172,7 @@ if Record.makeSpriteRecord == nil then
 		local z = coordOf(square, "getZ") or 0
 		if x == nil or y == nil then
 			if _G.WORLDOBSERVER_HEADLESS ~= true then
-				Log:warn("Skipped sprite record: missing coordinates")
+				Log:warn("Skipped sprite record - missing coordinates")
 			end
 			return nil
 		end
@@ -180,13 +180,13 @@ if Record.makeSpriteRecord == nil then
 		local sprite, spriteName, spriteId = resolveSpriteInfo(isoObject, opts)
 		if spriteName == nil then
 			if _G.WORLDOBSERVER_HEADLESS ~= true then
-				Log:warn("Skipped sprite record: missing sprite name")
+				Log:warn("Skipped sprite record - missing sprite name")
 			end
 			return nil
 		end
 		if spriteId == nil then
 			if _G.WORLDOBSERVER_HEADLESS ~= true then
-				Log:warn("Skipped sprite record: missing sprite id")
+				Log:warn("Skipped sprite record - missing sprite id")
 			end
 			return nil
 		end
@@ -199,7 +199,7 @@ if Record.makeSpriteRecord == nil then
 		local key = Record.makeSpriteKey(spriteName, spriteId, x, y, z, objectIndex)
 		if key == nil then
 			if _G.WORLDOBSERVER_HEADLESS ~= true then
-				Log:warn("Skipped sprite record: missing key parts")
+				Log:warn("Skipped sprite record - missing key parts")
 			end
 			return nil
 		end

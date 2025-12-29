@@ -195,7 +195,7 @@ if Record.makePlayerRecord == nil then
 		local playerNum = SafeCall.safeCall(player, "getPlayerNum")
 		local playerKey = playerKeyFromIds(steamId, onlineId, playerId, playerNum)
 		if playerKey == nil then
-			Log:warn("Skipped player record: missing player identifiers")
+			Log:warn("Skipped player record - missing player identifiers")
 			return nil
 		end
 
@@ -205,7 +205,7 @@ if Record.makePlayerRecord == nil then
 			tileX, tileY, tileZ = resolveTileFromPlayer(player)
 		end
 		if tileX == nil or tileY == nil then
-			Log:warn("Skipped player record: missing coordinates")
+			Log:warn("Skipped player record - missing coordinates")
 			return nil
 		end
 

@@ -311,7 +311,7 @@ local function attachOnTickHookOnce(self)
 		for id, fn in pairs(hooks) do
 			local ok, err = pcall(fn)
 			if not ok and not isHeadless() then
-				Log:warn("Tick hook '%s' failed: %s", tostring(id), tostring(err))
+				Log:warn("Tick hook '%s' failed - %s", tostring(id), tostring(err))
 			end
 		end
 	end
@@ -410,7 +410,7 @@ end
 
 			local ok, err = pcall(entry.start, ctx)
 			if not ok then
-				Log:error("Failed to start fact type '%s': %s", tostring(name), tostring(err))
+				Log:error("Failed to start fact type '%s' - %s", tostring(name), tostring(err))
 				if isHeadless() then
 					error(("Failed to start fact type '%s': %s"):format(tostring(name), tostring(err)))
 				end
@@ -456,7 +456,7 @@ end
 		if tracked.subscribers == 0 and tracked.started and type(tracked.stop) == "function" then
 			local okStop, stopResultOrError = pcall(tracked.stop, tracked)
 			if not okStop then
-				Log:warn("Failed to stop fact type '%s': %s", tostring(name), tostring(stopResultOrError))
+				Log:warn("Failed to stop fact type '%s' - %s", tostring(name), tostring(stopResultOrError))
 			else
 				-- stop() may return false to indicate it could not fully stop (e.g. no remove semantics),
 				-- in which case we keep the type "started" to avoid double-registering handlers.

@@ -161,7 +161,7 @@ if Record.makeZombieRecord == nil then
 		local y = SafeCall.safeCall(zombie, "getY")
 		local z = SafeCall.safeCall(zombie, "getZ") or 0
 		if x == nil or y == nil then
-			Log:warn("Skipped zombie record: missing coordinates")
+			Log:warn("Skipped zombie record - missing coordinates")
 			return nil
 		end
 		local tileX = math.floor(x)

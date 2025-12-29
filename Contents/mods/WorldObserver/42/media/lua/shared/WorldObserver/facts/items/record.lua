@@ -150,7 +150,7 @@ if Record.makeItemRecord == nil then
 		local z = coordOf(square, "getZ") or 0
 		if x == nil or y == nil then
 			if _G.WORLDOBSERVER_HEADLESS ~= true then
-				Log:warn("Skipped item record: missing coordinates")
+				Log:warn("Skipped item record - missing coordinates")
 			end
 			return nil
 		end
@@ -158,7 +158,7 @@ if Record.makeItemRecord == nil then
 		local itemId = resolveItemId(item, worldItem)
 		if itemId == nil then
 			if _G.WORLDOBSERVER_HEADLESS ~= true then
-				Log:warn("Skipped item record: missing itemId")
+				Log:warn("Skipped item record - missing itemId")
 			end
 			return nil
 		end

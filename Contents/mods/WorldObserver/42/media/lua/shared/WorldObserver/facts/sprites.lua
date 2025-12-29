@@ -162,7 +162,7 @@ local spritesCollector = function(ctx, cursor, square, _playerIndex, nowMs, effe
 	local spriteNameSet = resolveSpriteNameSet(effective)
 	if spriteNameSet == nil then
 		if not state._spritesMissingNamesWarned and _G.WORLDOBSERVER_HEADLESS ~= true then
-			Log:warn("Sprites collector skipped: missing spriteNames (declare interest.spriteNames)")
+			Log:warn("Sprites collector skipped - missing spriteNames (declare interest.spriteNames)")
 			state._spritesMissingNamesWarned = true
 		end
 		return false

@@ -127,7 +127,7 @@ if Record.makeDeadBodyRecord == nil then
 		local z = coordOf(square, "getZ") or 0
 		if x == nil or y == nil then
 			if _G.WORLDOBSERVER_HEADLESS ~= true then
-				Log:warn("Skipped dead body record: missing coordinates")
+				Log:warn("Skipped dead body record - missing coordinates")
 			end
 			return nil
 		end
@@ -135,7 +135,7 @@ if Record.makeDeadBodyRecord == nil then
 		local bodyId = SafeCall.safeCall(body, "getObjectID")
 		if bodyId == nil then
 			if _G.WORLDOBSERVER_HEADLESS ~= true then
-				Log:warn("Skipped dead body record: missing object id")
+				Log:warn("Skipped dead body record - missing object id")
 			end
 			return nil
 		end

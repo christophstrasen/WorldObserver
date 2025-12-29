@@ -127,7 +127,7 @@ if Record.makeVehicleRecord == nil then
 		local vehicleId = SafeCall.safeCall(vehicle, "getId")
 		if sqlId == nil and vehicleId == nil then
 			if shouldWarn(opts) then
-				Log:warn("Skipped vehicle record: missing sqlId and vehicleId")
+				Log:warn("Skipped vehicle record - missing sqlId and vehicleId")
 			end
 			return nil
 		end

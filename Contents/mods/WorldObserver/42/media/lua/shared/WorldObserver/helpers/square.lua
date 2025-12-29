@@ -27,7 +27,7 @@ if type(moduleName) == "string" then
 			visualMarkersResolved = false
 			if not visualMarkersWarned and _G.WORLDOBSERVER_HEADLESS ~= true then
 				visualMarkersWarned = true
-				Log:warn("setSquareMarker unavailable: require('DoggyDebugTools/VisualMarkers') failed")
+				Log:warn("setSquareMarker unavailable - require('DoggyDebugTools/VisualMarkers') failed")
 			end
 			return nil
 		end
@@ -340,7 +340,7 @@ end
 					local ok, result = pcall(text, observation, square)
 					if not ok then
 						if _G.WORLDOBSERVER_HEADLESS ~= true then
-							Log:warn("setSquareMarker text function failed: %s", tostring(result))
+							Log:warn("setSquareMarker text function failed - %s", tostring(result))
 						end
 						return
 					end

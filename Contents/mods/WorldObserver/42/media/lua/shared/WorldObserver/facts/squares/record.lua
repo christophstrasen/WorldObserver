@@ -156,7 +156,7 @@ if Record.makeSquareRecord == nil then
 		local y = coordOf(square, "getY")
 		local z = coordOf(square, "getZ") or 0
 		if x == nil or y == nil then
-			Log:warn("Skipped square record: missing coordinates")
+			Log:warn("Skipped square record - missing coordinates")
 			return nil
 		end
 

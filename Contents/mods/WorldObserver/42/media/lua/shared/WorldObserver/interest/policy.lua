@@ -40,7 +40,7 @@ local function cloneTable(tbl)
 	return out
 end
 
-	local defaultConfig = {
+local defaultConfig = {
 	tolerableFactor = {
 		staleness = 2.0,
 		cooldown = 2.0,
@@ -63,13 +63,13 @@ end
 	-- Probe-lag trigger: degrade if a sweep can't keep up with the staleness target.
 	lagRatioThreshold = 1.0, -- >1 means "we exceeded the target staleness while still working"
 	lagRatioRecoverThreshold = 0.9, -- <1 provides hysteresis (avoid immediate recover when we're barely meeting the target)
-		lagOverdueMinMs = 0, -- allow callers to require a minimum overdue before reacting
-		lagHoldTicks = 10, -- require sustained lag to avoid reacting to a single slow tick
-		degradeHoldWindows = 1,
-		recoverHoldWindows = 2,
-		recoverHoldTicksAfterLag = 30, -- extra hysteresis after lag-triggered degrade (prevents 1<->2 flapping)
-		recoverMaxFill = 0.25, -- avgFill threshold to consider backlog healthy
-	}
+	lagOverdueMinMs = 0, -- allow callers to require a minimum overdue before reacting
+	lagHoldTicks = 10, -- require sustained lag to avoid reacting to a single slow tick
+	degradeHoldWindows = 1,
+	recoverHoldWindows = 2,
+	recoverHoldTicksAfterLag = 30, -- extra hysteresis after lag-triggered degrade (prevents 1<->2 flapping)
+	recoverMaxFill = 0.25, -- avgFill threshold to consider backlog healthy
+}
 
 Policy._defaults.config = defaultConfig
 
@@ -222,24 +222,11 @@ local function buildLadder(bands, cfg)
 		}
 	end
 
-	local stalenessSteps = buildIncreaseSteps(
-		stalenessBand.desired,
-		stalenessBand.tolerable,
-		stepFactor.staleness,
-		maxIntermediate
-	)
-	local radiusSteps = buildDecreaseSteps(
-		radiusBand.desired,
-		radiusBand.tolerable,
-		stepFactor.radius,
-		maxIntermediate
-	)
-	local cooldownSteps = buildIncreaseSteps(
-		cooldownBand.desired,
-		cooldownBand.tolerable,
-		stepFactor.cooldown,
-		maxIntermediate
-	)
+	local stalenessSteps =
+		buildIncreaseSteps(stalenessBand.desired, stalenessBand.tolerable, stepFactor.staleness, maxIntermediate)
+	local radiusSteps = buildDecreaseSteps(radiusBand.desired, radiusBand.tolerable, stepFactor.radius, maxIntermediate)
+	local cooldownSteps =
+		buildIncreaseSteps(cooldownBand.desired, cooldownBand.tolerable, stepFactor.cooldown, maxIntermediate)
 
 	local desiredRadius = radiusSteps[1] or radiusBand.desired
 	local desiredCooldown = cooldownSteps[1] or cooldownBand.desired
@@ -264,11 +251,7 @@ local function buildLadder(bands, cfg)
 
 	for _ = 1, cfg.emergencySteps or 0 do
 		local prev = ladder[#ladder]
-		pushLevel(
-			prev.staleness * 2,
-			math.max(cfg.minRadius or 0, prev.radius / 2),
-			prev.cooldown * 2
-		)
+		pushLevel(prev.staleness * 2, math.max(cfg.minRadius or 0, prev.radius / 2), prev.cooldown * 2)
 	end
 
 	return ladder
@@ -518,12 +501,12 @@ if Policy.update == nil then
 			end
 		end
 
-			local effective = ladder[state.qualityIndex] or ladder[#ladder]
-			-- Info log only on change: surfaces when we deliberately degrade or recover probe quality.
-			if changed then
-				state.lastChangeReason = reason
-				local label = opts and opts.label
-			-- Note: Project Zomboid rewrites ':' in log messages to 'DOUBLECOLON', so avoid it in log prefixes.
+		local effective = ladder[state.qualityIndex] or ladder[#ladder]
+		-- Info log only on change: surfaces when we deliberately degrade or recover probe quality.
+		if changed then
+			state.lastChangeReason = reason
+			local label = opts and opts.label
+			-- Note: Project Zomboid rewrites ':' in log messages to 'COLON', so avoid it in log prefixes.
 			local prefix = label and ("[interest " .. tostring(label) .. "]") or "[interest]"
 			Log:info(
 				"%s quality=%s staleness=%s radius=%s cooldown=%s reason=%s",
@@ -536,14 +519,17 @@ if Policy.update == nil then
 			)
 		end
 
-		return state, effective, reason, {
-			desiredStaleness = bands.staleness.desired,
-			desiredStalenessMs = desiredMs,
-			probeLagEstimateMs = rawEstimateMs,
-			demandRatio = demandRatio,
-			lagging = lagging,
-			deferLagDegrade = deferLagDegrade,
-		}
+		return state,
+			effective,
+			reason,
+			{
+				desiredStaleness = bands.staleness.desired,
+				desiredStalenessMs = desiredMs,
+				probeLagEstimateMs = rawEstimateMs,
+				demandRatio = demandRatio,
+				lagging = lagging,
+				deferLagDegrade = deferLagDegrade,
+			}
 	end
 end
 

@@ -147,7 +147,7 @@ local function warnInvalidTarget(message)
 	if _G.WORLDOBSERVER_HEADLESS == true then
 		return
 	end
-	Log:warn("[interest] invalid target: %s", tostring(message))
+		Log:warn("[interest] invalid target - %s", tostring(message))
 end
 
 local function invalidTarget(message)
