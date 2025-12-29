@@ -186,6 +186,7 @@ Common examples:
 - `Contents/mods/WorldObserver/42/media/lua/shared/WorldObserver.lua`
   - Loads config, creates runtime + registries, registers fact types and observation streams.
   - Exposes the public API table: `WorldObserver.config`, `WorldObserver.observations.*`, `WorldObserver.situations.*`, `WorldObserver.factInterest`, `WorldObserver.helpers.*`, `WorldObserver.runtime`, `WorldObserver.debug`.
+  - Adds a namespaced facade: `WorldObserver.namespace("<modId>")` which pins `situations` + `factInterest` to a namespace while leaving `observations` global.
 
 ### Configuration + live overrides
 - `Contents/mods/WorldObserver/42/media/lua/shared/WorldObserver/config.lua`
@@ -276,6 +277,7 @@ This is also the only "truly namespaced" part of WorldObserver.
 Key file:
 - `Contents/mods/WorldObserver/42/media/lua/shared/WorldObserver/situations/registry.lua`
   - Owns the in-memory registry, overwrite semantics, and the namespaced facade returned by `WorldObserver.situations.namespace("<modId>")`.
+  - `WorldObserver.namespace("<modId>").situations` is a thin convenience wrapper over the same registry.
 
 Important boundary notes:
 - Situation factories do not declare interest; they are a packaging/reuse mechanism on top of `WorldObserver.observations:*` streams.

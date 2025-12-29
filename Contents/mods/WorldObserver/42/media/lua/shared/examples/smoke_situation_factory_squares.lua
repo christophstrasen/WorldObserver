@@ -41,15 +41,15 @@ local LEASE_OPTS = {
 function SmokeSituationFactorySquares.start(opts)
 	opts = opts or {}
 	local WorldObserver = require("WorldObserver")
+	local wo = WorldObserver.namespace("examples")
 
-	local modId = "examples/smoke_situation_factory_squares"
-	local nearLease = WorldObserver.factInterest:declare(modId, "near", INTEREST_NEAR, LEASE_OPTS)
-	local visionLease = WorldObserver.factInterest:declare(modId, "vision", INTEREST_VISION, LEASE_OPTS)
+	local nearLease = wo.factInterest:declare("near", INTEREST_NEAR, LEASE_OPTS)
+	local visionLease = wo.factInterest:declare("vision", INTEREST_VISION, LEASE_OPTS)
 
-	local situations = WorldObserver.situations.namespace("examples")
+	local situations = wo.situations
 	situations.define("squaresNear", function(args)
 		args = args or {}
-		local stream = WorldObserver.observations:squares()
+		local stream = wo.observations:squares()
 		if args.distinctSeconds ~= nil then
 			stream = stream:distinct("square", args.distinctSeconds)
 		end

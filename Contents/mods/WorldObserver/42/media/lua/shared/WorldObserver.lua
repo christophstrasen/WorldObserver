@@ -220,6 +220,38 @@ WorldObserver = {
 	},
 }
 
+	if WorldObserver.namespace == nil then
+		---@param namespace string
+		function WorldObserver.namespace(namespace)
+			assert(type(namespace) == "string" and namespace ~= "", "namespace must be a non-empty string")
+
+			-- WHY: Keep namespacing explicit and local. We never set global current namespace.
+			-- This facade wires the namespace into situations + factInterest without affecting observations.
+			return {
+				namespace = namespace,
+				observations = WorldObserver.observations,
+				situations = WorldObserver.situations.namespace(namespace),
+				factInterest = {
+					declare = function(_, key, spec, opts)
+						return WorldObserver.factInterest:declare(namespace, key, spec, opts)
+					end,
+					revoke = function(_, key)
+						return WorldObserver.factInterest:revoke(namespace, key)
+					end,
+					effective = function(_, factType, opts)
+						return WorldObserver.factInterest:effective(factType, opts)
+					end,
+					effectiveBuckets = function(_, factType, opts)
+						return WorldObserver.factInterest:effectiveBuckets(factType, opts)
+					end,
+				},
+				helpers = WorldObserver.helpers,
+				debug = WorldObserver.debug,
+				highlight = WorldObserver.highlight,
+			}
+		end
+	end
+
 	debugApi = Debug.new(factRegistry, observationRegistry)
 	WorldObserver.debug = debugApi
 	

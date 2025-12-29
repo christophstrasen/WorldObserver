@@ -18,11 +18,12 @@ Use situation factories when you want:
 
 ## 3) The API (namespaced facade)
 
-WorldObserver assumes that situations are specific to your mod so always start by selecting a namespace (your mod id can be a good default):
+WorldObserver assumes that situations are specific to your mod so start by selecting a namespace (your mod id can be a good default):
 
 ```lua
 local WorldObserver = require("WorldObserver")
-local situations = WorldObserver.situations.namespace("MyModId")
+local wo = WorldObserver.namespace("MyModId")
+local situations = wo.situations
 ```
 
 Then you can:
@@ -47,17 +48,18 @@ It also shows the important boundary: **fact interest is still separate**.
 local WorldObserver = require("WorldObserver")
 
 local MOD_ID = "MyModId"
-local situations = WorldObserver.situations.namespace(MOD_ID)
+local wo = WorldObserver.namespace(MOD_ID)
+local situations = wo.situations
 
 -- Define once (typically at load time).
 situations.define("zombiesWithOutfit", function(args)
   args = args or {}
-  return WorldObserver.observations:zombies()
+  return wo.observations:zombies()
     :hasOutfit(args.outfitName)
 end)
 
 -- Later: subscribe when your feature is enabled.
-local lease = WorldObserver.factInterest:declare(MOD_ID, "zombiesWithOutfit", {
+local lease = wo.factInterest:declare("zombiesWithOutfit", {
   type = "zombies",
   scope = "allLoaded",
 })

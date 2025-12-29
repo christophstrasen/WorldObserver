@@ -38,6 +38,27 @@ local function stop()
 end
 ```
 
+Optional convenience (same behavior, less repetition):
+
+```lua
+local WorldObserver = require("WorldObserver")
+local wo = WorldObserver.namespace("YourModId")
+
+local lease = wo.factInterest:declare("featureKey", {
+  type = "squares",
+  scope = "near",
+  target = { player = { id = 0 } },
+})
+
+local sub = wo.observations:squares()
+  :subscribe(function(observation)
+    print(("[WO] squareId=%s source=%s"):format(
+      tostring(observation.square.squareId),
+      tostring(observation.square.source)
+    ))
+  end)
+```
+
 Note: one emitted `observation` is a Lua table and can carry multiple “families” at once (for example both `observation.square` and `observation.zombie`). The built-in base streams mostly emit one family, but derived streams can combine them.
 See: [Derived streams (multi-family observations)](derived_streams.md)
 
