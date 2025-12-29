@@ -39,6 +39,7 @@ describe("WorldObserver observations.sprites()", function()
 
 		WorldObserver._internal.facts:emit("sprites", {
 			spriteKey = "fixtures_bathroom_01_0ID120000x1y2z0i3",
+			woKey = "fixtures_bathroom_01_0ID120000x1y2z0i3",
 			spriteName = "fixtures_bathroom_01_0",
 			spriteId = 120000,
 			x = 1,
@@ -50,6 +51,7 @@ describe("WorldObserver observations.sprites()", function()
 		})
 		WorldObserver._internal.facts:emit("sprites", {
 			spriteKey = "floors_interior_tilesandwood_01_0ID135000x1y2z0i4",
+			woKey = "floors_interior_tilesandwood_01_0ID135000x1y2z0i4",
 			spriteName = "floors_interior_tilesandwood_01_0",
 			spriteId = 135000,
 			x = 1,
@@ -91,6 +93,7 @@ describe("WorldObserver observations.sprites()", function()
 
 		WorldObserver._internal.facts:emit("sprites", {
 			spriteKey = "fixtures_bathroom_01_0ID120000x1y2z0i3",
+			woKey = "fixtures_bathroom_01_0ID120000x1y2z0i3",
 			spriteName = "fixtures_bathroom_01_0",
 			spriteId = 120000,
 			x = 1,

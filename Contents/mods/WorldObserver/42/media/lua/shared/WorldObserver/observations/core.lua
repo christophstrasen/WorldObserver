@@ -3,7 +3,10 @@ local LQR = require("LQR")
 local Query = LQR.Query
 local Schema = LQR.Schema
 local Log = require("LQR/util/log").withTag("WO.STREAM")
+local WoMetaLog = require("LQR/util/log").withTag("WO.WOMETA")
 local Time = require("WorldObserver/helpers/time")
+local WoMeta = require("WorldObserver/observations/wo_meta")
+local Debug = require("WorldObserver/debug")
 local HelperSupport = require("WorldObserver/observations/helpers")
 
 local moduleName = ...
@@ -76,7 +79,20 @@ function BaseMethods:subscribe(callback, onError, onCompleted)
 		end
 	end
 
-	local subscription = self._builder:subscribe(callback, onError, onCompleted)
+	local onNext = callback
+	if type(callback) == "function" then
+		onNext = function(value)
+			local ok, reason = WoMeta.attachWoMeta(value)
+			if not ok then
+				local detail = Debug.describeWoKey and Debug.describeWoKey(value) or tostring(value)
+				WoMetaLog:warn("skip reason=%s %s", tostring(reason), tostring(detail))
+				return
+			end
+			return callback(value)
+		end
+	end
+
+	local subscription = self._builder:subscribe(onNext, onError, onCompleted)
 	local unsubscribed = false
 	local function doUnsubscribe()
 		if unsubscribed then

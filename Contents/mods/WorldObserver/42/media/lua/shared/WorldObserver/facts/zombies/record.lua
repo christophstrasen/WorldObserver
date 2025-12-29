@@ -174,6 +174,15 @@ if Record.makeZombieRecord == nil then
 		local zombieId = SafeCall.safeCall(zombie, "getID")
 		local zombieOnlineId = SafeCall.safeCall(zombie, "getOnlineID") or 0
 
+		local zombieKey = zombieId
+		if zombieKey == nil or zombieKey == 0 then
+			zombieKey = zombieOnlineId
+		end
+		if zombieKey == nil or zombieKey == 0 then
+			zombieKey = SquareHelpers.record.tileLocationFromCoords(tileX, tileY, tileZ)
+		end
+		local woKey = zombieKey ~= nil and tostring(zombieKey) or nil
+
 		local isMoving = SafeCall.safeCall(zombie, "isMoving") == true
 		local isRunning = SafeCall.safeCall(zombie, "isRunning") == true
 		local isCrawling = SafeCall.safeCall(zombie, "isCrawling") == true
@@ -191,6 +200,7 @@ if Record.makeZombieRecord == nil then
 		local record = {
 			zombieId = zombieId,
 			zombieOnlineId = zombieOnlineId,
+			woKey = woKey,
 			x = x,
 			y = y,
 			z = z,

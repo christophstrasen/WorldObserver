@@ -206,6 +206,7 @@ if Record.makeSpriteRecord == nil then
 
 		local record = {
 			spriteKey = key,
+			woKey = key,
 			spriteName = spriteName,
 			spriteId = spriteId,
 			x = x,

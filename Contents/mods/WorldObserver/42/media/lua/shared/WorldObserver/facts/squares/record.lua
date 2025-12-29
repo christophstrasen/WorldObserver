@@ -160,12 +160,15 @@ if Record.makeSquareRecord == nil then
 			return nil
 		end
 
+		local tileLocation = SquareHelpers.record.tileLocationFromCoords(x, y, z)
 		local record = {
 			squareId = deriveSquareId(square, x, y, z),
 			x = x,
 			y = y,
 			z = z,
-			tileLocation = SquareHelpers.record.tileLocationFromCoords(x, y, z),
+			tileLocation = tileLocation,
+			-- Stable-ish key for joins/dedup; prefer tileLocation for deterministic ids.
+			woKey = tileLocation,
 			hasBloodSplat = detectFlag(square, square.hasBlood),
 			hasCorpse = detectCorpse(square),
 			hasTrashItems = false, -- placeholder until we wire real trash detection

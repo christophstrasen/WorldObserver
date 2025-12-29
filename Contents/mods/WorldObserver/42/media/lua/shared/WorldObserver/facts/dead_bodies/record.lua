@@ -142,6 +142,7 @@ if Record.makeDeadBodyRecord == nil then
 
 		local record = {
 			deadBodyId = bodyId,
+			woKey = tostring(bodyId),
 			x = x,
 			y = y,
 			z = z,

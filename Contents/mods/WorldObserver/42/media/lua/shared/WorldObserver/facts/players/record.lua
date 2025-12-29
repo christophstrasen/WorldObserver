@@ -221,6 +221,7 @@ if Record.makePlayerRecord == nil then
 			playerId = playerId,
 			playerNum = playerNum,
 			playerKey = playerKey,
+			woKey = playerKey,
 			tileX = tileX,
 			tileY = tileY,
 			tileZ = tileZ,

@@ -44,6 +44,15 @@ See: [Derived streams (multi-family observations)](derived_streams.md)
 Lifecycle details (renewal, TTL override):
 - [Lifecycle](lifecycle.md)
 
+## 1.1 Observation keys (`WoMeta.key`)
+
+WorldObserver attaches a stable-ish domain key to every emission:
+
+- Each record has `record.woKey` (string), computed in the record builder.
+- Each observation has `observation.WoMeta.key`, built from those record keys.
+- Multi-family observations use compound keys (example: `#square(x1y2z0)#zombie(4512)`).
+- If a key can’t be computed, the emission is **skipped** and a warning is logged.
+
 ## 2. Filtering
 
 Filtering means: “only keep the observations I actually care about”.

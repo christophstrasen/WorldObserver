@@ -428,7 +428,7 @@ Add `woKey` to each record builder (exact strategies can be refined case-by-case
 - `Contents/mods/WorldObserver/42/media/lua/shared/WorldObserver/facts/players/record.lua`
   - Likely `record.woKey = record.playerKey` (already a stable-ish string)
 - `Contents/mods/WorldObserver/42/media/lua/shared/WorldObserver/facts/zombies/record.lua`
-  - Likely `record.woKey = tostring(record.zombieId)` (confirm availability); decide fallback if `zombieId` can be nil
+  - `record.woKey = tostring(zombieId)`; fallback to `zombieOnlineId`, then to `tileLocation` if needed
 - `Contents/mods/WorldObserver/42/media/lua/shared/WorldObserver/facts/vehicles/record.lua`
   - Likely `record.woKey = tostring(record.sqlId or record.vehicleId)`
 - `Contents/mods/WorldObserver/42/media/lua/shared/WorldObserver/facts/items/record.lua`

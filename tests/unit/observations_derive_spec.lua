@@ -67,6 +67,7 @@ describe("WorldObserver observations.derive()", function()
 
 		WorldObserver._internal.facts:emit("squares", {
 			squareId = 1,
+			woKey = "x1y2z0",
 			x = 1,
 			y = 2,
 			z = 0,
@@ -75,6 +76,7 @@ describe("WorldObserver observations.derive()", function()
 
 		WorldObserver._internal.facts:emit("zombies", {
 			zombieId = 10,
+			woKey = "10",
 			squareId = 1,
 		})
 		assert.equals(1, #received)
@@ -83,12 +85,14 @@ describe("WorldObserver observations.derive()", function()
 
 		WorldObserver._internal.facts:emit("zombies", {
 			zombieId = 11,
+			woKey = "11",
 			squareId = 2,
 		})
 		assert.equals(1, #received)
 
 		WorldObserver._internal.facts:emit("squares", {
 			squareId = 2,
+			woKey = "x9y9z0",
 			x = 9,
 			y = 9,
 			z = 0,
@@ -125,12 +129,14 @@ describe("WorldObserver observations.derive()", function()
 
 		WorldObserver._internal.facts:emit("squares", {
 			squareId = 1,
+			woKey = "x0y0z0",
 			x = 0,
 			y = 0,
 			z = 0,
 		})
 		WorldObserver._internal.facts:emit("zombies", {
 			zombieId = 10,
+			woKey = "10",
 			squareId = 1,
 			hasTarget = true,
 		})
@@ -138,6 +144,7 @@ describe("WorldObserver observations.derive()", function()
 
 		WorldObserver._internal.facts:emit("zombies", {
 			zombieId = 11,
+			woKey = "11",
 			squareId = 1,
 			hasTarget = false,
 		})
@@ -164,8 +171,8 @@ describe("WorldObserver observations.derive()", function()
 			wrong[#wrong + 1] = row
 		end)
 
-		WorldObserver._internal.facts:emit("squares", { squareId = 1, x = 0, y = 0, z = 0 })
-		WorldObserver._internal.facts:emit("zombies", { zombieId = 10, squareId = 1, hasTarget = true })
+		WorldObserver._internal.facts:emit("squares", { squareId = 1, woKey = "x0y0z0", x = 0, y = 0, z = 0 })
+		WorldObserver._internal.facts:emit("zombies", { zombieId = 10, woKey = "10", squareId = 1, hasTarget = true })
 
 		assert.equals(1, #right)
 		assert.equals(0, #wrong)
@@ -189,6 +196,7 @@ describe("WorldObserver observations.derive()", function()
 
 		WorldObserver._internal.facts:emit("squares", {
 			squareId = 1,
+			woKey = "x0y0z0",
 			x = 0,
 			y = 0,
 			z = 0,

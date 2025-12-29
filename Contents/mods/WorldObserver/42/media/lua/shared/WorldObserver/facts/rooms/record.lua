@@ -253,6 +253,7 @@ if Record.makeRoomRecord == nil then
 			roomId = roomId,
 			roomLocation = tileLocation or roomId,
 			tileLocation = tileLocation or roomId,
+			woKey = roomId,
 			roomDefId = roomDefId,
 			buildingId = buildingId,
 			name = name,

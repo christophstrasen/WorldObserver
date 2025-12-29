@@ -34,10 +34,23 @@ end
 		if isScalar(t) then
 			return tostring(value)
 		end
-		if value == nil then
-			return "nil"
+	if value == nil then
+		return "nil"
 	end
 	return "<" .. t .. ">"
+end
+
+local function listSortedKeys(tbl)
+	local keys = {}
+	local count = 0
+	for key in pairs(tbl or {}) do
+		if type(key) == "string" and key ~= "" then
+			count = count + 1
+			keys[count] = key
+		end
+	end
+	table.sort(keys)
+	return keys, count
 end
 
 local function formatRxMetaCompact(meta)
@@ -78,6 +91,95 @@ local function formatRxMetaCompact(meta)
 			suffix = ("…(+%d)"):format(#schemaNames - maxSchemas)
 		end
 		parts[#parts + 1] = ("schemas=%s%s"):format(table.concat(shown, ","), suffix)
+	end
+
+	if #parts == 0 then
+		return "<empty>"
+	end
+	return table.concat(parts, " ")
+end
+
+local function collectFamilyNames(observation)
+	if type(observation) ~= "table" then
+		return {}, 0
+	end
+	local rxMeta = observation.RxMeta
+	local schemaMap = type(rxMeta) == "table" and rxMeta.schemaMap or nil
+	if type(schemaMap) == "table" then
+		local names = {}
+		local count = 0
+		for key in pairs(schemaMap) do
+			if type(key) == "string" and key ~= "" and not key:match("^_groupBy:") then
+				count = count + 1
+				names[count] = key
+			end
+		end
+		table.sort(names)
+		return names, count
+	end
+
+	local names = {}
+	local count = 0
+	for key, value in pairs(observation) do
+		if key ~= "RxMeta" and key ~= "WoMeta" and type(key) == "string" and type(value) == "table" then
+			if key:match("^_groupBy:") then
+				-- Skip synthetic grouping schemas in family listings.
+			else
+			local hasSchema = type(value.RxMeta) == "table" and type(value.RxMeta.schema) == "string"
+			if type(value.woKey) == "string" or hasSchema then
+				count = count + 1
+				names[count] = key
+			end
+			end
+		end
+	end
+	table.sort(names)
+	return names, count
+end
+
+local function describeWoKey(observation)
+	if type(observation) ~= "table" then
+		return formatValue(observation)
+	end
+
+	local parts = {}
+	local rxMeta = observation.RxMeta
+	local shape = type(rxMeta) == "table" and rxMeta.shape or nil
+	if shape ~= nil then
+		parts[#parts + 1] = ("shape=%s"):format(formatValue(shape))
+	end
+
+	local woMeta = observation.WoMeta
+	local key = type(woMeta) == "table" and woMeta.key or nil
+	if key ~= nil then
+		parts[#parts + 1] = ("key=%s"):format(formatValue(key))
+	else
+		parts[#parts + 1] = "key=<missing>"
+	end
+
+	if type(rxMeta) == "table" then
+		local groupName = rxMeta.groupName or rxMeta.schema
+		if groupName ~= nil then
+			parts[#parts + 1] = ("group=%s"):format(formatValue(groupName))
+		end
+		if rxMeta.groupKey ~= nil then
+			parts[#parts + 1] = ("groupKey=%s"):format(formatValue(rxMeta.groupKey))
+		end
+	end
+
+	local familyNames, familyCount = collectFamilyNames(observation)
+	if familyCount > 0 then
+		local familyParts = {}
+		local familyPartCount = 0
+		for i = 1, familyCount do
+			local name = familyNames[i]
+			local record = observation[name]
+			local recordKey = type(record) == "table" and record.woKey or nil
+			local prettyKey = type(recordKey) == "string" and recordKey or "<missing>"
+			familyPartCount = familyPartCount + 1
+			familyParts[familyPartCount] = ("%s(%s)"):format(name, prettyKey)
+		end
+		parts[#parts + 1] = ("families=%s"):format(table.concat(familyParts, ","))
 	end
 
 	if #parts == 0 then
@@ -229,6 +331,11 @@ Debug._internal.describeRuntimeStatus = describeRuntimeStatus
 Debug._internal.describeFactsMetricsCompact = describeFactsMetricsCompact
 Debug._internal.formatRecordCompact = formatRecordCompact
 Debug._internal.formatRxMetaCompact = formatRxMetaCompact
+Debug._internal.describeWoKey = Debug._internal.describeWoKey or describeWoKey
+
+if Debug.describeWoKey == nil then
+	Debug.describeWoKey = describeWoKey
+end
 
 -- Patch seam: define only when nil so mods can override by reassigning `Debug.new` and so reloads
 -- (tests/console via `package.loaded`) don't clobber an existing patch.

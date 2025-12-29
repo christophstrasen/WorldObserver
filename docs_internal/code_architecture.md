@@ -124,6 +124,14 @@ Primary wiring entrypoint:
 - **Observations** are the public streams mods subscribe to (facts wrapped into schemas and exposed as streams).
 - Records are intentionally “snapshots”: small tables of primitive fields plus best-effort hydration handles.
 
+### Observation metadata: RxMeta vs WoMeta
+- **RxMeta** is low-level, LQR-owned metadata (shape, ids, sourceTime, schemaMap).
+- **WoMeta** is WorldObserver-owned metadata; currently it carries a single domain key:
+  - `observation.WoMeta.key` (string).
+- **record.woKey** is computed in each record builder and is used to build `WoMeta.key`.
+- WoMeta is attached at the outgoing edge in `WorldObserver/observations/core.lua:BaseMethods:subscribe(...)`.
+  - If a key cannot be computed, the emission is **warned and skipped**.
+
 ### Interest (why work happens at all)
 WorldObserver is *opt-in*: most probes/listeners are gated by interest leases.
 - Mods declare interest using `WorldObserver.factInterest:declare(modId, key, spec)`.

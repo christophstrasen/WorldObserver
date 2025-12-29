@@ -165,6 +165,7 @@ if Record.makeItemRecord == nil then
 
 		local record = {
 			itemId = itemId,
+			woKey = tostring(itemId),
 			itemType = SafeCall.safeCall(item, "getType"),
 			itemFullType = SafeCall.safeCall(item, "getFullType"),
 			itemName = SafeCall.safeCall(item, "getName"),

@@ -39,6 +39,7 @@ describe("WorldObserver observations.squares()", function()
 		WorldObserver._internal.facts:emit("squares", {
 			squareId = 10,
 			square = { marker = "square" },
+			woKey = "x1y2z0",
 			x = 1,
 			y = 2,
 			z = 0,
@@ -54,6 +55,8 @@ describe("WorldObserver observations.squares()", function()
 		assert.is_number(obs.square.RxMeta.id)
 		assert.is_equal(123, obs.square.RxMeta.sourceTime)
 		assert.is_equal(123, obs.square.sourceTime)
+		assert.is_table(obs.WoMeta)
+		assert.is_equal("#square(x1y2z0)", obs.WoMeta.key)
 	end)
 
 	it("distinct once per square suppresses duplicates", function()
@@ -66,6 +69,7 @@ describe("WorldObserver observations.squares()", function()
 		WorldObserver._internal.facts:emit("squares", {
 			squareId = 42,
 			square = {},
+			woKey = "x5y6z0",
 			x = 5,
 			y = 6,
 			z = 0,
@@ -75,6 +79,7 @@ describe("WorldObserver observations.squares()", function()
 		WorldObserver._internal.facts:emit("squares", {
 			squareId = 42,
 			square = {},
+			woKey = "x5y6z0",
 			x = 5,
 			y = 6,
 			z = 0,
@@ -96,6 +101,7 @@ describe("WorldObserver observations.squares()", function()
 			squareId = 1,
 			square = {},
 			hasCorpse = false,
+			woKey = "x0y0z0",
 			x = 0,
 			y = 0,
 			z = 0,
@@ -106,6 +112,7 @@ describe("WorldObserver observations.squares()", function()
 			squareId = 2,
 			square = {},
 			hasCorpse = true,
+			woKey = "x1y1z0",
 			x = 1,
 			y = 1,
 			z = 0,
@@ -148,6 +155,7 @@ describe("WorldObserver observations.squares()", function()
 			squareId = 1,
 			square = {},
 			hasCorpse = false,
+			woKey = "x0y0z0",
 			x = 0,
 			y = 0,
 			z = 0,
@@ -158,6 +166,7 @@ describe("WorldObserver observations.squares()", function()
 			squareId = 2,
 			square = {},
 			hasCorpse = true,
+			woKey = "x1y1z0",
 			x = 1,
 			y = 1,
 			z = 0,
@@ -207,6 +216,7 @@ describe("WorldObserver observations.squares()", function()
 
 		WorldObserver._internal.facts:emit("squares", {
 				squareId = 99,
+				woKey = "x1y2z0",
 				x = 1,
 				y = 2,
 				z = 0,

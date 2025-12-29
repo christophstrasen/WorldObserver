@@ -39,13 +39,17 @@ end
 
 describe("ObservationStream:asRx", function()
 	it("bridges to lua-reactivex and propagates unsubscribe", function()
-		local stream = dummyStream({ 1, 2, 3 }, false)
+		local stream = dummyStream({
+			{ value = 1, woKey = "1", RxMeta = { schema = "dummy", shape = "record" } },
+			{ value = 2, woKey = "2", RxMeta = { schema = "dummy", shape = "record" } },
+			{ value = 3, woKey = "3", RxMeta = { schema = "dummy", shape = "record" } },
+		}, false)
 		local rxStream = stream:asRx()
 
 		local values = {}
 		local sub = rxStream
 			:map(function(x)
-				return x * 2
+				return x.value * 2
 			end)
 			:subscribe(function(x)
 				values[#values + 1] = x

@@ -52,8 +52,8 @@ describe("WorldObserver observation helper attachment", function()
 			received[#received + 1] = row
 		end)
 
-		WorldObserver._internal.facts:emit("squares", { squareId = 1, x = 0, y = 0, z = 0 })
-		WorldObserver._internal.facts:emit("squares", { squareId = 2, x = 0, y = 0, z = 0 })
+		WorldObserver._internal.facts:emit("squares", { squareId = 1, woKey = "x0y0z0", x = 0, y = 0, z = 0 })
+		WorldObserver._internal.facts:emit("squares", { squareId = 2, woKey = "x0y0z0", x = 0, y = 0, z = 0 })
 
 		assert.equals(1, #received)
 		assert.equals(2, received[1].square.squareId)
@@ -72,7 +72,7 @@ describe("WorldObserver observation helper attachment", function()
 			received[#received + 1] = row
 		end)
 
-		WorldObserver._internal.facts:emit("squares", { squareId = 1, x = 0, y = 0, z = 0 })
+		WorldObserver._internal.facts:emit("squares", { squareId = 1, woKey = "x0y0z0", x = 0, y = 0, z = 0 })
 
 		assert.equals(1, #received)
 		assert.equals(1, received[1].square.squareId)

@@ -139,10 +139,12 @@ if Record.makeVehicleRecord == nil then
 		local x = tileX
 		local y = tileY
 		local z = tileZ
+		local woKey = tostring(sqlId or vehicleId)
 
 		local record = {
 			sqlId = sqlId,
 			vehicleId = vehicleId,
+			woKey = woKey,
 			x = x,
 			y = y,
 			z = z,

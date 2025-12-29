@@ -60,6 +60,8 @@ function SmokeSituationFactorySquares.start(opts)
 	Log.info("[smoke] subscribing to situation squaresNear (distinctSeconds=%s)", tostring(opts.distinctSeconds))
 	local subscription = stream:subscribe(function(observation)
 		WorldObserver.debug.printObservation(observation, { prefix = "[situation] square observed" })
+		local woKey = observation.WoMeta and observation.WoMeta.key or "<missing>"
+		Log.info("[situation] woKey=%s", tostring(woKey))
 	end)
 
 	return {

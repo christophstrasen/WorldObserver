@@ -40,12 +40,14 @@ describe("WorldObserver observations.vehicles()", function()
 		WorldObserver._internal.facts:emit("vehicles", {
 			vehicleId = 1,
 			sqlId = 1001,
+			woKey = "1001",
 			sourceTime = 50,
 			source = "probe",
 		})
 		WorldObserver._internal.facts:emit("vehicles", {
 			vehicleId = 2,
 			sqlId = 1002,
+			woKey = "1002",
 			sourceTime = 60,
 			source = "probe",
 		})
