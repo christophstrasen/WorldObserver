@@ -6,4 +6,4 @@ poster=poster.png
 icon=icon_64.png
 authors=Karmachameleon
 version=0.1
-require=\StarlitLibrary,\DoggyLibrary,\reactivex,\LQR
+require=\StarlitLibrary,\DoggyLibrary,\reactivex,\LQR,\DREAMBase
