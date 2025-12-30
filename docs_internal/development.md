@@ -104,13 +104,13 @@ WorldObserver is packaged as a standard Project Zomboid workshop mod under `Cont
 ### 4.1 One‑off sync
 
 You can sync to either:
-- your local **mods** folder (fast iteration), or
-- a local **workshop wrapper** folder (for upload previews).
+- a local **workshop wrapper** folder (default; matches Workshop layout), or
+- your local **mods** folder (optional).
 
 ```bash
-./dev/sync-mods.sh
-# or:
 ./dev/sync-workshop.sh
+# or:
+./dev/sync-mods.sh
 ```
 
 These scripts:

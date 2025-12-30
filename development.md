@@ -21,7 +21,7 @@ Watch + deploy (default: Workshop wrapper under `~/Zomboid/Workshop`):
 ./dev/watch.sh
 ```
 
-Switch destination:
+Optional: deploy to `~/Zomboid/mods` instead:
 
 ```bash
 TARGET=mods ./dev/watch.sh
@@ -41,4 +41,3 @@ Loader smoke test (after syncing):
 ./dev/sync-workshop.sh
 SOURCE=workshop ./dev/smoke.sh
 ```
-
