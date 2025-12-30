@@ -68,7 +68,7 @@ Because we target both vanilla Lua 5.1 (headless) and Project Zomboid’s Kahlua
 - **Automated unit tests (busted):** fast, headless, and required for most changes: `busted tests`
 - **Automated “built workspace” smoke test:** validates that a synced workshop tree can load like Zomboid does:
   - loader test: `pz_smoke.lua:1`
-  - build/sync runner (also runs the loader smoke test): `watch-workshop-sync.sh:1`
+  - build/sync runner: `dev/sync-workshop.sh:1`
 - **Manual in-engine smoke tests (developer):** validate true engine integration (events, Iso objects, visuals):
   - smoke scripts live in `Contents/mods/WorldObserver/42/media/lua/shared/examples/`
   - the “start everything” harness is `Contents/mods/WorldObserver/42/media/lua/shared/examples/smoke_console_showcase.lua:1`

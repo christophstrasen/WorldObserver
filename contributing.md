@@ -62,8 +62,8 @@ We target both vanilla Lua 5.1 (headless tests) and the Zomboid runtime (Kahlua)
 - Add tests under `tests/unit/` for new behavior.
 
 2) **Built-workspace loader smoke test (recommended for require/path changes)**
-- Run: `./watch-workshop-sync.sh`
-- This syncs a workshop tree and runs `pz_smoke.lua` against it.
+- Run: `./dev/sync-workshop.sh`
+- Then: `SOURCE=workshop ./dev/smoke.sh`
 
 3) **In-engine smoke tests (recommended for new probes/listeners/visuals)**
 - Smoke scripts live under `Contents/mods/WorldObserver/42/media/lua/shared/examples/`

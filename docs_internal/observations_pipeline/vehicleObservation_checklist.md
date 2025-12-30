@@ -261,7 +261,7 @@ Keep helpers small, composable, and discoverable. Prefer record predicates + thi
 - Example script added/updated (where): `Contents/mods/WorldObserver/42/media/lua/shared/examples/smoke_vehicles.lua`
 - Minimal smoke scenario (“how to see it in action quickly”): declare `vehicles` allLoaded with `highlight=true` and print a single line per emitted vehicle (dedup by `sqlId`, fallback to `vehicleId`)
 - Lease renewal: not required for the smoke test (default lease TTL is long enough for a short demo).
-- Workshop sync smoke (`pz_smoke.lua` / `watch-workshop-sync.sh`) considerations:
+- Loader smoke (`pz_smoke.lua` via `./dev/smoke.sh`) considerations:
   - ☑ `require(...)` paths compatible with PZ runtime (no `init.lua` assumptions)
   - ☐ Works in vanilla Lua 5.1 headless where intended
 

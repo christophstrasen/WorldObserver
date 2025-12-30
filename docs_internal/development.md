@@ -40,6 +40,7 @@ Recommended tools:
   ```
 
 - `rsync` and `inotifywait` (from `inotify-tools`) for the workshop sync script.
+- `rsync` and `inotifywait` (from `inotify-tools`) for the dev sync/watch scripts under `dev/`.
 - Optional: [`pre-commit`](https://pre-commit.com/) if you want hooks to run `busted tests` before committing:
 
   ```bash
@@ -68,10 +69,11 @@ This is the main headless test suite for the mod itself and should be run regula
 
 ### 3.2 Zomboid engine-simulation smoke test
 
-Each sync/build run via `watch-workshop-sync.sh` automatically executes `pz_smoke.lua` against the synced workshop directory when `lua` is available.
+Run the loader smoke test (`pz_smoke.lua`) via the helper script after deploying the mod(s) locally.
 
 ```bash
-./watch-workshop-sync.sh   # or re-run while developing
+./dev/sync-mods.sh
+./dev/smoke.sh
 ```
 
  This is a “lazy man’s Zomboid engine-simulation” that:
@@ -101,22 +103,30 @@ WorldObserver is packaged as a standard Project Zomboid workshop mod under `Cont
 
 ### 4.1 One‑off sync
 
-You can run the sync script once to push the current tree into your local workshop directory:
+You can sync to either:
+- your local **mods** folder (fast iteration), or
+- a local **workshop wrapper** folder (for upload previews).
 
 ```bash
-./watch-workshop-sync.sh
+./dev/sync-mods.sh
+# or:
+./dev/sync-workshop.sh
 ```
 
-The script:
+These scripts:
 
-- Copies the WorldObserver mod tree into `$HOME/Zomboid/Workshop/WorldObserver` (ensure `$HOME/Zomboid/Workshop` exists first).
-- Excludes heavyweight/dev folders (including `external/`, `docs/`, `tests/`).
-- Mirrors only the Lua payload from `external/LQR/LQR/` into `Contents/mods/WorldObserver/42/media/lua/shared/LQR/`.
-- Copies only the runtime Lua parts of lua‑reactivex from `external/lua-reactivex` (specifically `reactivex.lua`, `reactivex/*.lua`, and `operators.lua`) into `Contents/mods/WorldObserver/42/media/lua/shared/` – docs, examples, rockspecs, and tests are not shipped.
-- Drops shims so `require("WorldObserver")`, `require("LQR")`, and `require("reactivex")` resolve inside the game.
-- Runs the `pz_smoke.lua` loader smoke test against the destination tree when `lua` is available.
+- Sync only the WorldObserver mod payload (they do not bundle dependency mods).
+- Write into a single mod folder at the destination (safe to use with `rsync --delete`).
 
 ### 4.2 Watch mode during development
+
+To keep a destination up to date while you edit:
+
+```bash
+./dev/watch.sh
+# or:
+TARGET=workshop ./dev/watch.sh
+```
 
 The same script also sets up a file watcher:
 
@@ -129,9 +139,11 @@ The same script also sets up a file watcher:
 
 High‑level steps:
 
-1. Ensure the workshop destination exists (the sync script will create/populate `$HOME/Zomboid/Workshop/WorldObserver`).
+1. Ensure your destination exists:
+   - local mods: `$HOME/Zomboid/mods/WorldObserver` (via `./dev/sync-mods.sh`)
+   - local workshop wrapper: `$HOME/Zomboid/Workshop/WorldObserver` (via `./dev/sync-workshop.sh`)
 2. Start Project Zomboid and enable the WorldObserver mod in the Mods UI.
-3. For development, also enable the LQR/lua‑reactivex dependency mods if you later split them into separate workshop entries; in the current layout they are shipped as part of WorldObserver’s Lua payload.
+3. Also enable the dependency mods: `LQR` and `reactivex` (plus `StarlitLibrary` and `DoggyLibrary`).
 4. Use in‑game logs and any debug helpers exposed on `WorldObserver.debug` to verify that observers and helpers behave as expected.
 
 Refer to `docs_internal/drafts/mvp.md` and `docs_internal/vision.md` for the current intended API surface and behavior while developing new features.

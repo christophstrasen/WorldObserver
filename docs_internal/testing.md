@@ -6,7 +6,7 @@ WorldObserver tests are written in Lua (5.1 compatible) using `busted` and run h
 
 ## Running tests
 
-From the repo root:
+From the repo root: 
 
 ```bash
 busted tests
@@ -17,7 +17,7 @@ See `docs_internal/development.md` for tooling setup and the workshop smoke test
 ## Where tests live
 
 - Unit tests: `tests/unit/*_spec.lua`
-- Engine-simulation smoke test: `pz_smoke.lua` (executed by `watch-workshop-sync.sh`)
+- Engine-simulation smoke test: `pz_smoke.lua` (run via `./dev/smoke.sh`)
 
 ## Standard test bootstrap
 

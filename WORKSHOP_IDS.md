@@ -1,4 +1,4 @@
-WorldObserver [b42]
+WorldObserver [42SP]
 -------------
 Workshop ID: TBD
 Mod ID: WorldObserver

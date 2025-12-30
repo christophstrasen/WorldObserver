@@ -214,7 +214,7 @@ We should keep this minimal until we learn what modders actually need.
 
 Minimum confidence gates:
 - WorldObserver unit tests: `busted tests`
-- Workshop smoke tests: `./watch-workshop-sync.sh` (runs `pz_smoke.lua`)
+- Loader smoke tests: `./dev/sync-workshop.sh` + `SOURCE=workshop ./dev/smoke.sh` (runs `pz_smoke.lua`)
 - In-engine smoke: run `examples/smoke_squares.lua` and confirm:
   - no runaway CPU usage when moving and revealing new squares
   - logs show stable drain behavior (pending not unbounded; throughput keeps up)
