@@ -32,7 +32,8 @@ It’s written to satisfy these constraints:
   - `https://github.com/christophstrasen/pz-lqr`
   - `https://github.com/christophstrasen/pz-dream`
 - [ ] Publish all 5 Workshop items + fill in Workshop IDs
-- [ ] (Optional) Create `DREAM-Workspace` repo (multi-repo convenience)
+- [x] (Optional) Local `DREAM-Workspace` created at `/home/cornholio/projects/DREAM-Workspace` (submodules + one-terminal `dev/watch-all.sh`)
+- [x] (Optional) `DREAM-Workspace` pushed: `https://github.com/christophstrasen/DREAM-Workspace`
 
 Next (human steps):
 - Create 3 GitHub repos (repo names can be e.g. `pz-lqr`, `pz-reactivex`, `pz-dream`) and add them as remotes.
