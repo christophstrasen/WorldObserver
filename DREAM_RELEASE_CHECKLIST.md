@@ -16,11 +16,11 @@ It’s written to satisfy these constraints:
 
 - [x] Decisions locked (IDs vs display names, dependency format, deploy paths)
 - [x] WorldObserver standalone deploy scripts (`dev/sync-*`, `dev/watch.sh`, `dev/smoke.sh`) + docs updated
-- [x] PromiseKeeper standalone deploy scripts (`external/PromiseKeeper/dev/*`) + docs/metadata updated
+- [x] PromiseKeeper standalone deploy scripts + docs/metadata updated (in the PromiseKeeper repo)
 - [x] Legacy combined watchers removed; maintainer one-terminal watcher added (`dev/watch-all.sh`)
 - [x] SVG→PNG asset pipeline added across the mod family (requires `inkscape`):
   - WorldObserver: `dev/build-assets.sh`
-  - PromiseKeeper: `external/PromiseKeeper/dev/build-assets.sh`
+  - PromiseKeeper: `PromiseKeeper/dev/build-assets.sh` (in the PromiseKeeper repo)
   - reactivex: `pz-reactivex/dev/build-assets.sh`
   - LQR: `pz-lqr/dev/build-assets.sh`
   - DREAM: `pz-dream/dev/build-assets.sh`
@@ -92,7 +92,7 @@ If you decide you *do* want versioned internal IDs to avoid collisions, use some
 HUMAN:
 - You will have **one git repo per published mod**:
   - `WorldObserver` (already exists)
-  - `PromiseKeeper` (already exists; currently a submodule here)
+  - `PromiseKeeper` (separate repo; pulled in via DREAM-Workspace)
   - `LQR` mod repo (new “adapter mod” repo; not the upstream `christophstrasen/LQR`)
   - `reactivex` mod repo (new “adapter mod” repo; not the upstream `christophstrasen/lua-reactivex`)
   - `DREAM` (new meta-mod repo)
@@ -180,7 +180,7 @@ Target change:
 
 AI (done in this repo):
 - Added `dev/sync-mods.sh`, `dev/sync-workshop.sh`, `dev/watch.sh` (WorldObserver-only deploy).
-- Added PromiseKeeper equivalents under `external/PromiseKeeper/dev/`.
+- PromiseKeeper has matching `dev/*` scripts in its own repo.
 - Removed the legacy combined watcher; maintainers can use `dev/watch-all.sh` to trigger multiple per-repo sync scripts from one terminal.
 
 ## 6) Fully Local “build everything” path (maintainers/offline)
