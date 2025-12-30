@@ -1,4 +1,9 @@
 -- time.lua -- shared time helpers (game ms, cpu ms) with minimal guarding.
+local okBase, BaseTime = pcall(require, "DREAMBase/time_ms")
+if okBase and type(BaseTime) == "table" and type(BaseTime.gameMillis) == "function" then
+	return BaseTime
+end
+
 local moduleName = ...
 local Time = {}
 if type(moduleName) == "string" then

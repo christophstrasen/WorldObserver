@@ -1,4 +1,12 @@
-package.path = table.concat({ package.path, "./?.lua", "./?/init.lua" }, ";")
+package.path = table.concat({
+	"Contents/mods/WorldObserver/42/media/lua/shared/?.lua",
+	"Contents/mods/WorldObserver/42/media/lua/shared/?/init.lua",
+	"external/LQR/?.lua",
+	"external/LQR/?/init.lua",
+	"external/lua-reactivex/?.lua",
+	"external/lua-reactivex/?/init.lua",
+	package.path,
+}, ";")
 _G.WORLDOBSERVER_HEADLESS = true
 _G.LQR_HEADLESS = true
 
