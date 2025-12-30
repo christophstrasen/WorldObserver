@@ -4,7 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-TARGET="${TARGET:-mods}" # mods|workshop
+TARGET="${TARGET:-workshop}" # mods|workshop
 WATCH_MODE="${WATCH_MODE:-payload}" # payload|repo
 
 sync_once() {

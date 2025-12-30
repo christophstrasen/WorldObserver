@@ -8,7 +8,7 @@ MOD_ID="WorldObserver"
 PZ_MODS_DIR="${PZ_MODS_DIR:-$HOME/Zomboid/mods}"
 PZ_WORKSHOP_DIR="${PZ_WORKSHOP_DIR:-$HOME/Zomboid/Workshop}"
 
-SOURCE="${SOURCE:-mods}" # mods|workshop
+SOURCE="${SOURCE:-workshop}" # mods|workshop
 WRAPPER_NAME="${WRAPPER_NAME:-$MOD_ID}"
 
 case "$SOURCE" in
