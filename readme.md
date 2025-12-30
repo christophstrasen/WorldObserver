@@ -117,6 +117,10 @@ Docs:
 - [Glossary](docs/glossary.md) (canonical terminology)
 - [Troubleshooting](docs/troubleshooting.md)
 
+Internal docs:
+- `docs_internal/vision.md`
+- `docs_internal/logbook.md`
+
 ---
 
 ## License
