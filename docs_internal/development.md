@@ -124,14 +124,16 @@ To keep a destination up to date while you edit:
 
 ```bash
 ./dev/watch.sh
-# or:
-TARGET=workshop ./dev/watch.sh
 ```
 
 The same script also sets up a file watcher:
 
 - After the initial sync, it uses `inotifywait` to watch the repo and re‑sync when files change.
 - Keep this running in a terminal while editing; restart Project Zomboid or reload mods as needed to pick up changes.
+
+Notes:
+- `./dev/watch.sh` defaults to `TARGET=workshop`. To deploy to `~/Zomboid/mods`, run: `TARGET=mods ./dev/watch.sh`
+- You can override destinations with `PZ_WORKSHOP_DIR` / `PZ_MODS_DIR`.
 
 ---
 

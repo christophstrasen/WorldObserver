@@ -3,7 +3,6 @@
 WorldObserver is a shared world-sensing engine for Project Zomboid mods. Contributions are welcome, especially:
 - new observations (types/scopes/targets) that fit the interest model,
 - robustness improvements for Build 42
-- Confirmed multiplayer support
 - better docs and examples for modders and contributors.
 
 If you’re planning a larger change (new observation family, new sensor, API reshaping), please open an issue first so we can align on scope and naming.
@@ -13,11 +12,18 @@ Potentially interesting future observations and other research notes are tracked
 
 ## Quick links (start here)
 
+- Development quickstart (single repo): `development.md`
 - Development workflow (setup, tests, workshop sync, smoke tests): `docs_internal/development.md`
 - Architecture overview (how the pipeline is structured): `docs_internal/code_architecture.md`
 - Runtime dynamics (how probes and draining adapt): `docs_internal/runtime_dynamics.md`
 - Documentation principles (how we write docs): `docs_internal/wo_documentation_principles.md`
 - Canonical terminology: `docs/glossary.md`
+
+## DREAM suite
+
+WorldObserver is one module in the DREAM family (WorldObserver, PromiseKeeper, SceneBuilder, LQR, reactivex, DREAM).
+
+Maintainer convenience repo (multi-repo sync/watch): https://github.com/christophstrasen/DREAM-Workspace
 
 ## Project values (what we optimize for)
 
