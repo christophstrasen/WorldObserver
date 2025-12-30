@@ -1,5 +1,28 @@
 version=1
-title=WorldObserver [42SP]
-description=WorldObserver is a medium-sized Lua subsystem that watches the game world and keeps track of freshly available constructs—tiles, rooms, or any other entities that shipped or custom scanners choose to surface. It gives mod authors an extensible toolkit of async scan loops, per-entity event streams, and chainable reducers so multiple scanners can share the heavy traversal work while downstream listeners react or enrich the feed without re-implementing the grind.
+title=[42SP] WorldObserver
+description=WorldObserver - Shared world observation for Project Zomboid (Build 42)
+
+NOT TESTED IN MULTIPLAYER. DON'T USE THERE. YOU HAVE BEEN WARNED. thx.
+
+WorldObserver is a cooperative world-sensing engine for mid-level Lua mod developers.
+Instead of hand-rolling OnTick scan batches and custom caches, you declare interest
+in facts (scope, radius, staleness) and subscribe to ready-made observation streams.
+
+Good for mods that need rich, asynchronous information like:
+- corpse squares near the player
+- kitchens with specific zombie types
+- vehicles under attack
+
+This is a developer library, not gameplay content. It does nothing on its own.
+
+GitHub (docs, source, examples):
+https://github.com/christophstrasen/WorldObserver
+
+Dependencies (required by mod.info):
+- StarlitLibrary
+- DoggyLibrary
+- reactivex
+- LQR
+
 tags=Library;Utility;Build 42;Development
 visibility=Public
