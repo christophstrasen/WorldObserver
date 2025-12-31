@@ -14,24 +14,12 @@ if type(moduleName) == "string" then
 end
 Config._internal = Config._internal or {}
 
-local function resolveWarnFn()
-	local okLog, Log = pcall(require, "LQR/util/log")
-	if okLog and type(Log) == "table" and type(Log.withTag) == "function" then
-		local tagged = Log.withTag("WO.CONFIG")
-		if tagged and type(tagged.warn) == "function" then
-			return function(fmt, ...)
-				tagged:warn(fmt, ...)
-			end
-		end
-	end
-	return function(fmt, ...)
-		if type(_G) == "table" and type(_G.print) == "function" then
-			_G.print(string.format("[WO.CONFIG] " .. fmt, ...))
-		end
-	end
-end
+local Log = require("DREAMBase/log")
+local warnLog = Log.withTag("WO.CONFIG")
 
-local warnf = resolveWarnFn()
+local function warnf(fmt, ...)
+	warnLog:warn(fmt, ...)
+end
 
 local function pathToString(path)
 	if type(path) ~= "table" then
