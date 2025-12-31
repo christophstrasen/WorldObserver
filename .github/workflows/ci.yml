@@ -32,7 +32,7 @@ jobs:
 
       - name: Run WorldObserver unit tests
         run: |
-          busted tests/unit
+          busted --helper=tests/helper.lua tests/unit
 
   lqr-test:
     runs-on: ubuntu-latest

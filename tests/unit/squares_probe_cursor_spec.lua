@@ -1,5 +1,3 @@
-dofile("tests/unit/bootstrap.lua")
-
 	_G.WORLDOBSERVER_HEADLESS = true
 	_G.LQR_HEADLESS = true
 

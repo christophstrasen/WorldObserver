@@ -1,5 +1,3 @@
-dofile("tests/unit/bootstrap.lua")
-
 local Config = require("WorldObserver/config")
 
 ---@diagnostic disable: undefined-global
