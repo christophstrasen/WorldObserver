@@ -13,6 +13,5 @@ package.path = table.concat({
 }, ";")
 
 local TB = require("DREAMBase/test/bootstrap")
-if type(TB) == "table" and type(TB.apply) == "function" then
-	TB.apply()
-end
+assert(type(TB) == "table" and type(TB.apply) == "function", "DREAMBase/test/bootstrap must export apply()")
+TB.apply()

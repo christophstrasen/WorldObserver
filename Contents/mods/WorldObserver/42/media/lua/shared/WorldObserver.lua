@@ -6,8 +6,11 @@ do
 	-- WorldObserver stamps RxMeta.sourceTime in milliseconds; configure LQR's default window clock to match.
 	-- This keeps time/interval windows ergonomic (no need to pass currentFn everywhere) while remaining overridable
 	-- via LQR.Query.setDefaultCurrentFn.
-	local okTime, Time = pcall(require, "WorldObserver/helpers/time")
-	if okTime and _LQRBootstrap and _LQRBootstrap.Query and type(_LQRBootstrap.Query.setDefaultCurrentFn) == "function" then
+	--
+	-- WHY: If we ever fail to set this, LQR defaults to whatever clock it ships with, and we end up with
+	-- subtle, hard-to-debug window behaviour differences across the suite.
+	local Time = require("WorldObserver/helpers/time")
+	if _LQRBootstrap and _LQRBootstrap.Query and type(_LQRBootstrap.Query.setDefaultCurrentFn) == "function" then
 		_LQRBootstrap.Query.setDefaultCurrentFn(Time.gameMillis)
 	end
 end
@@ -86,6 +89,10 @@ local ItemHelpers = require("WorldObserver/helpers/item")
 	---@type WOInterestRegistry
 	local interestRegistry = InterestRegistry.new({})
 	local headless = config.facts.squares.headless == true
+
+	-- Diagnostics overlays can be quite noisy and can keep printing even after a smoke handle stops
+	-- if we forget to detach them. We only want them while something is actively subscribed.
+	-- WHY: This avoids "DIAG spam" in normal gameplay and keeps `handle:stop()` behaviour intuitive.
 	local function setRuntimeDiagnosticsActive(active)
 		if headless then
 			return
@@ -97,14 +104,19 @@ local ItemHelpers = require("WorldObserver/helpers/item")
 		if diagCfg == nil or diagCfg.enabled ~= true then
 			return
 		end
+
 		if active then
-			if not runtimeDiagnosticsHandle then
+			if runtimeDiagnosticsHandle ~= nil then
+				return
+			end
+
 			runtimeDiagnosticsHandle = debugApi.attachRuntimeDiagnostics({})
 			if WorldObserver and WorldObserver._internal then
 				WorldObserver._internal.runtimeDiagnosticsHandle = runtimeDiagnosticsHandle
 			end
+			return
 		end
-	else
+
 		if runtimeDiagnosticsHandle and runtimeDiagnosticsHandle.stop then
 			pcall(runtimeDiagnosticsHandle.stop)
 		end
@@ -113,7 +125,6 @@ local ItemHelpers = require("WorldObserver/helpers/item")
 			WorldObserver._internal.runtimeDiagnosticsHandle = nil
 		end
 	end
-end
 
 local factRegistry = FactRegistry.new(config, runtime, {
 	-- Stop DIAG spam when nothing is subscribed (e.g. smoke handle:stop()).
