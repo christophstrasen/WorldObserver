@@ -35,6 +35,7 @@ Common fields on the square record:
 - `squareId` (stable within a running session; do not rely on it across game reloads)
 - `x`, `y`, `z`
 - `hasCorpse`
+- `floorMaterial` (string from the floor sprite properties; may be nil)
 - `source` (which producer saw it, e.g. `"probe"`)
 - `sourceTime` (ms, in-game clock)
 
@@ -70,11 +71,17 @@ local stream = WorldObserver.observations:squares()
 Available today:
 - `:squareHasCorpse()` (filters on `square.hasCorpse`, no hydration)
 - `:squareHasIsoGridSquare()` (keeps only records that can resolve a live `IsoGridSquare`)
+- `:squareFloorMaterialMatches(pattern)` (filters on `square.floorMaterial`)
+  - Trailing `%` means “prefix match” (example: `"Road%"`).
+- `:isRoad()` (shorthand for `squareFloorMaterialMatches("Road%")`)
 - `:setSquareMarker(textOrFn, opts)` (best-effort label; requires Doggy's VisualMarkers; accepts square-like records with `x/y/z` or a live `IsoGridSquare`)
 
 Record helpers (use inside `:squareFilter(...)` or inside Rx `:filter(...)` after `:asRx()`):
 - `WorldObserver.helpers.square.record.squareHasCorpse(squareRecord)` (checks the `hasCorpse` field only)
 - `WorldObserver.helpers.square.record.squareHasIsoGridSquare(squareRecord, opts)` (may hydrate/cache `squareRecord.IsoGridSquare`)
+- `WorldObserver.helpers.square.record.squareFloorMaterialMatches(squareRecord, pattern)`
+  - Trailing `%` means “prefix match” (example: `"Road%"`).
+- `WorldObserver.helpers.square.record.isRoad(squareRecord)`
 
 Example (sets a label showing the square id, reusing the same marker per square):
 

@@ -1,5 +1,6 @@
 -- facts/squares/record.lua -- builds stable square fact records from IsoGridSquare objects.
 local Log = require("DREAMBase/log").withTag("WO.FACTS.squares")
+local SafeCall = require("DREAMBase/pz/safe_call")
 local SquareHelpers = require("WorldObserver/helpers/square")
 
 local moduleName = ...
@@ -141,6 +142,22 @@ local function detectCorpse(square)
 	return detectFlag(square, square.hasCorpse)
 end
 
+local function resolveFloorMaterial(square)
+	local floor = SafeCall.safeCall(square, "getFloor")
+	if floor == nil then
+		return nil
+	end
+	local sprite = SafeCall.safeCall(floor, "getSprite")
+	if sprite == nil then
+		return nil
+	end
+	local props = SafeCall.safeCall(sprite, "getProperties")
+	if props == nil or type(props.get) ~= "function" then
+		return nil
+	end
+	return SafeCall.safeCall(props, "get", "FloorMaterial")
+end
+
 if Record.makeSquareRecord == nil then
 	--- Build a square fact record.
 	--- Intentionally returns a tiny, stable "snapshot" so we can buffer safely and keep downstream pure.
@@ -171,6 +188,7 @@ if Record.makeSquareRecord == nil then
 			woKey = tileLocation,
 			hasBloodSplat = detectFlag(square, square.hasBlood),
 			hasCorpse = detectCorpse(square),
+			floorMaterial = resolveFloorMaterial(square),
 			hasTrashItems = false, -- placeholder until we wire real trash detection
 			IsoGridSquare = square,
 			source = source,

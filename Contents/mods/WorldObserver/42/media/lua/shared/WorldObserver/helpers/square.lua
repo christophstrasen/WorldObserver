@@ -1,6 +1,7 @@
 -- helpers/square.lua -- square helper set (MVP) providing named filters for square observations.
 local Log = require("DREAMBase/log").withTag("WO.HELPER.square")
 local Highlight = require("WorldObserver/helpers/highlight")
+local PatternHelpers = require("WorldObserver/helpers/pattern")
 local moduleName = ...
 local SquareHelpers = {}
 if type(moduleName) == "string" then
@@ -88,6 +89,17 @@ end
 		return squareRecord.hasCorpse == true
 	end
 
+	local function squareFloorMaterialMatches(squareRecord, expected)
+		if type(squareRecord) ~= "table" then
+			return false
+		end
+		local material = squareRecord.floorMaterial
+		if type(material) ~= "string" or material == "" then
+			return false
+		end
+		return PatternHelpers.matchesPrefixPattern(material, expected)
+	end
+
 	-- Stream sugar: apply a predicate to the square record directly.
 	-- This avoids leaking LQR schema names (e.g. "SquareObservation") into mod code.
 	if SquareHelpers.squareFilter == nil then
@@ -114,6 +126,10 @@ end
 		SquareHelpers.record.squareHasCorpse = squareHasCorpse
 	end
 
+	if SquareHelpers.record.squareFloorMaterialMatches == nil then
+		SquareHelpers.record.squareFloorMaterialMatches = squareFloorMaterialMatches
+	end
+
 	if SquareHelpers.squareHasCorpse == nil then
 		function SquareHelpers.squareHasCorpse(stream, fieldName, ...)
 			local target = fieldName or "square"
@@ -126,6 +142,41 @@ end
 	if SquareHelpers.stream.squareHasCorpse == nil then
 		function SquareHelpers.stream.squareHasCorpse(stream, fieldName, ...)
 			return SquareHelpers.squareHasCorpse(stream, fieldName, ...)
+		end
+	end
+
+	if SquareHelpers.squareFloorMaterialMatches == nil then
+		function SquareHelpers.squareFloorMaterialMatches(stream, fieldName, expected)
+			local target = fieldName or "square"
+			return stream:filter(function(observation)
+				local square = squareField(observation, target)
+				return SquareHelpers.record.squareFloorMaterialMatches(square, expected)
+			end)
+		end
+	end
+	if SquareHelpers.stream.squareFloorMaterialMatches == nil then
+		function SquareHelpers.stream.squareFloorMaterialMatches(stream, fieldName, ...)
+			return SquareHelpers.squareFloorMaterialMatches(stream, fieldName, ...)
+		end
+	end
+
+	if SquareHelpers.record.isRoad == nil then
+		function SquareHelpers.record.isRoad(squareRecord)
+			return SquareHelpers.record.squareFloorMaterialMatches(squareRecord, "Road%")
+		end
+	end
+	if SquareHelpers.isRoad == nil then
+		function SquareHelpers.isRoad(stream, fieldName, ...)
+			local target = fieldName or "square"
+			return stream:filter(function(observation)
+				local square = squareField(observation, target)
+				return SquareHelpers.record.isRoad(square)
+			end)
+		end
+	end
+	if SquareHelpers.stream.isRoad == nil then
+		function SquareHelpers.stream.isRoad(stream, fieldName, ...)
+			return SquareHelpers.isRoad(stream, fieldName, ...)
 		end
 	end
 

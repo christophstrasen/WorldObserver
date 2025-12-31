@@ -87,10 +87,12 @@ local stream = WorldObserver.observations:zombies()
 Available today:
 - `:zombieHasTarget()` (keeps only zombies that currently have a target)
 - `:hasOutfit(nameOrList)` (keeps only zombies whose `outfitName` matches a string or list)
+  - Trailing `%` means “prefix match” (example: `"Police%"`).
 
 Record helpers (use inside `:zombieFilter(...)` or inside Rx `:filter(...)` after `:asRx()`):
 - `WorldObserver.helpers.zombie.record.zombieHasTarget(zombieRecord)`
 - `WorldObserver.helpers.zombie.record.zombieHasOutfit(zombieRecord, nameOrList)`
+  - Trailing `%` means “prefix match” (example: `"Police%"`).
 
 ## Supported interest configuration (today)
 

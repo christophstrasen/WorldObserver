@@ -1,6 +1,7 @@
 -- helpers/zombie.lua -- zombie helper set providing small value-add filters and rehydration helpers.
 local Log = require("DREAMBase/log").withTag("WO.HELPER.zombie")
 local Highlight = require("WorldObserver/helpers/highlight")
+local PatternHelpers = require("WorldObserver/helpers/pattern")
 local moduleName = ...
 local ZombieHelpers = {}
 if type(moduleName) == "string" then
@@ -93,16 +94,16 @@ local function outfitMatches(outfitName, expected)
 		return false
 	end
 	if type(expected) == "string" then
-		return outfitName == expected
+		return PatternHelpers.matchesPrefixPattern(outfitName, expected)
 	end
 	if type(expected) == "table" then
 		for key, value in pairs(expected) do
 			if type(key) == "number" and type(value) == "string" then
-				if outfitName == value then
+				if PatternHelpers.matchesPrefixPattern(outfitName, value) then
 					return true
 				end
 			elseif type(key) == "string" and value == true then
-				if outfitName == key then
+				if PatternHelpers.matchesPrefixPattern(outfitName, key) then
 					return true
 				end
 			end
