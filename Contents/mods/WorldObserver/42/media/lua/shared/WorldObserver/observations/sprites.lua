@@ -1,6 +1,6 @@
 -- observations/sprites.lua -- wraps sprite facts into a SpriteObservation stream and exposes it as observation.sprite.
 local LQR = require("LQR")
-local Log = require("LQR/util/log").withTag("WO.OBS.sprites")
+local Log = require("DREAMBase/log").withTag("WO.OBS.sprites")
 local Query = LQR.Query
 local Schema = LQR.Schema
 

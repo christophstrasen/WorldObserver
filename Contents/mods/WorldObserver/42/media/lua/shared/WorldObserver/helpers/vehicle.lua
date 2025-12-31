@@ -1,5 +1,5 @@
 -- helpers/vehicle.lua -- vehicle helper set providing basic filters.
-local Log = require("LQR/util/log").withTag("WO.HELPER.vehicle")
+local Log = require("DREAMBase/log").withTag("WO.HELPER.vehicle")
 local moduleName = ...
 local VehicleHelpers = {}
 if type(moduleName) == "string" then

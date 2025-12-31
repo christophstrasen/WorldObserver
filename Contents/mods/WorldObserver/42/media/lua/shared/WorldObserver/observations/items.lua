@@ -1,6 +1,6 @@
 -- observations/items.lua -- wraps item facts into an ItemObservation stream and exposes it as observation.item.
 local LQR = require("LQR")
-local Log = require("LQR/util/log").withTag("WO.OBS.items")
+local Log = require("DREAMBase/log").withTag("WO.OBS.items")
 local Query = LQR.Query
 local Schema = LQR.Schema
 

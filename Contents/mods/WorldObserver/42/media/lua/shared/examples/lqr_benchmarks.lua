@@ -3,7 +3,7 @@ local LQR = require("LQR")
 local Query = LQR.Query
 local Schema = LQR.Schema
 local rx = LQR.rx
-local Log = require("LQR/util/log")
+local Log = require("DREAMBase/log")
 
 local Benchmarks = {}
 -- test

@@ -1,5 +1,5 @@
 -- facts/dead_bodies/record.lua -- builds stable dead body fact records from IsoDeadBody objects.
-local Log = require("LQR/util/log").withTag("WO.FACTS.deadBodies")
+local Log = require("DREAMBase/log").withTag("WO.FACTS.deadBodies")
 local SafeCall = require("DREAMBase/pz/safe_call")
 local SquareHelpers = require("WorldObserver/helpers/square")
 

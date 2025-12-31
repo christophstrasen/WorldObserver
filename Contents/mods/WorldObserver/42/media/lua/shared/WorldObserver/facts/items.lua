@@ -1,5 +1,5 @@
 -- facts/items.lua -- item fact plan: playerSquare driver + shared square sweep collector.
-local Log = require("LQR/util/log").withTag("WO.FACTS.items")
+local Log = require("DREAMBase/log").withTag("WO.FACTS.items")
 
 local Record = require("WorldObserver/facts/items/record")
 local SquareSweep = require("WorldObserver/facts/sensors/square_sweep")

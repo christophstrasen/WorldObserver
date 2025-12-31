@@ -1,5 +1,5 @@
 -- facts/rooms.lua -- room fact plan: listener (OnSeeNewRoom) + interest-driven probe (allLoaded) to emit Room facts.
-local Log = require("LQR/util/log").withTag("WO.FACTS.rooms")
+local Log = require("DREAMBase/log").withTag("WO.FACTS.rooms")
 
 local Record = require("WorldObserver/facts/rooms/record")
 local Probe = require("WorldObserver/facts/rooms/probe")

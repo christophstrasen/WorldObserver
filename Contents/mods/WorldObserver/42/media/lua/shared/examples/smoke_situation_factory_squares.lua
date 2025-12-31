@@ -11,7 +11,7 @@
 -- - This smoke test declares interest for squares (near + vision).
 -- - It defines a situation factory and subscribes via the situation API.
 
-local Log = require("LQR/util/log")
+local Log = require("DREAMBase/log")
 Log.setLevel("info")
 
 local SmokeSituationFactorySquares = {}

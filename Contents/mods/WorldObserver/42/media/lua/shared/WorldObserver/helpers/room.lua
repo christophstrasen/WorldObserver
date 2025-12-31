@@ -1,5 +1,5 @@
 -- helpers/room.lua -- room helper set providing small value-add filters for room observations.
-local Log = require("LQR/util/log").withTag("WO.HELPER.room")
+local Log = require("DREAMBase/log").withTag("WO.HELPER.room")
 local JavaList = require("DREAMBase/pz/java_list")
 local SafeCall = require("DREAMBase/pz/safe_call")
 local SquareHelpers = require("WorldObserver/helpers/square")

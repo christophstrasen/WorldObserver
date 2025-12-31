@@ -1,5 +1,5 @@
 -- facts/vehicles/on_spawn.lua -- optional OnSpawnVehicleEnd listener gated by declared interest.
-local Log = require("LQR/util/log").withTag("WO.FACTS.vehicles")
+local Log = require("DREAMBase/log").withTag("WO.FACTS.vehicles")
 local Cooldown = require("WorldObserver/facts/cooldown")
 local InterestEffective = require("WorldObserver/facts/interest_effective")
 local Record = require("WorldObserver/facts/vehicles/record")

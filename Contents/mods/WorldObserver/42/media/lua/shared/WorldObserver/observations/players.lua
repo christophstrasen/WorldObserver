@@ -1,6 +1,6 @@
 -- observations/players.lua -- wraps player facts into a PlayerObservation stream and exposes it as observation.player.
 local LQR = require("LQR")
-local Log = require("LQR/util/log").withTag("WO.OBS.players")
+local Log = require("DREAMBase/log").withTag("WO.OBS.players")
 local Query = LQR.Query
 local Schema = LQR.Schema
 

@@ -1,5 +1,5 @@
 -- facts/rooms/probe.lua -- interest-driven room probe (scope=allLoaded) using IsoCell:getRoomList().
-local Log = require("LQR/util/log").withTag("WO.FACTS.rooms")
+local Log = require("DREAMBase/log").withTag("WO.FACTS.rooms")
 local Cooldown = require("WorldObserver/facts/cooldown")
 local InterestEffective = require("WorldObserver/facts/interest_effective")
 local Highlight = require("WorldObserver/helpers/highlight")

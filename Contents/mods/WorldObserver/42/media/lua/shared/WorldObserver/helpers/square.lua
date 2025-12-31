@@ -1,5 +1,5 @@
 -- helpers/square.lua -- square helper set (MVP) providing named filters for square observations.
-local Log = require("LQR/util/log").withTag("WO.HELPER.square")
+local Log = require("DREAMBase/log").withTag("WO.HELPER.square")
 local Highlight = require("WorldObserver/helpers/highlight")
 local moduleName = ...
 local SquareHelpers = {}

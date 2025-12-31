@@ -1,5 +1,5 @@
 -- facts/vehicles/record.lua -- builds stable vehicle fact records from BaseVehicle objects.
-local Log = require("LQR/util/log").withTag("WO.FACTS.vehicles")
+local Log = require("DREAMBase/log").withTag("WO.FACTS.vehicles")
 local SafeCall = require("DREAMBase/pz/safe_call")
 local SquareHelpers = require("WorldObserver/helpers/square")
 

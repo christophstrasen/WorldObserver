@@ -1,5 +1,5 @@
 -- facts/players.lua -- player fact plan: listeners (OnPlayerMove, OnPlayerUpdate) gated by interest.
-local Log = require("LQR/util/log").withTag("WO.FACTS.players")
+local Log = require("DREAMBase/log").withTag("WO.FACTS.players")
 
 local Record = require("WorldObserver/facts/players/record")
 local OnPlayerMove = require("WorldObserver/facts/players/on_player_move")

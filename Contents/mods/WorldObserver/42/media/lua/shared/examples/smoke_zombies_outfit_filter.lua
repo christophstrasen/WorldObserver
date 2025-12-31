@@ -14,7 +14,7 @@
 ]]
 --
 
-local Log = require("LQR/util/log")
+local Log = require("DREAMBase/log")
 Log.setLevel("info")
 
 local SmokeZombiesOutfitFilter = {}

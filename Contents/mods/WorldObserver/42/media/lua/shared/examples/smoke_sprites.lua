@@ -221,8 +221,8 @@ function SmokeSprites.start(opts)
 	-- Ensure WorldObserver (and its LQR bootstrap) is loaded before we try to configure logging.
 	require("WorldObserver")
 	do
-		local ok, Log = pcall(require, "LQR/util/log")
-		if ok and type(Log) == "table" and type(Log.setLevel) == "function" then
+		local Log = require("DREAMBase/log")
+		if type(Log) == "table" and type(Log.setLevel) == "function" then
 			pcall(Log.setLevel, opts.logLevel or "info")
 		end
 	end

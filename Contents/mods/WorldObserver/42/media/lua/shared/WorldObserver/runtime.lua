@@ -1,4 +1,4 @@
-local Log = require("LQR/util/log").withTag("WO.RUNTIME")
+local Log = require("DREAMBase/log").withTag("WO.RUNTIME")
 local Time = require("WorldObserver/helpers/time")
 
 local Runtime = {}

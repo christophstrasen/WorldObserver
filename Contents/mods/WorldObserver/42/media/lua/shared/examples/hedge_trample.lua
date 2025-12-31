@@ -1,6 +1,6 @@
 -- hedge_trample.lua — teaching example: join zombies + sprites on tileLocation and remove hedge tiles.
 --[[ Usage in PZ console:
---require("LQR/util/log").setLevel("info")
+--require("DREAMBase/log").setLevel("info")
 ht = require("examples/hedge_trample")
 ht.start()
 -- stop:

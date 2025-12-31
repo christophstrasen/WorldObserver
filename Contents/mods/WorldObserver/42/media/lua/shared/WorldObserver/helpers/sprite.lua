@@ -1,5 +1,5 @@
 -- helpers/sprite.lua -- sprite helper set providing small value-add filters for sprite observations.
-local Log = require("LQR/util/log").withTag("WO.HELPER.sprite")
+local Log = require("DREAMBase/log").withTag("WO.HELPER.sprite")
 local SquareHelpers = require("WorldObserver/helpers/square")
 local moduleName = ...
 local SpriteHelpers = {}

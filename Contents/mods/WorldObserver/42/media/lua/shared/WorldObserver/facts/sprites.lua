@@ -1,5 +1,5 @@
 -- facts/sprites.lua -- sprite fact plan: OnLoadWithSprite listener + shared square sweep collector.
-local Log = require("LQR/util/log").withTag("WO.FACTS.sprites")
+local Log = require("DREAMBase/log").withTag("WO.FACTS.sprites")
 
 local Cooldown = require("WorldObserver/facts/cooldown")
 local InterestEffective = require("WorldObserver/facts/interest_effective")

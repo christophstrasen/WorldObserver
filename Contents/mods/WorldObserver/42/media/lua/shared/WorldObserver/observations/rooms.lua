@@ -1,6 +1,6 @@
 -- observations/rooms.lua -- wraps room facts into a RoomObservation stream and exposes it as observation.room.
 local LQR = require("LQR")
-local Log = require("LQR/util/log").withTag("WO.OBS.rooms")
+local Log = require("DREAMBase/log").withTag("WO.OBS.rooms")
 local Query = LQR.Query
 local Schema = LQR.Schema
 

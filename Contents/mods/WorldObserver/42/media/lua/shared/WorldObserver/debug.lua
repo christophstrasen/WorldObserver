@@ -1,5 +1,5 @@
 -- debug.lua -- minimal debug helpers to introspect whether facts/streams are registered.
-local Log = require("LQR/util/log").withTag("WO.DIAG")
+local Log = require("DREAMBase/log").withTag("WO.DIAG")
 local SourceHelpers = require("WorldObserver/helpers/source")
 
 local moduleName = ...

@@ -1,5 +1,5 @@
 -- helpers/zombie.lua -- zombie helper set providing small value-add filters and rehydration helpers.
-local Log = require("LQR/util/log").withTag("WO.HELPER.zombie")
+local Log = require("DREAMBase/log").withTag("WO.HELPER.zombie")
 local Highlight = require("WorldObserver/helpers/highlight")
 local moduleName = ...
 local ZombieHelpers = {}

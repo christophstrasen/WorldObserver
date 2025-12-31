@@ -1,5 +1,5 @@
 -- interest/policy.lua -- merges interest bands with runtime signals to choose effective probe quality.
-local Log = require("LQR/util/log").withTag("WO.INTEREST")
+local Log = require("DREAMBase/log").withTag("WO.INTEREST")
 
 local moduleName = ...
 local Policy = {}

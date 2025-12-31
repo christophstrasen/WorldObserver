@@ -1,5 +1,5 @@
 -- facts/dead_bodies.lua -- dead body fact plan: playerSquare driver + shared square sweep collector.
-local Log = require("LQR/util/log").withTag("WO.FACTS.deadBodies")
+local Log = require("DREAMBase/log").withTag("WO.FACTS.deadBodies")
 
 local Record = require("WorldObserver/facts/dead_bodies/record")
 local SquareSweep = require("WorldObserver/facts/sensors/square_sweep")

@@ -11,7 +11,7 @@
 -- - This smoke test declares two interests (probes): `squares` scope=near and scope=vision.
 -- - It subscribes to the squares observation stream and prints observations (optionally filtered).
 
-local Log = require("LQR/util/log")
+local Log = require("DREAMBase/log")
 Log.setLevel("info")
 
 local SmokeSquares = {}

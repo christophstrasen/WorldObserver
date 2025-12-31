@@ -9,7 +9,7 @@
 -- - Some fact types (like `squares` with scoped targets) merge per target bucket.
 -- - We maintain policy state per bucket key so one target lagging doesn't degrade another target's quality.
 local InterestPolicy = require("WorldObserver/interest/policy")
-local Log = require("LQR/util/log").withTag("WO.FACTS.interest")
+local Log = require("DREAMBase/log").withTag("WO.FACTS.interest")
 
 local moduleName = ...
 local InterestEffective = {}

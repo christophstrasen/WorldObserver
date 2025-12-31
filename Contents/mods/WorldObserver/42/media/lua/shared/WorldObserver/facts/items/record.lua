@@ -1,5 +1,5 @@
 -- facts/items/record.lua -- builds stable item fact records from world/inventory item objects.
-local Log = require("LQR/util/log").withTag("WO.FACTS.items")
+local Log = require("DREAMBase/log").withTag("WO.FACTS.items")
 local SafeCall = require("DREAMBase/pz/safe_call")
 local SquareHelpers = require("WorldObserver/helpers/square")
 

@@ -1,7 +1,7 @@
 -- observations/squares.lua -- wraps square facts into a SquareObservation stream and exposes it as observation.square.
 -- This is the base stream used in the MVP examples.
 local LQR = require("LQR")
-local Log = require("LQR/util/log").withTag("WO.OBS.squares")
+local Log = require("DREAMBase/log").withTag("WO.OBS.squares")
 local Query = LQR.Query
 local Schema = LQR.Schema
 

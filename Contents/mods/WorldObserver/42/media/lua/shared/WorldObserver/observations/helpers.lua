@@ -1,5 +1,5 @@
 -- observations/helpers.lua -- helper plumbing for ObservationStreams (enable/attach helpers).
-local Log = require("LQR/util/log").withTag("WO.STREAM")
+local Log = require("DREAMBase/log").withTag("WO.STREAM")
 
 local moduleName = ...
 local HelperSupport = {}

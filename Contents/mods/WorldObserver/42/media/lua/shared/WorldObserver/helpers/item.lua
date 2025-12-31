@@ -1,5 +1,5 @@
 -- helpers/item.lua -- item helper set providing small value-add filters for item observations.
-local Log = require("LQR/util/log").withTag("WO.HELPER.item")
+local Log = require("DREAMBase/log").withTag("WO.HELPER.item")
 local moduleName = ...
 local ItemHelpers = {}
 if type(moduleName) == "string" then

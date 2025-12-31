@@ -1,5 +1,5 @@
 -- facts/squares/on_load.lua -- optional LoadGridsquare listener gated by declared interest.
-local Log = require("LQR/util/log").withTag("WO.FACTS.squares")
+local Log = require("DREAMBase/log").withTag("WO.FACTS.squares")
 local Time = require("WorldObserver/helpers/time")
 local Cooldown = require("WorldObserver/facts/cooldown")
 local InterestEffective = require("WorldObserver/facts/interest_effective")

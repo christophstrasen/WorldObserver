@@ -1,6 +1,6 @@
 -- observations/dead_bodies.lua -- wraps dead body facts into a DeadBodyObservation stream and exposes it as observation.deadBody.
 local LQR = require("LQR")
-local Log = require("LQR/util/log").withTag("WO.OBS.deadBodies")
+local Log = require("DREAMBase/log").withTag("WO.OBS.deadBodies")
 local Query = LQR.Query
 local Schema = LQR.Schema
 

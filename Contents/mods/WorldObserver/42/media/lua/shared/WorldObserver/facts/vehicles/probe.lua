@@ -1,5 +1,5 @@
 -- facts/vehicles/probe.lua -- interest-driven vehicle probe (scope=allLoaded) using a time-sliced cursor over IsoCell:getVehicles().
-local Log = require("LQR/util/log").withTag("WO.FACTS.vehicles")
+local Log = require("DREAMBase/log").withTag("WO.FACTS.vehicles")
 local Cooldown = require("WorldObserver/facts/cooldown")
 local InterestEffective = require("WorldObserver/facts/interest_effective")
 local Record = require("WorldObserver/facts/vehicles/record")

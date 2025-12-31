@@ -1,5 +1,5 @@
 -- facts/zombies.lua -- zombie fact plan: interest-driven probe over IsoCell:getZombieList().
-local Log = require("LQR/util/log").withTag("WO.FACTS.zombies")
+local Log = require("DREAMBase/log").withTag("WO.FACTS.zombies")
 
 local Probe = require("WorldObserver/facts/zombies/probe")
 local Record = require("WorldObserver/facts/zombies/record")

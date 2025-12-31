@@ -1,5 +1,5 @@
 -- situations/registry.lua -- situation factory registry and namespaced facade.
-local Log = require("LQR/util/log").withTag("WO.SITUATIONS")
+local Log = require("DREAMBase/log").withTag("WO.SITUATIONS")
 
 local moduleName = ...
 local SituationsRegistry = {}

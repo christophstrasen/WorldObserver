@@ -10,7 +10,7 @@
 --   This is the simplest correctness/fairness model: it avoids "partial overlap" merging (which quickly explodes
 --   into geometry + prioritization problems) and keeps behavior predictable for modders.
 local Time = require("WorldObserver/helpers/time")
-local Log = require("LQR/util/log").withTag("WO.INTEREST")
+local Log = require("DREAMBase/log").withTag("WO.INTEREST")
 local Definitions = require("WorldObserver/interest/definitions")
 
 local moduleName = ...

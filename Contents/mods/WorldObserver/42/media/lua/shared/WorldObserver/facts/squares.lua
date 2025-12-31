@@ -1,5 +1,5 @@
 -- facts/squares.lua -- square fact plan: listeners + interest-driven probes to emit SquareObservation facts.
-local Log = require("LQR/util/log").withTag("WO.FACTS.squares")
+local Log = require("DREAMBase/log").withTag("WO.FACTS.squares")
 
 local Record = require("WorldObserver/facts/squares/record")
 local Geometry = require("WorldObserver/facts/squares/geometry")

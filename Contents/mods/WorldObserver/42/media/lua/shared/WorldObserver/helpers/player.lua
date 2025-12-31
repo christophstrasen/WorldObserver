@@ -1,5 +1,5 @@
 -- helpers/player.lua -- player helper set providing small value-add filters for player observations.
-local Log = require("LQR/util/log").withTag("WO.HELPER.player")
+local Log = require("DREAMBase/log").withTag("WO.HELPER.player")
 local moduleName = ...
 local PlayerHelpers = {}
 if type(moduleName) == "string" then

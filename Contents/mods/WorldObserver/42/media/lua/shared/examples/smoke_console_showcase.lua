@@ -17,7 +17,7 @@
 
 local DoHighlight = false
 
-local Log = require("LQR/util/log")
+local Log = require("DREAMBase/log")
 Log.setLevel("warn")
 
 local Showcase = {}

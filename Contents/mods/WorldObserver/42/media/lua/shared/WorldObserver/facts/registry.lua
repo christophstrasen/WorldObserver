@@ -1,8 +1,8 @@
 -- facts/registry.lua -- manages fact sources: creates a stream per fact type and only starts its producer on first access.
 local rx = require("reactivex")
 local Ingest = require("LQR/ingest")
-local Log = require("LQR/util/log").withTag("WO.FACTS")
-local IngestLog = require("LQR/util/log").withTag("WO.INGEST")
+local Log = require("DREAMBase/log").withTag("WO.FACTS")
+local IngestLog = require("DREAMBase/log").withTag("WO.INGEST")
 local SourceHelpers = require("WorldObserver/helpers/source")
 local Time = require("WorldObserver/helpers/time")
 

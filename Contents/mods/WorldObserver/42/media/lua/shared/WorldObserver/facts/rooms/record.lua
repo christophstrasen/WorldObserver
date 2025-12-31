@@ -1,5 +1,5 @@
 -- facts/rooms/record.lua -- builds stable room fact records from IsoRoom objects.
-local Log = require("LQR/util/log").withTag("WO.FACTS.rooms")
+local Log = require("DREAMBase/log").withTag("WO.FACTS.rooms")
 local JavaList = require("DREAMBase/pz/java_list")
 local SafeCall = require("DREAMBase/pz/safe_call")
 local SquareHelpers = require("WorldObserver/helpers/square")

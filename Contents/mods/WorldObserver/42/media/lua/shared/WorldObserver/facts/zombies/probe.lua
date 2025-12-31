@@ -1,5 +1,5 @@
 -- facts/zombies/probe.lua -- interest-driven zombie probe (scope=allLoaded) using a time-sliced cursor over IsoCell:getZombieList().
-local Log = require("LQR/util/log").withTag("WO.FACTS.zombies")
+local Log = require("DREAMBase/log").withTag("WO.FACTS.zombies")
 local Cooldown = require("WorldObserver/facts/cooldown")
 local InterestEffective = require("WorldObserver/facts/interest_effective")
 local Record = require("WorldObserver/facts/zombies/record")

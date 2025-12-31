@@ -52,7 +52,7 @@ More context: `docs_internal/code_architecture.md`
 ## Logging
 
 - Use the repo logging utility (tagged, level-controlled and borrowed from LQR) instead of ad-hoc `print`:
-  - `local Log = require("LQR/util/log").withTag("WO.<AREA>")`
+  - `local Log = require("DREAMBase/log").withTag("WO.<AREA>")`
   - The default level is "warn", which is expected to not crash the Zomboid Runtime or WorldObserver itself. No warnings are expected under normal operation.
   - Developers annd other modders can adjust the log level via `Log.setLevel("info")` 
   - We prefer `debug` for per-item/per-tick logs; keep `info` quieter and reserved for regular diagnostic.

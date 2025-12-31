@@ -1,5 +1,5 @@
 -- facts/squares/record.lua -- builds stable square fact records from IsoGridSquare objects.
-local Log = require("LQR/util/log").withTag("WO.FACTS.squares")
+local Log = require("DREAMBase/log").withTag("WO.FACTS.squares")
 local SquareHelpers = require("WorldObserver/helpers/square")
 
 local moduleName = ...

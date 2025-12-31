@@ -1,4 +1,4 @@
-local Log = require("LQR/util/log").withTag("WO.HELPER.highlight")
+local Log = require("DREAMBase/log").withTag("WO.HELPER.highlight")
 local Time = require("WorldObserver/helpers/time")
 
 local moduleName = ...

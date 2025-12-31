@@ -3,7 +3,7 @@
 -- Intent:
 -- - Provide a reusable square sweep driver that other fact plans can collect from.
 -- - Preserve the existing squares probe behavior (near + vision) while we refactor.
-local Log = require("LQR/util/log").withTag("WO.FACTS.squareSweep")
+local Log = require("DREAMBase/log").withTag("WO.FACTS.squareSweep")
 local Config = require("WorldObserver/config")
 local Time = require("WorldObserver/helpers/time")
 local InterestEffective = require("WorldObserver/facts/interest_effective")

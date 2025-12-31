@@ -1,6 +1,6 @@
 -- observations/zombies.lua -- wraps zombie facts into a ZombieObservation stream and exposes it as observation.zombie.
 local LQR = require("LQR")
-local Log = require("LQR/util/log").withTag("WO.OBS.zombies")
+local Log = require("DREAMBase/log").withTag("WO.OBS.zombies")
 local Query = LQR.Query
 local Schema = LQR.Schema
 

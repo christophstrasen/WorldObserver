@@ -1,5 +1,5 @@
 -- facts/vehicles.lua -- vehicle fact plan: listener (OnSpawnVehicleEnd) + interest-driven probe (allLoaded).
-local Log = require("LQR/util/log").withTag("WO.FACTS.vehicles")
+local Log = require("DREAMBase/log").withTag("WO.FACTS.vehicles")
 
 local Probe = require("WorldObserver/facts/vehicles/probe")
 local Record = require("WorldObserver/facts/vehicles/record")

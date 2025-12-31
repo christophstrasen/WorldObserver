@@ -11,7 +11,7 @@
 -- - Items are world items on the ground + direct container contents (depth=1).
 -- - playerSquare emits only for the square under the player.
 
-local Log = require("LQR/util/log")
+local Log = require("DREAMBase/log")
 Log.setLevel("info")
 
 local SmokeItems = {}

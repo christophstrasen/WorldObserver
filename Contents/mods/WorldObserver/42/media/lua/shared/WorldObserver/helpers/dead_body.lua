@@ -1,5 +1,5 @@
 -- helpers/dead_body.lua -- dead body helper set providing small value-add filters.
-local Log = require("LQR/util/log").withTag("WO.HELPER.deadBody")
+local Log = require("DREAMBase/log").withTag("WO.HELPER.deadBody")
 local moduleName = ...
 local DeadBodyHelpers = {}
 if type(moduleName) == "string" then

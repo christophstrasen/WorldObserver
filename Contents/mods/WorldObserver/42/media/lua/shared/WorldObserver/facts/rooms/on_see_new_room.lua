@@ -1,5 +1,5 @@
 -- facts/rooms/on_see_new_room.lua -- optional OnSeeNewRoom listener gated by declared interest.
-local Log = require("LQR/util/log").withTag("WO.FACTS.rooms")
+local Log = require("DREAMBase/log").withTag("WO.FACTS.rooms")
 local Time = require("WorldObserver/helpers/time")
 local Cooldown = require("WorldObserver/facts/cooldown")
 local InterestEffective = require("WorldObserver/facts/interest_effective")

@@ -2,7 +2,7 @@ _G.WORLDOBSERVER_HEADLESS = true
 _G.LQR_HEADLESS = true
 
 local ObservationsCore = require("WorldObserver/observations/core")
-local Log = require("LQR/util/log")
+local Log = require("DREAMBase/log")
 
 local function dummyStream(events)
 	local builder = {

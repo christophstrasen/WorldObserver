@@ -88,7 +88,7 @@ WorldObserver can emit periodic diagnostics logs (tag: `WO.DIAG`). These are pri
 In the in-game console you can enable info logging like this:
 
 ```lua
-require("LQR/util/log").setLevel("info")
+require("DREAMBase/log").setLevel("info")
 ```
 
 Then attach diagnostics (engine-only; requires `Events.*`):
