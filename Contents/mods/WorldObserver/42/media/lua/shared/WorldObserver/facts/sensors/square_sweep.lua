@@ -5,7 +5,7 @@
 -- - Preserve the existing squares probe behavior (near + vision) while we refactor.
 local Log = require("DREAMBase/log").withTag("WO.FACTS.squareSweep")
 local Config = require("WorldObserver/config")
-local Time = require("WorldObserver/helpers/time")
+local Time = require("DREAMBase/time_ms")
 local InterestEffective = require("WorldObserver/facts/interest_effective")
 local Geometry = require("WorldObserver/facts/squares/geometry")
 

@@ -23,6 +23,7 @@ Dependencies (required by mod.info):
 - DoggyLibrary
 - reactivex
 - LQR
+- DREAMBase
 
 tags=Library;Utility;Build 42;Development
 visibility=Public

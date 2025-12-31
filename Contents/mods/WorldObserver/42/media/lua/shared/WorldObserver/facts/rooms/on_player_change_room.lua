@@ -1,6 +1,6 @@
 -- facts/rooms/on_player_change_room.lua -- emits room records when a player changes rooms.
 local Log = require("DREAMBase/log").withTag("WO.FACTS.rooms")
-local Time = require("WorldObserver/helpers/time")
+local Time = require("DREAMBase/time_ms")
 local Cooldown = require("WorldObserver/facts/cooldown")
 local InterestEffective = require("WorldObserver/facts/interest_effective")
 local Highlight = require("WorldObserver/helpers/highlight")

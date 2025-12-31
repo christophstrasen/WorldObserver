@@ -1,5 +1,5 @@
 local Log = require("DREAMBase/log").withTag("WO.RUNTIME")
-local Time = require("WorldObserver/helpers/time")
+local Time = require("DREAMBase/time_ms")
 
 local Runtime = {}
 Runtime.Events = {

@@ -118,7 +118,7 @@ function handle:tick()
   if not self.lease then return end
 
   -- Keep-alive: renew on a low cadence (not per tick, and not in the subscribe callback).
-  local nowMs = (require("WorldObserver/helpers/time").gameMillis() or 0)
+  local nowMs = (require("DREAMBase/time_ms").gameMillis() or 0)
   local renewEveryMs = 60 * 1000
   if self._lastRenewMs == nil or (nowMs - self._lastRenewMs) >= renewEveryMs then
     self.lease:renew()

@@ -77,7 +77,7 @@ Example: `WorldObserver.helpers.square.highlight(...)` is part of the `square` f
 ### 2.3 Utility modules (not families)
 
 Some helper-like modules are internal utilities and are not attachable via `enabled_helpers`:
-- `WorldObserver/helpers/time.lua`
+- `DREAMBase/time_ms.lua` (shared time helpers)
 - `WorldObserver/helpers/safe_call.lua`
 - `WorldObserver/helpers/java_list.lua`
 - `WorldObserver/helpers/highlight.lua` (used by multiple families)
@@ -170,7 +170,7 @@ Registered on `WorldObserver.helpers`:
 
 Utility modules used by families:
 - `WorldObserver/helpers/highlight.lua`
-- `WorldObserver/helpers/time.lua`
+- `DREAMBase/time_ms.lua`
 - `WorldObserver/helpers/safe_call.lua`
 - `WorldObserver/helpers/java_list.lua`
 

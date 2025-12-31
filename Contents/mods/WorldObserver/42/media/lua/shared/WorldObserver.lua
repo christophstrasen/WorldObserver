@@ -9,7 +9,7 @@ do
 	--
 	-- WHY: If we ever fail to set this, LQR defaults to whatever clock it ships with, and we end up with
 	-- subtle, hard-to-debug window behaviour differences across the suite.
-	local Time = require("WorldObserver/helpers/time")
+	local Time = require("DREAMBase/time_ms")
 	if _LQRBootstrap and _LQRBootstrap.Query and type(_LQRBootstrap.Query.setDefaultCurrentFn) == "function" then
 		_LQRBootstrap.Query.setDefaultCurrentFn(Time.gameMillis)
 	end

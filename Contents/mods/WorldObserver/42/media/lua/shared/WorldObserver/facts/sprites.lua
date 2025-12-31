@@ -8,7 +8,7 @@ local SquareSweep = require("WorldObserver/facts/sensors/square_sweep")
 local Highlight = require("WorldObserver/helpers/highlight")
 local JavaList = require("DREAMBase/pz/java_list")
 local SafeCall = require("DREAMBase/pz/safe_call")
-local Time = require("WorldObserver/helpers/time")
+local Time = require("DREAMBase/time_ms")
 
 local INTEREST_TYPE_SPRITES = "sprites"
 local INTEREST_SCOPE_ON_LOAD = "onLoadWithSprite"

@@ -4,7 +4,7 @@ local Cooldown = require("WorldObserver/facts/cooldown")
 local InterestEffective = require("WorldObserver/facts/interest_effective")
 local Record = require("WorldObserver/facts/vehicles/record")
 local JavaList = require("DREAMBase/pz/java_list")
-local Time = require("WorldObserver/helpers/time")
+local Time = require("DREAMBase/time_ms")
 local SquareHelpers = require("WorldObserver/helpers/square")
 local Highlight = require("WorldObserver/helpers/highlight")
 

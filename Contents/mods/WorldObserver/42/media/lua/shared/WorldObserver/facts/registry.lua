@@ -4,7 +4,7 @@ local Ingest = require("LQR/ingest")
 local Log = require("DREAMBase/log").withTag("WO.FACTS")
 local IngestLog = require("DREAMBase/log").withTag("WO.INGEST")
 local SourceHelpers = require("WorldObserver/helpers/source")
-local Time = require("WorldObserver/helpers/time")
+local Time = require("DREAMBase/time_ms")
 
 local FactRegistry = {}
 FactRegistry.__index = FactRegistry -- registry instances resolve methods from this table via metatable lookup

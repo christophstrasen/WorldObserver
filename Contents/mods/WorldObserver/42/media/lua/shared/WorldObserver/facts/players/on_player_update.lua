@@ -1,6 +1,6 @@
 -- facts/players/on_player_update.lua -- optional OnPlayerUpdate listener gated by declared interest.
 local Log = require("DREAMBase/log").withTag("WO.FACTS.players")
-local Time = require("WorldObserver/helpers/time")
+local Time = require("DREAMBase/time_ms")
 local Cooldown = require("WorldObserver/facts/cooldown")
 local InterestEffective = require("WorldObserver/facts/interest_effective")
 local Highlight = require("WorldObserver/helpers/highlight")

@@ -3,7 +3,7 @@ local Log = require("DREAMBase/log").withTag("WO.FACTS.vehicles")
 local Cooldown = require("WorldObserver/facts/cooldown")
 local InterestEffective = require("WorldObserver/facts/interest_effective")
 local Record = require("WorldObserver/facts/vehicles/record")
-local Time = require("WorldObserver/helpers/time")
+local Time = require("DREAMBase/time_ms")
 local Highlight = require("WorldObserver/helpers/highlight")
 local SquareHelpers = require("WorldObserver/helpers/square")
 
