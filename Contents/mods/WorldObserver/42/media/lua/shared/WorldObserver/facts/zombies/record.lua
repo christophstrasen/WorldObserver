@@ -1,6 +1,6 @@
 -- facts/zombies/record.lua -- builds stable zombie fact records from IsoZombie objects.
 local Log = require("LQR/util/log").withTag("WO.FACTS.zombies")
-local SafeCall = require("WorldObserver/helpers/safe_call")
+local SafeCall = require("DREAMBase/pz/safe_call")
 local SquareHelpers = require("WorldObserver/helpers/square")
 
 local moduleName = ...

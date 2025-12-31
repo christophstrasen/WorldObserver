@@ -1,4 +1,9 @@
 -- helpers/safe_call.lua -- safe pcall wrapper for engine method invocations.
+local okBase, BaseSafeCall = pcall(require, "DREAMBase/pz/safe_call")
+if okBase and type(BaseSafeCall) == "table" then
+	return BaseSafeCall
+end
+
 local moduleName = ...
 local SafeCall = {}
 if type(moduleName) == "string" then
@@ -29,4 +34,3 @@ end
 SafeCall._internal.safeCall = SafeCall.safeCall
 
 return SafeCall
-

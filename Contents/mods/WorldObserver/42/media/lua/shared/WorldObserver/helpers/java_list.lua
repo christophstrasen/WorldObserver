@@ -1,4 +1,9 @@
 -- helpers/java_list.lua -- defensive helpers for Java-backed lists/arrays.
+local okBase, BaseJavaList = pcall(require, "DREAMBase/pz/java_list")
+if okBase and type(BaseJavaList) == "table" then
+	return BaseJavaList
+end
+
 local moduleName = ...
 local JavaList = {}
 if type(moduleName) == "string" then

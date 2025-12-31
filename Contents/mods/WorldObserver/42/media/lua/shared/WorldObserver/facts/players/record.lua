@@ -1,6 +1,6 @@
 -- facts/players/record.lua -- builds stable player fact records from IsoPlayer objects.
 local Log = require("LQR/util/log").withTag("WO.FACTS.players")
-local SafeCall = require("WorldObserver/helpers/safe_call")
+local SafeCall = require("DREAMBase/pz/safe_call")
 local SquareHelpers = require("WorldObserver/helpers/square")
 local RoomHelpers = require("WorldObserver/helpers/room")
 

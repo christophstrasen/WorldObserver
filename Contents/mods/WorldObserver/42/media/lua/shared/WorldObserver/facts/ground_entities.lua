@@ -18,7 +18,7 @@ local Cooldown = require("WorldObserver/facts/cooldown")
 local InterestEffective = require("WorldObserver/facts/interest_effective")
 local Targets = require("WorldObserver/facts/targets")
 local Highlight = require("WorldObserver/helpers/highlight")
-local SafeCall = require("WorldObserver/helpers/safe_call")
+local SafeCall = require("DREAMBase/pz/safe_call")
 local Time = require("WorldObserver/helpers/time")
 
 local moduleName = ...

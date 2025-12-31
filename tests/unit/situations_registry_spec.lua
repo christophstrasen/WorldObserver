@@ -1,6 +1,10 @@
 package.path = table.concat({
 	"Contents/mods/WorldObserver/42/media/lua/shared/?.lua",
 	"Contents/mods/WorldObserver/42/media/lua/shared/?/init.lua",
+	"../DREAMBase/Contents/mods/DREAMBase/42/media/lua/shared/?.lua",
+	"../DREAMBase/Contents/mods/DREAMBase/42/media/lua/shared/?/init.lua",
+	"external/DREAMBase/Contents/mods/DREAMBase/42/media/lua/shared/?.lua",
+	"external/DREAMBase/Contents/mods/DREAMBase/42/media/lua/shared/?/init.lua",
 	"external/LQR/?.lua",
 	"external/LQR/?/init.lua",
 	"external/lua-reactivex/?.lua",

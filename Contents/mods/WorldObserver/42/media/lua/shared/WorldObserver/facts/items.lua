@@ -4,8 +4,8 @@ local Log = require("LQR/util/log").withTag("WO.FACTS.items")
 local Record = require("WorldObserver/facts/items/record")
 local SquareSweep = require("WorldObserver/facts/sensors/square_sweep")
 local GroundEntities = require("WorldObserver/facts/ground_entities")
-local JavaList = require("WorldObserver/helpers/java_list")
-local SafeCall = require("WorldObserver/helpers/safe_call")
+local JavaList = require("DREAMBase/pz/java_list")
+local SafeCall = require("DREAMBase/pz/safe_call")
 
 local INTEREST_TYPE_ITEMS = "items"
 local INTEREST_SCOPE_PLAYER_SQUARE = "playerSquare"

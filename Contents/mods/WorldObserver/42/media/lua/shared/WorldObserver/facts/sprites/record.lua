@@ -1,6 +1,6 @@
 -- facts/sprites/record.lua -- builds stable sprite fact records from IsoObject instances.
 local Log = require("LQR/util/log").withTag("WO.FACTS.sprites")
-local SafeCall = require("WorldObserver/helpers/safe_call")
+local SafeCall = require("DREAMBase/pz/safe_call")
 local SquareHelpers = require("WorldObserver/helpers/square")
 
 local moduleName = ...

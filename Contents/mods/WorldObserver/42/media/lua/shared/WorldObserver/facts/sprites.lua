@@ -6,8 +6,8 @@ local InterestEffective = require("WorldObserver/facts/interest_effective")
 local Record = require("WorldObserver/facts/sprites/record")
 local SquareSweep = require("WorldObserver/facts/sensors/square_sweep")
 local Highlight = require("WorldObserver/helpers/highlight")
-local JavaList = require("WorldObserver/helpers/java_list")
-local SafeCall = require("WorldObserver/helpers/safe_call")
+local JavaList = require("DREAMBase/pz/java_list")
+local SafeCall = require("DREAMBase/pz/safe_call")
 local Time = require("WorldObserver/helpers/time")
 
 local INTEREST_TYPE_SPRITES = "sprites"

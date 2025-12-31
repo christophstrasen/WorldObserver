@@ -4,7 +4,7 @@ local Time = require("WorldObserver/helpers/time")
 local Cooldown = require("WorldObserver/facts/cooldown")
 local InterestEffective = require("WorldObserver/facts/interest_effective")
 local Highlight = require("WorldObserver/helpers/highlight")
-local JavaList = require("WorldObserver/helpers/java_list")
+local JavaList = require("DREAMBase/pz/java_list")
 
 local moduleName = ...
 local OnSee = {}

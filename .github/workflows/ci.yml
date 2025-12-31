@@ -26,6 +26,10 @@ jobs:
       - name: Install busted
         run: luarocks install busted
 
+      - name: Checkout DREAMBase (for shared helpers)
+        run: |
+          git clone --depth 1 https://github.com/christophstrasen/DREAMBase external/DREAMBase
+
       - name: Run WorldObserver unit tests
         run: |
           busted tests/unit
