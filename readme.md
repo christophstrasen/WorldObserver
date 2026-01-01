@@ -1,7 +1,7 @@
 # WorldObserver
 
 [![CI](https://github.com/christophstrasen/WorldObserver/actions/workflows/ci.yml/badge.svg)](https://github.com/christophstrasen/WorldObserver/actions/workflows/ci.yml)
-
+ 
 *A shared observation layer for **Project Zomboid (Build 42)** mods.*
 
 --- 
