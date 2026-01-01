@@ -44,7 +44,9 @@ local SquareHelper = WorldObserver.helpers.square.record
 
 local stream = WorldObserver.observations:squares()
   :squareFilter(function(squareRecord)
-    return SquareHelper.squareHasCorpse(squareRecord)
+    return squareRecord
+      and squareRecord.hasCorpse == true
+      and SquareHelper.squareHasFloorMaterial(squareRecord, "Road%")
   end)
 ```
 
@@ -58,6 +60,35 @@ local stream = WorldObserver.observations:zombies()
 ```
 
 Note: a few record helpers perform best-effort hydration and may cache engine references back onto the record. Treat engine userdata (`Iso*`) as short-lived and always handle `nil` safely.
+
+### Record wrapping (optional)
+
+In some contexts you don’t have a stream (so you can’t call `stream:<helper>(...)`), but you do have a record table (example: PromiseKeeper action `subject.square` / `subject.zombie`).
+
+WorldObserver can “wrap” certain record families to expose a small, whitelisted method surface directly on the record:
+
+Supported today:
+- `WorldObserver.helpers.square` (`:getIsoGridSquare()`, `:hasFloorMaterial(pattern)`, `:highlight(durationMs, opts)`)
+- `WorldObserver.helpers.zombie` (`:getIsoZombie()`, `:hasOutfit(nameOrList)`, `:highlight(durationMs, opts)`)
+
+```lua
+local Square = WorldObserver.helpers.square
+local Zombie = WorldObserver.helpers.zombie
+
+pk.actions.define("example", function(subject)
+  local square = assert(Square:wrap(subject.square))
+  local zombie = assert(Zombie:wrap(subject.zombie))
+
+  if square:hasFloorMaterial("Road%") and zombie:hasOutfit("Police%") then
+    square:highlight(1500)
+  end
+end)
+```
+
+Limitations:
+- Wrapping is in-place (metatable on the record) and refuses if the record already has a metatable (`nil, "hasMetatable"`).
+- Wrap close to use: some pipelines (notably joins) may shallow-copy records and drop metatables.
+- Wrapped methods are not part of the record’s fields, so they don’t show up in `pairs(record)`.
 
 ## 2) Extending helpers (advanced)
 

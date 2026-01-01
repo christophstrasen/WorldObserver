@@ -76,23 +76,15 @@ if RoomHelpers.stream.roomTypeIs == nil then
 	end
 end
 
-local function roomHasWater(roomRecord)
-	return type(roomRecord) == "table" and roomRecord.hasWater == true
-end
-
-if RoomHelpers.record.roomHasWater == nil then
-	RoomHelpers.record.roomHasWater = roomHasWater
-end
-
-if RoomHelpers.roomHasWater == nil then
-	function RoomHelpers.roomHasWater(stream, fieldName, ...)
-		local target = fieldName or "room"
-		return stream:filter(function(observation)
-			local roomRecord = roomField(observation, target)
-			return RoomHelpers.record.roomHasWater(roomRecord)
-		end)
+	if RoomHelpers.roomHasWater == nil then
+		function RoomHelpers.roomHasWater(stream, fieldName, ...)
+			local target = fieldName or "room"
+			return stream:filter(function(observation)
+				local roomRecord = roomField(observation, target)
+				return type(roomRecord) == "table" and roomRecord.hasWater == true
+			end)
+		end
 	end
-end
 if RoomHelpers.stream.roomHasWater == nil then
 	function RoomHelpers.stream.roomHasWater(stream, fieldName, ...)
 		return RoomHelpers.roomHasWater(stream, fieldName, ...)

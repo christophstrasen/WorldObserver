@@ -96,10 +96,9 @@ If you see nothing, the most common causes:
 Once you want custom boolean logic, keep the quickstart chain but switch to `:squareFilter(...)`:
 
 ```lua
-local SquareHelper = WorldObserver.helpers.square.record
 local stream = WorldObserver.observations:squares()
   :squareFilter(function(s)
-    return SquareHelper.squareHasCorpse(s) -- add other logic here
+    return s and s.hasCorpse == true -- add other logic here
   end)
 ```
 

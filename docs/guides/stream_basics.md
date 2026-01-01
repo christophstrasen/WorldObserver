@@ -117,11 +117,9 @@ Additonally you may use *record* helpers as shown below. Unlike the *stream* hel
 
 
 ```lua
-local SquareHelper = WorldObserver.helpers.square.record
-
 local stream = WorldObserver.observations:squares()
   :squareFilter(function(squareRecord)
-    return SquareHelper.squareHasCorpse(squareRecord) and (squareRecord.z or 0) < 0 -- example: basement corpses
+    return squareRecord and squareRecord.hasCorpse == true and (squareRecord.z or 0) < 0 -- example: basement corpses
   end)
 ```
 

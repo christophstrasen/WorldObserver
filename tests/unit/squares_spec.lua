@@ -80,12 +80,12 @@ describe("WorldObserver observations.squares()", function()
 		assert.is_equal(1, #received)
 	end)
 
-	it("squareHasCorpse filters expected observations", function()
-			local withCorpse = {}
-			local stream = WorldObserver.observations:squares():squareHasCorpse()
-			stream:subscribe(function(row)
-			withCorpse[#withCorpse + 1] = row
-		end)
+		it("squareHasCorpse filters expected observations", function()
+				local withCorpse = {}
+				local stream = WorldObserver.observations:squares():squareHasCorpse()
+				stream:subscribe(function(row)
+				withCorpse[#withCorpse + 1] = row
+			end)
 
 		WorldObserver._internal.facts:emit("squares", {
 			squareId = 1,
@@ -110,36 +110,105 @@ describe("WorldObserver observations.squares()", function()
 			sourceTime = 60,
 		})
 
-		assert.is_equal(1, #withCorpse)
-		assert.is_equal(2, withCorpse[1].square.squareId)
-	end)
-
-	it("squareHasCorpse only checks the record field", function()
-		local SquareHelper = WorldObserver.helpers.square.record
-		local record = {
-			IsoGridSquare = {
-				hasCorpse = function()
-					return true
-				end,
-			},
-		}
-		assert.is_false(SquareHelper.squareHasCorpse(record))
-		record.hasCorpse = true
-		assert.is_true(SquareHelper.squareHasCorpse(record))
-	end)
-
-	it("squareFilter passes the square record into the predicate", function()
-			local received = {}
-			local SquareHelper = WorldObserver.helpers.square.record
-			local stream = WorldObserver.observations:squares():squareFilter(function(squareRecord, observation)
-				assert.is_table(observation)
-				assert.is_table(squareRecord)
-				assert.equals(squareRecord, observation.square)
-				return SquareHelper.squareHasCorpse(squareRecord)
-			end)
-		stream:subscribe(function(row)
-			received[#received + 1] = row
+			assert.is_equal(1, #withCorpse)
+			assert.is_equal(2, withCorpse[1].square.squareId)
 		end)
+
+		it("hasFloorMaterial filters expected observations", function()
+			local received = {}
+			local received2 = {}
+			WorldObserver.observations:squares():hasFloorMaterial("Road%"):subscribe(function(row)
+				received[#received + 1] = row
+			end)
+			WorldObserver.observations:squares():squareHasFloorMaterial("Road%"):subscribe(function(row)
+				received2[#received2 + 1] = row
+			end)
+
+			WorldObserver._internal.facts:emit("squares", {
+				squareId = 1,
+				square = {},
+				floorMaterial = "blends_natural_01",
+				woKey = "x0y0z0",
+				x = 0,
+				y = 0,
+				z = 0,
+				sourceTime = 50,
+			})
+			WorldObserver._internal.facts:emit("squares", {
+				squareId = 2,
+				square = {},
+				floorMaterial = "RoadAsphalt",
+				woKey = "x1y1z0",
+				x = 1,
+				y = 1,
+				z = 0,
+				sourceTime = 60,
+			})
+
+			assert.is_equal(1, #received)
+			assert.is_equal(2, received[1].square.squareId)
+			assert.is_equal(1, #received2)
+			assert.is_equal(2, received2[1].square.squareId)
+
+			local SquareHelper = WorldObserver.helpers.square.record
+			assert.is_false(SquareHelper.squareHasFloorMaterial({ floorMaterial = "blends_natural_01" }, "Road%"))
+			assert.is_true(SquareHelper.squareHasFloorMaterial({ floorMaterial = "RoadAsphalt" }, "Road%"))
+		end)
+
+			it("squareHasCorpse only checks the record field", function()
+				local received = {}
+				WorldObserver.observations:squares():squareHasCorpse():subscribe(function(row)
+					received[#received + 1] = row
+			end)
+
+			WorldObserver._internal.facts:emit("squares", {
+				squareId = 1,
+				square = {
+					IsoGridSquare = {
+						hasCorpse = function()
+							error("unexpected engine probe")
+						end,
+					},
+				},
+				hasCorpse = false,
+				woKey = "x0y0z0",
+				x = 0,
+				y = 0,
+				z = 0,
+				sourceTime = 50,
+			})
+			WorldObserver._internal.facts:emit("squares", {
+				squareId = 2,
+				square = {
+					IsoGridSquare = {
+						hasCorpse = function()
+							return false
+						end,
+					},
+				},
+				hasCorpse = true,
+				woKey = "x1y1z0",
+				x = 1,
+				y = 1,
+				z = 0,
+				sourceTime = 60,
+			})
+
+			assert.is_equal(1, #received)
+			assert.is_equal(2, received[1].square.squareId)
+		end)
+
+		it("squareFilter passes the square record into the predicate", function()
+				local received = {}
+				local stream = WorldObserver.observations:squares():squareFilter(function(squareRecord, observation)
+					assert.is_table(observation)
+					assert.is_table(squareRecord)
+					assert.equals(squareRecord, observation.square)
+					return squareRecord.hasCorpse == true
+				end)
+			stream:subscribe(function(row)
+				received[#received + 1] = row
+			end)
 
 		WorldObserver._internal.facts:emit("squares", {
 			squareId = 1,

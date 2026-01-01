@@ -59,7 +59,7 @@ Common fields on the zombie record:
 - `sourceTime` (ms, in-game clock)
 
 Engine object:
-- Usually not included. If you need one, use `WorldObserver.helpers.zombie.record.getIsoZombie(record)` as best-effort rehydration.
+- Usually not included. If you need one, use `WorldObserver.helpers.zombie.record.getIsoZombie(record)` as best-effort rehydration (or wrap the record and call `record:getIsoZombie()`; see [Helpers: record wrapping](../guides/helpers.md#record-wrapping-optional)).
 
 ## Extending the record (advanced)
 
@@ -78,10 +78,10 @@ local stream = WorldObserver.observations:zombies()
 If you want custom boolean logic, use `:zombieFilter(...)` with record predicates:
 
 ```lua
-local ZombieHelper = WorldObserver.helpers.zombie.record
-
 local stream = WorldObserver.observations:zombies()
-  :zombieFilter(ZombieHelper.zombieHasTarget)
+  :zombieFilter(function(zombieRecord)
+    return type(zombieRecord) == "table" and zombieRecord.hasTarget == true
+  end)
 ```
 
 Available today:
@@ -90,7 +90,6 @@ Available today:
   - Trailing `%` means “prefix match” (example: `"Police%"`).
 
 Record helpers (use inside `:zombieFilter(...)` or inside Rx `:filter(...)` after `:asRx()`):
-- `WorldObserver.helpers.zombie.record.zombieHasTarget(zombieRecord)`
 - `WorldObserver.helpers.zombie.record.zombieHasOutfit(zombieRecord, nameOrList)`
   - Trailing `%` means “prefix match” (example: `"Police%"`).
 

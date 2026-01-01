@@ -64,24 +64,25 @@ local SquareHelper = WorldObserver.helpers.square.record
 
 local stream = WorldObserver.observations:squares()
   :squareFilter(function(s)
-    return SquareHelper.squareHasCorpse(s) and SquareHelper.squareHasIsoGridSquare(s)
+    return (s and s.hasCorpse == true) and SquareHelper.squareHasIsoGridSquare(s)
   end)
 ```
 
 Available today:
 - `:squareHasCorpse()` (filters on `square.hasCorpse`, no hydration)
 - `:squareHasIsoGridSquare()` (keeps only records that can resolve a live `IsoGridSquare`)
-- `:squareFloorMaterialMatches(pattern)` (filters on `square.floorMaterial`)
+- `:squareHasFloorMaterial(pattern)` (filters on `square.floorMaterial`)
   - Trailing `%` means “prefix match” (example: `"Road%"`).
-- `:isRoad()` (shorthand for `squareFloorMaterialMatches("Road%")`)
+- `:hasFloorMaterial(pattern)` (alias for `:squareHasFloorMaterial(pattern)`)
 - `:setSquareMarker(textOrFn, opts)` (best-effort label; requires Doggy's VisualMarkers; accepts square-like records with `x/y/z` or a live `IsoGridSquare`)
 
 Record helpers (use inside `:squareFilter(...)` or inside Rx `:filter(...)` after `:asRx()`):
-- `WorldObserver.helpers.square.record.squareHasCorpse(squareRecord)` (checks the `hasCorpse` field only)
 - `WorldObserver.helpers.square.record.squareHasIsoGridSquare(squareRecord, opts)` (may hydrate/cache `squareRecord.IsoGridSquare`)
-- `WorldObserver.helpers.square.record.squareFloorMaterialMatches(squareRecord, pattern)`
+- `WorldObserver.helpers.square.record.squareHasFloorMaterial(squareRecord, pattern)`
   - Trailing `%` means “prefix match” (example: `"Road%"`).
-- `WorldObserver.helpers.square.record.isRoad(squareRecord)`
+
+Optional ergonomics in record contexts (PromiseKeeper actions, callbacks):
+- `WorldObserver.helpers.square:wrap(squareRecord)` adds `:getIsoGridSquare()`, `:hasFloorMaterial(pattern)`, `:highlight(durationMs, opts)`; see [Helpers: record wrapping](../guides/helpers.md#record-wrapping-optional).
 
 Example (sets a label showing the square id, reusing the same marker per square):
 

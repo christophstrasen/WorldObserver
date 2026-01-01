@@ -13,19 +13,17 @@ describe("WorldObserver observations.zombies()", function()
 		WorldObserver = reload("WorldObserver")
 	end)
 
-	it("zombieFilter passes the zombie record into the predicate", function()
-		local received = {}
-		local ZombieHelper = WorldObserver.helpers.zombie.record
+		it("zombieFilter passes the zombie record into the predicate", function()
+			local received = {}
+				local stream = WorldObserver.observations:zombies():zombieFilter(function(zombieRecord, observation)
+					assert.is_table(observation)
+					assert.is_table(zombieRecord)
+					assert.equals(zombieRecord, observation.zombie)
+					return zombieRecord.hasTarget == true
+				end)
 
-			local stream = WorldObserver.observations:zombies():zombieFilter(function(zombieRecord, observation)
-				assert.is_table(observation)
-				assert.is_table(zombieRecord)
-				assert.equals(zombieRecord, observation.zombie)
-				return ZombieHelper.zombieHasTarget(zombieRecord)
-			end)
-
-		stream:subscribe(function(row)
-			received[#received + 1] = row
+			stream:subscribe(function(row)
+				received[#received + 1] = row
 		end)
 
 		WorldObserver._internal.facts:emit("zombies", {

@@ -4,21 +4,23 @@
 
 WorldObserver has two helper “surfaces” today:
 
-- **Stream helpers** (chainable operators): `stream:isRoad()`, `stream:hasOutfit(...)`, `stream.helpers.square:isRoad()`, ...
-- **Record helpers** (predicates/utilities): `WorldObserver.helpers.square.record.isRoad(squareRecord)`, `...getIsoGridSquare(squareRecord)`, ...
+- **Stream helpers** (chainable operators): `stream:hasFloorMaterial("Road%")`, `stream:hasOutfit(...)`, `stream.helpers.square:hasFloorMaterial("Road%")`, ...
+- **Record helpers** (predicates/utilities): `WorldObserver.helpers.square.record.squareHasFloorMaterial(squareRecord, "Road%")`, `...getIsoGridSquare(squareRecord)`, ...
 
-This RFC proposes a small, explicit **record wrapper** API so modders can use **record helpers with the same call style everywhere**, including PromiseKeeper actions, without mutating records or changing stream semantics:
+This RFC proposes a small, explicit **record wrapping / decoration** API so modders can use **record helpers with the same call style everywhere**, including PromiseKeeper actions, while keeping stream semantics unchanged.
+
+Key preference (from discussion): instead of returning a proxy wrapper that stores `.raw` and forces “back out into `helpers.*.record`”, we decorate the record *in-place* by setting a metatable. That keeps `subject.square` feeling like “the record, just nicer”:
 
 ```lua
-local Square = wo.helpers.square
-local square = Square:wrap(subject.square)
+local Square = WorldObserver.helpers.square
+local square = Square:wrap(subject.square) -- returns the same table (decorated)
 
-if square:isRoad() then
+if square:hasFloorMaterial("Road%") then
   local iso = square:getIsoGridSquare()
 end
 ```
 
-The wrapper exposes a **whitelisted** set of `record.*` functions as colon-methods on a wrapper object.
+The wrap operation exposes a **whitelisted** set of `record.*` functions as colon-methods on the record table via `__index`.
 
 ---
 
@@ -39,18 +41,18 @@ We want a small, composable tool that:
 
 ## Goals
 
-- **Consistency:** “I have a square record” → I can call `:isRoad()` / `:getIsoGridSquare()` in any context.
-- **Explicitness:** wrapper usage is opt-in and local (`Square:wrap(record)`), no implicit global decoration.
+- **Consistency:** “I have a square record” → I can call `:hasFloorMaterial(...)` / `:getIsoGridSquare()` in any context.
+- **Explicitness:** usage is opt-in and local (`Square:wrap(record)`), no implicit global decoration.
 - **Compatibility:** works in vanilla Lua 5.1 + PZ/Kahlua; does not require changes to record builders.
 - **Patchability:** helper sets remain override-friendly (existing `if fn == nil then fn = ... end` patterns).
-- **Low risk:** wrapper does not mutate records; does not rely on record metatable behavior.
+- **Ergonomics:** the record stays a “normal table” with its existing fields; methods are resolved via `__index`.
 
 ---
 
 ## Non-goals
 
 - No changes to stream helper attachment (`ObservationStream:withHelpers(...)`, `enabled_helpers`, `stream.helpers.*`).
-- No attempt to make `subject.square:<method>()` work without wrapping (that would require mutating the record or setting its metatable).
+- No global auto-decoration of all emitted records (wrapping remains explicit/opt-in).
 - No guarantee that hydration will succeed (e.g. `getIsoGridSquare()` remains best-effort).
 - No introspection/rewrite of function signatures (we will not try to auto-detect “record-first” helpers).
 
@@ -58,64 +60,37 @@ We want a small, composable tool that:
 
 ## Proposal
 
-### 1) `HelperSet:wrap(record, opts)` returns a wrapper object
+### 1) `HelperSet:wrap(record, opts)` decorates the record and returns it
 
-Each built-in helper set (square/zombie/...) may provide a `wrap` function (colon-style or dot-style).
+Each built-in helper set (square/zombie/...) provides a `wrap` function (colon-style).
 
-Suggested shape:
+Contract:
 
 ```lua
-local wrapper = {
-  raw = record,          -- the original record table
-  record = recordHelpers -- the helperSet.record table (for power-users / escape hatches)
-}
+local wrapped = Square:wrap(record)
+assert(wrapped == record) -- same table, now with methods via metatable
 ```
 
-### 2) Wrapper methods are derived from a whitelist
+### 2) Methods are derived from a whitelist
 
 We do **not** auto-expose all `record.*` functions by default.
 
 Reason: some `record.*` functions are “static utilities” (they don’t take a record as first argument), e.g. `tileLocationFromCoords(x, y, z)` in square helpers. Blindly turning every `record.<name>` into a `wrapper:<name>(...)` method would produce confusing or wrong call shapes.
 
-Instead, each helper set declares an explicit whitelist of record-first functions to expose as wrapper methods:
+Instead, each helper set explicitly defines (and documents) the small method surface it wants to expose on records. The “whitelist” is the set of wrapper methods we implement on the shared `__index` method table.
 
-```lua
-HelperSet.record_wrapped = {
-  isRoad = true,
-  getIsoGridSquare = true,
-  squareHasCorpse = true,
-  squareHasIsoGridSquare = true,
-  squareFloorMaterialMatches = true,
-  -- ...
-}
-```
+### 3) Implementation approach: stable metatable on the record
 
-For each whitelisted function `fnName`, the wrapper supports:
+To keep per-call overhead low and avoid allocating a new closure per wrap call:
 
-```lua
-wrapper:fnName(...)  -- calls HelperSet.record[fnName](wrapper.raw, ...)
-```
+- Each helper family owns a single stable metatable for its record type.
+- Wrapping sets that metatable on the record (idempotent if already wrapped).
+- `__index` resolves methods from a shared method table (generated from the whitelist).
+- Wrapper methods should not capture function references directly; they should delegate via `HelperSet.record[fnName]` at call-time so mod patches and reloads remain respected.
 
-### 3) Implementation approach: shared method table + metatable on the wrapper (not on the record)
+`pairs(record)` continues to enumerate only the record’s real fields; “virtual” methods from `__index` do not appear in `pairs()`.
 
-To keep per-call overhead low and avoid allocating a new closure per wrapper method, we can implement wrappers with a shared `__index` table (or `__index` function) per helper family:
-
-- **Allowed “metatable magic”:** only on the wrapper object, not on emitted records.
-- Wrapper metatable is stable and local to the helper set; it should not leak to record tables.
-
-Alternative (no metatables): assign method closures directly onto each wrapper at creation time. This is simpler to reason about but creates more allocations.
-
-### 4) Where this lives
-
-Option A (per helper set, simplest): implement `wrap` directly in each helper set file (e.g. `helpers/square.lua`).
-
-Option B (shared utility, less duplication): add a small internal utility (e.g. `WorldObserver/helpers/record_wrapper.lua`) that helper sets call with:
-
-- `recordHelpers` table
-- `record_wrapped` whitelist
-- optional naming/customizations
-
-Helper sets remain the owners of their whitelist decisions.
+Implementation should live in a small internal utility that helper sets call (so square/zombie/etc. stay consistent), while each helper set remains the owner of its whitelist decisions.
 
 ---
 
@@ -128,7 +103,7 @@ pk.actions.define("spawnRoadCone", function(subject)
   local Square = wo.helpers.square
   local square = Square:wrap(subject.square)
 
-  if not square:isRoad() then
+  if not square:hasFloorMaterial("Road%") then
     return
   end
 
@@ -141,11 +116,13 @@ pk.actions.define("spawnRoadCone", function(subject)
 end)
 ```
 
-### Escape hatch (power-users)
+### Direct helper calls (still available)
 
 ```lua
-local square = wo.helpers.square:wrap(subject.square)
-local iso = square.record.getIsoGridSquare(square.raw, { cache = true })
+local Square = wo.helpers.square
+Square:wrap(subject.square)
+
+local iso = Square.record.getIsoGridSquare(subject.square, { cache = true })
 ```
 
 ---
@@ -153,27 +130,59 @@ local iso = square.record.getIsoGridSquare(square.raw, { cache = true })
 ## Interactions with existing helper architecture
 
 - This RFC does not require `ObservationStream:withHelpers(...)`.
-- Wrapper methods are **record-context only**; they do not change or mimic stream operator semantics.
+- Wrapped record methods are **record-context only**; they do not change or mimic stream operator semantics.
 - Third-party helper sets:
-  - A third-party helper set can opt into the same pattern by providing `record_wrapped` + `wrap`.
+  - A third-party helper set can opt into the same pattern by implementing `wrap(record)` and exposing a small, explicit wrapped method set.
   - This RFC does not (yet) specify a global “register record wrapper family” API; that can be layered later if needed.
 
 ---
 
 ## Risks / tradeoffs
 
-- **Discoverability:** wrappers add another surface. Mitigation: document a single recommended pattern (“wrap in record contexts; stream helpers on streams”).
-- **Allocation:** each `wrap(record)` allocates a wrapper table. Mitigation: targeted usage in actions / low-rate code paths; avoid wrapping in hot per-record stream callbacks.
-- **Naming collisions:** wrapper method namespace is per-family, but if we auto-expose large whitelists, names should still remain coherent within the family.
-- **Policy mismatch:** record wrappers rely on metatables (on wrappers). This is contained, but it should be an explicit exception to the general preference to avoid metatable magic.
+- **Metatable leakage:** once wrapped, any other code holding the same record table will also see the methods (because the metatable lives on the record). This is often fine/desirable, but it’s no longer “pure data only”.
+- **Metatable collisions:** if a record already has a metatable (user-added or future WO changes), wrapping must either (a) refuse, or (b) explicitly compose/chains the existing metatable behavior. Silent overwrite would be risky.
+- **Field-name collisions:** if a data field exists with the same name as a would-be method, that field will shadow the method (and `record:<name>()` will likely error). This can happen via mod extenders *and* via built-in record fields (e.g. many records already have `hasCorpse`, `isRunning`, ... fields, so we cannot also expose `:hasCorpse()` / `:isRunning()` unless we rename the data fields). Mitigation: encourage namespacing under `record.extra.<ModId>` and keep the wrapped-method whitelist tight.
+- **Truthiness surprises:** after wrapping, `if record.hasFloorMaterial then ... end` becomes true (it is a function via `__index`). Prefer `record:hasFloorMaterial(...)` for the boolean meaning, and `rawget(record, "hasFloorMaterial")` if you truly mean “does this data field exist?”
+- **Copies lose wrapping:** any code that deep-copies records via `pairs()` (common in Lua) will not copy the metatable; the copied table will not have methods unless it is wrapped again.
+- **Policy mismatch:** this approach uses metatables on records. That should be an explicit, documented exception to the general preference to avoid metatable magic.
 
 ---
 
-## Open questions
+## Status (implemented)
 
-1) Do we want a consistent naming convention for wrapper-returning functions?
-   - `Square:wrap(record)` vs `Square.record:wrap(record)` vs `Square.wrapRecord(record)`
-2) Should the wrapper store `.raw` and `.record` with these exact field names, or hide them?
-3) Should wrapper methods accept the same `opts` tables as the underlying record helper (pass-through), or do we want wrapper-level defaults?
-4) Should we add a small `docs/guides/helpers.md` section teaching the wrapper pattern (once implemented)?
+This RFC is implemented for:
+- **zombies**
+- **squares**
 
+Decisions (from discussion):
+- **In-place decoration:** `Zombie:wrap(record)` sets a metatable on the record table and returns the same table.
+- **Refuse on metatable:** if a record already has a metatable (and it’s not our wrapper metatable), we log and return `nil, "hasMetatable"`.
+- **Whitelist:** we only expose a small list of methods, and we avoid methods that would collide with record boolean fields (example: `hasTarget` stays a field; no `:hasTarget()` method).
+- **Side effects allowed:** wrapper methods may perform best-effort hydration and may cache engine userdata back onto the record (example: `record.IsoZombie`).
+- **Patchability:** wrapper methods delegate via `ZombieHelpers.record.<fn>` (and `ZombieHelpers.<fn>`) at call time so mods can override helpers.
+- **No persistence guarantee:** downstream frameworks (notably LQR) may shallow-copy records and drop metatables. The intended pattern is “wrap close to use” in record contexts (PromiseKeeper actions, callbacks).
+- **Docs exist:** the user-facing guide documents wrapping in `docs/guides/helpers.md`.
+
+### Intended UX (PromiseKeeper action)
+
+```lua
+local Zombie = wo.helpers.zombie
+local zombie = Zombie:wrap(subject.zombie)
+if not zombie then return end
+
+if zombie:hasOutfit("Police%") then
+  zombie:highlight(2000, { color = { 0, 0, 1, 1 } })
+end
+```
+
+### Proposed zombie wrapper methods
+
+- `zombie:getIsoZombie()` → delegates to `ZombieHelpers.record.getIsoZombie(record)` (best-effort; may cache `record.IsoZombie`)
+- `zombie:hasOutfit(patternOrList)` → delegates to `ZombieHelpers.record.zombieHasOutfit(record, patternOrList)`
+- `zombie:highlight(durationMs, opts)` → delegates to `ZombieHelpers.highlight(record, durationMs, opts)` (best-effort)
+
+### Proposed square wrapper methods
+
+- `square:getIsoGridSquare()` → delegates to `SquareHelpers.record.getIsoGridSquare(record)` (best-effort; may cache `record.IsoGridSquare`)
+- `square:hasFloorMaterial(pattern)` → delegates to `SquareHelpers.record.squareHasFloorMaterial(record, pattern)`
+- `square:highlight(durationMs, opts)` → delegates to `SquareHelpers.highlight(record, durationMs, opts)` (best-effort)

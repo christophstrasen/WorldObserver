@@ -45,10 +45,10 @@ local function resolveZombieList()
 	return list
 end
 
-local function rehydrateZombie(record)
-	if type(record) ~= "table" then
-		return nil
-	end
+	local function rehydrateZombie(record)
+		if type(record) ~= "table" then
+			return nil
+		end
 	if record.IsoZombie then
 		return record.IsoZombie
 	end
@@ -66,33 +66,103 @@ local function rehydrateZombie(record)
 	if not okSize or type(size) ~= "number" then
 		return nil
 	end
-	for i = 0, size - 1 do
-		local okZombie, zombie = pcall(list.get, list, i)
-		if okZombie and zombie and type(zombie.getID) == "function" then
-			local okId, zid = pcall(zombie.getID, zombie)
-			if okId and zid == targetId then
-				return zombie
+		for i = 0, size - 1 do
+			local okZombie, zombie = pcall(list.get, list, i)
+			if okZombie and zombie and type(zombie.getID) == "function" then
+				local okId, zid = pcall(zombie.getID, zombie)
+				if okId and zid == targetId then
+					return zombie
+				end
 			end
 		end
+		return nil
 	end
-	return nil
-end
 
-if ZombieHelpers.record.getIsoZombie == nil then
-	--- Best-effort: return the live IsoZombie for a record.
-	function ZombieHelpers.record.getIsoZombie(record)
-		return rehydrateZombie(record)
+	if ZombieHelpers.record.getIsoZombie == nil then
+		--- Best-effort: return the live IsoZombie for a record.
+		function ZombieHelpers.record.getIsoZombie(record)
+			if type(record) ~= "table" then
+				return nil
+			end
+			if record.IsoZombie then
+				return record.IsoZombie
+			end
+			local iso = rehydrateZombie(record)
+			if iso ~= nil then
+				record.IsoZombie = iso
+			end
+			return iso
+		end
 	end
-end
 
-local function zombieHasTarget(zombieRecord)
-	return type(zombieRecord) == "table" and zombieRecord.hasTarget == true
-end
+	ZombieHelpers._internal = ZombieHelpers._internal or {}
+	ZombieHelpers._internal.recordWrap = ZombieHelpers._internal.recordWrap or {}
+	local recordWrap = ZombieHelpers._internal.recordWrap
 
-local function outfitMatches(outfitName, expected)
-	if type(outfitName) ~= "string" or outfitName == "" then
-		return false
+	recordWrap.methods = recordWrap.methods or {}
+	recordWrap.metatable = recordWrap.metatable or { __index = recordWrap.methods }
+
+	-- Record wrapper methods (whitelist) for ergonomic use in record contexts (PromiseKeeper actions, callbacks).
+	-- Note: we intentionally do NOT expose methods that merely mirror boolean record fields (e.g. hasTarget).
+	if recordWrap.methods.getIsoZombie == nil then
+		function recordWrap.methods:getIsoZombie(...)
+			local fn = ZombieHelpers.record and ZombieHelpers.record.getIsoZombie
+			if type(fn) == "function" then
+				return fn(self, ...)
+			end
+			return nil
+		end
 	end
+
+	if recordWrap.methods.hasOutfit == nil then
+		function recordWrap.methods:hasOutfit(...)
+			local fn = ZombieHelpers.record and ZombieHelpers.record.zombieHasOutfit
+			if type(fn) == "function" then
+				return fn(self, ...)
+			end
+			return false
+		end
+	end
+
+	if recordWrap.methods.highlight == nil then
+		function recordWrap.methods:highlight(...)
+			local fn = ZombieHelpers.highlight
+			if type(fn) == "function" then
+				return fn(self, ...)
+			end
+			return nil, "noHighlight"
+		end
+	end
+
+	if ZombieHelpers.wrap == nil then
+		--- Decorate a zombie record in-place to expose a small method surface via metatable.
+		--- Returns the same table on success; refuses if the record already has a different metatable.
+		--- @param record table
+		--- @return table|nil wrappedRecord
+		--- @return string|nil err
+		function ZombieHelpers:wrap(record, opts)
+			if type(record) ~= "table" then
+				return nil, "badRecord"
+			end
+			local existing = getmetatable(record)
+			if existing == recordWrap.metatable then
+				return record
+			end
+			if existing ~= nil then
+				if _G.WORLDOBSERVER_HEADLESS ~= true then
+					Log:warn("zombie.wrap refused: record already has a metatable")
+				end
+				return nil, "hasMetatable"
+			end
+			setmetatable(record, recordWrap.metatable)
+			return record
+		end
+	end
+
+	local function outfitMatches(outfitName, expected)
+			if type(outfitName) ~= "string" or outfitName == "" then
+				return false
+			end
 	if type(expected) == "string" then
 		return PatternHelpers.matchesPrefixPattern(outfitName, expected)
 	end
@@ -112,14 +182,10 @@ local function outfitMatches(outfitName, expected)
 	return false
 end
 
-if ZombieHelpers.record.zombieHasTarget == nil then
-	ZombieHelpers.record.zombieHasTarget = zombieHasTarget
-end
-
-if ZombieHelpers.record.zombieHasOutfit == nil then
-	function ZombieHelpers.record.zombieHasOutfit(zombieRecord, expected)
-		if type(zombieRecord) ~= "table" then
-			return false
+	if ZombieHelpers.record.zombieHasOutfit == nil then
+		function ZombieHelpers.record.zombieHasOutfit(zombieRecord, expected)
+			if type(zombieRecord) ~= "table" then
+				return false
 		end
 		return outfitMatches(zombieRecord.outfitName, expected)
 	end
@@ -168,15 +234,15 @@ if ZombieHelpers.highlight == nil then
 	end
 end
 
-if ZombieHelpers.zombieHasTarget == nil then
-	function ZombieHelpers.zombieHasTarget(stream, fieldName, ...)
-		local target = fieldName or "zombie"
-		return stream:filter(function(observation)
-			local zombieRecord = zombieField(observation, target)
-			return ZombieHelpers.record.zombieHasTarget(zombieRecord)
-		end)
+	if ZombieHelpers.zombieHasTarget == nil then
+		function ZombieHelpers.zombieHasTarget(stream, fieldName, ...)
+			local target = fieldName or "zombie"
+			return stream:filter(function(observation)
+				local zombieRecord = zombieField(observation, target)
+				return type(zombieRecord) == "table" and zombieRecord.hasTarget == true
+			end)
+		end
 	end
-end
 if ZombieHelpers.stream.zombieHasTarget == nil then
 	function ZombieHelpers.stream.zombieHasTarget(stream, fieldName, ...)
 		return ZombieHelpers.zombieHasTarget(stream, fieldName, ...)
@@ -193,11 +259,11 @@ if ZombieHelpers.hasOutfit == nil then
 		end)
 	end
 end
-if ZombieHelpers.stream.hasOutfit == nil then
-	function ZombieHelpers.stream.hasOutfit(stream, fieldName, ...)
-		return ZombieHelpers.hasOutfit(stream, fieldName, ...)
+	if ZombieHelpers.stream.hasOutfit == nil then
+		function ZombieHelpers.stream.hasOutfit(stream, fieldName, ...)
+			return ZombieHelpers.hasOutfit(stream, fieldName, ...)
+		end
 	end
-end
 
 if ZombieHelpers.zombieHasOutfit == nil then
 	function ZombieHelpers.zombieHasOutfit(stream, fieldName, ...)

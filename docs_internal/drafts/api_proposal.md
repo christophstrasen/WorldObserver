@@ -439,11 +439,11 @@ local Square = WorldObserver.helpers.square
 
 	local dirtySquares = WorldObserver.observations
 	  .squares()
-	  :filter(function(observation)
-	    local squareRecord = observation.square
-	    return Square.record.squareHasCorpse(squareRecord)
-	      or squareRecord.hasTrashItems == true -- example: your own field/predicate
-	  end)
+		  :filter(function(observation)
+		    local squareRecord = observation.square
+		    return squareRecord and squareRecord.hasCorpse == true
+		      or squareRecord.hasTrashItems == true -- example: your own field/predicate
+		  end)
 
 dirtySquares:subscribe(function(observation)
   -- observation.square carries the square instance
@@ -461,10 +461,10 @@ Custom helper definition (square helper set extension):
 
 local SquareHelpers = require("WorldObserver/helpers/square")
 
-SquareHelpers.record.squareIsDirty = SquareHelpers.record.squareIsDirty or function(squareRecord)
-	return SquareHelpers.record.squareHasCorpse(squareRecord)
-		or (type(squareRecord) == "table" and squareRecord.hasTrashItems == true)
-end
+	SquareHelpers.record.squareIsDirty = SquareHelpers.record.squareIsDirty or function(squareRecord)
+		return squareRecord and squareRecord.hasCorpse == true
+			or (type(squareRecord) == "table" and squareRecord.hasTrashItems == true)
+	end
 
 SquareHelpers.squareIsDirty = SquareHelpers.squareIsDirty or function(stream, fieldName)
 	local target = fieldName or "square"

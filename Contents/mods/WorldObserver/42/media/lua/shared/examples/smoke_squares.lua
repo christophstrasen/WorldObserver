@@ -50,14 +50,13 @@ function SmokeSquares.start(opts)
 
 	-- Build stream.
 	local stream = WorldObserver.observations:squares()
-	local SquareHelper = WorldObserver.helpers.square.record
 	local distinctSeconds = opts.distinctSeconds
 	if distinctSeconds ~= nil then
 		stream = stream:distinct("square", distinctSeconds)
 	end
 	if opts.withHelpers == true then
 		-- Example: only keep squares with a corpse.
-		stream = stream:squareFilter(SquareHelper.squareHasCorpse)
+		stream = stream:squareHasCorpse()
 	end
 
 	Log.info(

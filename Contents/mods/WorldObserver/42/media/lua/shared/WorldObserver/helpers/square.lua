@@ -78,27 +78,16 @@ if type(moduleName) == "string" then
 	return square
 end
 
-	local function squareHasCorpse(squareRecord)
-		-- This predicate is used by stream helpers after they extracted `square` from an observation.
-		-- It expects the WorldObserver square record shape (a table) and only checks its fields.
-		if type(squareRecord) ~= "table" then
-			return false
+			local function squareHasFloorMaterial(squareRecord, expected)
+				if type(squareRecord) ~= "table" then
+					return false
+				end
+			local material = squareRecord.floorMaterial
+			if type(material) ~= "string" or material == "" then
+				return false
+			end
+			return PatternHelpers.matchesPrefixPattern(material, expected)
 		end
-
-		-- This helper is intentionally simple: it only trusts the fact's `hasCorpse` field.
-		return squareRecord.hasCorpse == true
-	end
-
-	local function squareFloorMaterialMatches(squareRecord, expected)
-		if type(squareRecord) ~= "table" then
-			return false
-		end
-		local material = squareRecord.floorMaterial
-		if type(material) ~= "string" or material == "" then
-			return false
-		end
-		return PatternHelpers.matchesPrefixPattern(material, expected)
-	end
 
 	-- Stream sugar: apply a predicate to the square record directly.
 	-- This avoids leaking LQR schema names (e.g. "SquareObservation") into mod code.
@@ -122,70 +111,55 @@ end
 -- We only define exported helper functions when the field is nil, so other mods can patch by reassigning
 -- `SquareHelpers.<name>` (or `SquareHelpers.record.<name>`) and so module reloads (tests/console via `package.loaded`)
 -- don't clobber an existing patch.
-	if SquareHelpers.record.squareHasCorpse == nil then
-		SquareHelpers.record.squareHasCorpse = squareHasCorpse
-	end
+			if SquareHelpers.record.squareHasFloorMaterial == nil then
+				SquareHelpers.record.squareHasFloorMaterial = squareHasFloorMaterial
+			end
 
-	if SquareHelpers.record.squareFloorMaterialMatches == nil then
-		SquareHelpers.record.squareFloorMaterialMatches = squareFloorMaterialMatches
+		if SquareHelpers.squareHasCorpse == nil then
+			function SquareHelpers.squareHasCorpse(stream, fieldName, ...)
+				local target = fieldName or "square"
+			return stream:filter(function(observation)
+				local square = squareField(observation, target)
+				return type(square) == "table" and square.hasCorpse == true
+			end)
+		end
 	end
-
-	if SquareHelpers.squareHasCorpse == nil then
-		function SquareHelpers.squareHasCorpse(stream, fieldName, ...)
-			local target = fieldName or "square"
-		return stream:filter(function(observation)
-			local square = squareField(observation, target)
-			return SquareHelpers.record.squareHasCorpse(square)
-		end)
-	end
-end
 	if SquareHelpers.stream.squareHasCorpse == nil then
 		function SquareHelpers.stream.squareHasCorpse(stream, fieldName, ...)
 			return SquareHelpers.squareHasCorpse(stream, fieldName, ...)
 		end
 	end
 
-	if SquareHelpers.squareFloorMaterialMatches == nil then
-		function SquareHelpers.squareFloorMaterialMatches(stream, fieldName, expected)
-			local target = fieldName or "square"
-			return stream:filter(function(observation)
-				local square = squareField(observation, target)
-				return SquareHelpers.record.squareFloorMaterialMatches(square, expected)
-			end)
+		if SquareHelpers.squareHasFloorMaterial == nil then
+			function SquareHelpers.squareHasFloorMaterial(stream, fieldName, expected)
+				local target = fieldName or "square"
+				return stream:filter(function(observation)
+					local square = squareField(observation, target)
+					return SquareHelpers.record.squareHasFloorMaterial(square, expected)
+				end)
+			end
 		end
-	end
-	if SquareHelpers.stream.squareFloorMaterialMatches == nil then
-		function SquareHelpers.stream.squareFloorMaterialMatches(stream, fieldName, ...)
-			return SquareHelpers.squareFloorMaterialMatches(stream, fieldName, ...)
+		if SquareHelpers.stream.squareHasFloorMaterial == nil then
+			function SquareHelpers.stream.squareHasFloorMaterial(stream, fieldName, ...)
+				return SquareHelpers.squareHasFloorMaterial(stream, fieldName, ...)
+			end
 		end
-	end
 
-	if SquareHelpers.record.isRoad == nil then
-		function SquareHelpers.record.isRoad(squareRecord)
-			return SquareHelpers.record.squareFloorMaterialMatches(squareRecord, "Road%")
+		if SquareHelpers.hasFloorMaterial == nil then
+			function SquareHelpers.hasFloorMaterial(stream, fieldName, ...)
+				return SquareHelpers.squareHasFloorMaterial(stream, fieldName, ...)
+			end
 		end
-	end
-	if SquareHelpers.isRoad == nil then
-		function SquareHelpers.isRoad(stream, fieldName, ...)
-			local target = fieldName or "square"
-			return stream:filter(function(observation)
-				local square = squareField(observation, target)
-				return SquareHelpers.record.isRoad(square)
-			end)
+		if SquareHelpers.stream.hasFloorMaterial == nil then
+			function SquareHelpers.stream.hasFloorMaterial(stream, fieldName, ...)
+				return SquareHelpers.hasFloorMaterial(stream, fieldName, ...)
+			end
 		end
-	end
-	if SquareHelpers.stream.isRoad == nil then
-		function SquareHelpers.stream.isRoad(stream, fieldName, ...)
-			return SquareHelpers.isRoad(stream, fieldName, ...)
-		end
-	end
 
-	local GRASS_PREFIX = "blends_natural"
-
-	local function validateIsoGridSquare(squareRecord, isoGridSquare)
-		if type(squareRecord) ~= "table" then
-			return nil
-		end
+		local function validateIsoGridSquare(squareRecord, isoGridSquare)
+			if type(squareRecord) ~= "table" then
+				return nil
+			end
 		if isoGridSquare == nil then
 			return nil
 		end
@@ -410,11 +384,11 @@ end
 	end
 
 	-- Highlight a square's floor for a duration with a fading alpha.
-	if SquareHelpers.highlight == nil then
-	function SquareHelpers.highlight(squareOrRecord, durationMs, opts)
-		opts = opts or {}
-		if type(durationMs) == "number" and opts.durationMs == nil then
-			opts.durationMs = durationMs
+		if SquareHelpers.highlight == nil then
+		function SquareHelpers.highlight(squareOrRecord, durationMs, opts)
+			opts = opts or {}
+			if type(durationMs) == "number" and opts.durationMs == nil then
+				opts.durationMs = durationMs
 		end
 
 			local isoGridSquare = nil
@@ -433,29 +407,71 @@ end
 				return nil, "noFloor"
 			end
 
-		return Highlight.highlightTarget(floor, opts)
-	end
-end
-
-if SquareHelpers.squareHasGrass == nil then
-	function SquareHelpers.squareHasGrass(square)
-		if not square then
-			return false
+			return Highlight.highlightTarget(floor, opts)
+		end
 		end
 
-		local floor = square:getFloor()
-		if not floor then
-			return false
+		SquareHelpers._internal = SquareHelpers._internal or {}
+		SquareHelpers._internal.recordWrap = SquareHelpers._internal.recordWrap or {}
+		local recordWrap = SquareHelpers._internal.recordWrap
+
+		recordWrap.methods = recordWrap.methods or {}
+		recordWrap.metatable = recordWrap.metatable or { __index = recordWrap.methods }
+
+		-- Record wrapper methods (whitelist) for ergonomic use in record contexts (PromiseKeeper actions, callbacks).
+		if recordWrap.methods.getIsoGridSquare == nil then
+			function recordWrap.methods:getIsoGridSquare(...)
+				local fn = SquareHelpers.record and SquareHelpers.record.getIsoGridSquare
+				if type(fn) == "function" then
+					return fn(self, ...)
+				end
+				return nil
+			end
 		end
 
-		local sn = floor:getSpriteName()
-		if not sn then
-			return false
+		if recordWrap.methods.hasFloorMaterial == nil then
+			function recordWrap.methods:hasFloorMaterial(...)
+				local fn = SquareHelpers.record and SquareHelpers.record.squareHasFloorMaterial
+				if type(fn) == "function" then
+					return fn(self, ...)
+				end
+				return false
+			end
 		end
 
-		-- Prefix check without substring allocation.
-		return string.find(sn, GRASS_PREFIX, 1, true) == 1
-	end
-end
+		if recordWrap.methods.highlight == nil then
+			function recordWrap.methods:highlight(...)
+				local fn = SquareHelpers.highlight
+				if type(fn) == "function" then
+					return fn(self, ...)
+				end
+				return nil, "noHighlight"
+			end
+		end
 
-return SquareHelpers
+		if SquareHelpers.wrap == nil then
+			--- Decorate a square record in-place to expose a small method surface via metatable.
+			--- Returns the same table on success; refuses if the record already has a different metatable.
+			--- @param record table
+			--- @return table|nil wrappedRecord
+			--- @return string|nil err
+			function SquareHelpers:wrap(record, opts)
+				if type(record) ~= "table" then
+					return nil, "badRecord"
+				end
+				local existing = getmetatable(record)
+				if existing == recordWrap.metatable then
+					return record
+				end
+				if existing ~= nil then
+					if _G.WORLDOBSERVER_HEADLESS ~= true then
+						Log:warn("square.wrap refused: record already has a metatable")
+					end
+					return nil, "hasMetatable"
+				end
+				setmetatable(record, recordWrap.metatable)
+				return record
+			end
+		end
+
+		return SquareHelpers

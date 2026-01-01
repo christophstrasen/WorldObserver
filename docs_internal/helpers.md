@@ -4,6 +4,14 @@ This document describes how helpers work in WorldObserver: what they are for, ho
 
 This is intentionally internal documentation for WO maintainers. User-facing guidance lives in `docs/observations/stream_basics.md` and the per-family observation docs.
 
+## Conventions (read first)
+
+These conventions exist to keep helpers predictable and to avoid “API headaches” as soon as we have derived streams (multiple payload families in one observation).
+
+- **Prefer collision-safe calls in derived streams:** always use `stream.helpers.<family>:<fn>(...)` in derived-stream examples and internal docs. Flat stream methods share one namespace; collisions are “first wins”.
+- **When adding a new helper, assume collisions are possible:** if a name could plausibly exist on multiple families (example: `hasOutfit`, `highlight`, `isInside`, `isAlive`), prefer providing a family-prefixed stream method (example: `zombieHasOutfit`) and treat any unprefixed alias (example: `hasOutfit`) as optional sugar.
+- **Avoid “same thing twice”:** if a record contract already contains a boolean field (example: `squareRecord.hasCorpse`), do not ship a record helper that just returns that value.
+
 ## 1) Intent (modder UX)
 
 Helpers exist to give modders **quick, easy access to high-leverage operations** on observations.
@@ -143,20 +151,35 @@ Logging rule of thumb:
 - `info` only for meaningful, low-volume successes (or when explicitly requested).
 - `warn` for recoverable missing prerequisites (e.g. missing `IsoGridSquare` / missing `IsoObject`).
 
-### 3.4 Naming conventions (stream helpers)
+	### 3.4 Naming conventions (stream helpers)
 
-These conventions were originally captured in `docs_internal/drafts/api_proposal.md` and are treated as the intended direction:
+	These conventions were originally captured in `docs_internal/drafts/api_proposal.md` and are treated as the intended direction:
 
-- Prefer fluent predicate names: `squareHasCorpse()`, `zombieHasTarget()`, `roomHasWater()`.
-- Use `<family>Filter(...)` for the generic “accept a predicate” helpers: `squareFilter(fn)`, `zombieFilter(fn)`, etc.
-- Use `*Is*` for simple flags/enums on an entity; use `*Has*` for relationships/lookups into collections.
-- **Naming by effect:**
-  - Read/filter helpers should follow `<family><PredicateOrReadAction>` (e.g. `spriteNameIs`, `squareHasCorpse`, `squareFilter`).
-  - Effectful helpers should lead with the verb/action and include the family noun (e.g. `removeSpriteObject`, `highlightSquare`).
+	- Prefer fluent predicate names: `squareHasCorpse()`, `zombieHasTarget()`, `roomHasWater()`.
+	- Use `<family>Filter(...)` for the generic “accept a predicate” helpers: `squareFilter(fn)`, `zombieFilter(fn)`, etc.
+	- Use `*Is*` for simple flags/enums on an entity; use `*Has*` for relationships/lookups into collections.
+	- **Naming by effect:**
+	  - Read/filter helpers should follow `<family><PredicateOrReadAction>` (e.g. `spriteNameIs`, `squareHasCorpse`, `squareFilter`).
+	  - Effectful helpers should lead with the verb/action and include the family noun (e.g. `removeSpriteObject`, `highlightSquare`).
 
-Naming reality:
-- Built-in families often omit the family prefix for ergonomics (`:spriteNameIs(...)` not `:sprite_spriteNameIs(...)`).
-- Because flat method names collide across families, `stream.helpers.<family>` is the preferred “no ambiguity” access path.
+	Naming reality:
+	- Built-in families often omit the family prefix for ergonomics (`:spriteNameIs(...)` not `:sprite_spriteNameIs(...)`).
+	- Because flat method names collide across families (especially in derived streams), `stream.helpers.<family>` is the preferred “no ambiguity” access path.
+	- Internal docs and derived-stream docs should default to the namespaced form.
+
+### 3.4.1 Record booleans vs record helpers (avoid “same thing twice”)
+
+If a record already has a clear boolean field that is part of the record contract (example: `squareRecord.hasCorpse`), we should **not** also ship a record helper that returns the same value (example: `SquareHelpers.record.squareHasCorpse(squareRecord)`).
+
+Rationale:
+- It adds cognitive load (“is the helper doing anything extra?”) without adding value.
+- It creates naming ambiguity and encourages style drift (field vs helper).
+- It blocks future ergonomic options that depend on `__index` methods (field names shadow methods in Lua).
+
+Rule of thumb:
+- **Record fields** are the canonical, stable truth (“facts we already extracted”): use `record.hasCorpse == true` directly.
+- **Record helpers** should exist only when they compute/derive/hydrate/normalize (example: `getIsoGridSquare`, `roomLocationFromIsoRoom`, `zombieHasOutfit` pattern matching).
+- **Stream helpers** may still provide fluent filters that read those fields (example: `stream:squareHasCorpse()` filters on `square.hasCorpse == true`).
 
 ### 3.5 Built-in families we ship (today)
 

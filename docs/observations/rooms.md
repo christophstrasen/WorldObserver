@@ -114,7 +114,6 @@ Available today:
 
 Record helpers (use inside `:roomFilter(...)` or inside Rx `:filter(...)` after `:asRx()`):
 - `WorldObserver.helpers.room.record.roomTypeIs(roomRecord, "kitchen")`
-- `WorldObserver.helpers.room.record.roomHasWater(roomRecord)`
 
 ## Supported interest configuration (today)
 

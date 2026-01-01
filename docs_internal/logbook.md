@@ -190,7 +190,7 @@
 
 - Restored and clarified corpse detection:
   - Re-introduced `SquareObservation.hasCorpse` as a materialized boolean and populated it primarily via `IsoGridSquare:getDeadBody()` at record creation time (fallback to `hasCorpse` when needed).
-  - Updated square helpers to treat corpse detection as a patchable record-level predicate (`SquareHelpers.record.squareHasCorpse`) so it can be reused in stream helpers and in mod-defined predicates.
+  - Updated square helpers to treat corpse detection as a stable record field (`squareRecord.hasCorpse`), and kept `:squareHasCorpse()` as the ergonomic stream filter.
   - Updated schema docs (`docs_internal/drafts/mvp.md`) and added a unit test ensuring `hasCorpse` is set when `getDeadBody()` returns a corpse.
 
 - Tightened “patchable by default” policy in docs:

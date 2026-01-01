@@ -26,7 +26,7 @@ NixOS + `zsh`; ignore noisy `gpg-agent` warnings at shell start. No git history 
 - Respect Lua/LQR conventions in `.aicontext/context.md` (EmmyLua tags on public funcs, camelCase fields, snake_case files, no new globals unless Capitalized). Keep functions short; avoid shims/aliases unless required.
 - Make helpers patch-able by default: define mod-facing helper functions behind `if <field> == nil then` (or `field = field or impl`) so other mods can override by reassigning table fields and reloads (tests/console via `package.loaded`) don’t clobber patches.
 - When designing modules, use a name `module.lua` on the same level as the module instead of `module/init.lua`
-- Don't use setmatatable or use other meta table magic.
+- Avoid metatable magic (`setmetatable`, `__index`, etc) in general. Exception: record wrapping/decoration (RFC) may set a metatable on records with an explicit whitelist and must refuse when a record already has a different metatable.
 - Remember that project zomboid does not use init.lua as a magic way to load a folder
 - Do not use DOT as director separator but SLASH for all lua requires
 - Do not use package.path unless in a conscious compatible way that does not inhibit proper function of requires in the project zomboid runtime
