@@ -13,7 +13,6 @@ Potentially interesting future observations and other research notes are tracked
 ## Quick links (start here)
 
 - Development quickstart (single repo): `development.md`
-- Development workflow (setup, tests, workshop sync, smoke tests): `docs_internal/development.md`
 - Architecture overview (how the pipeline is structured): `docs_internal/code_architecture.md`
 - Runtime dynamics (how probes and draining adapt): `docs_internal/runtime_dynamics.md`
 - Documentation principles (how we write docs): `docs_internal/wo_documentation_principles.md`
@@ -64,12 +63,10 @@ More context: `docs_internal/code_architecture.md`
 We target both vanilla Lua 5.1 (headless tests) and the Zomboid runtime (Kahlua). Please use this stacked approach:
 
 1) **Unit tests (required)**
-- Run: `busted tests`
-- Add tests under `tests/unit/` for new behavior.
+- Add tests under `tests/unit/` for new behavior and run the test suite (see `development.md`).
 
 2) **Built-workspace loader smoke test (recommended for require/path changes)**
-- Run: `./dev/sync-workshop.sh`
-- Then: `SOURCE=workshop ./dev/smoke.sh`
+- Run the sync + loader smoke flow documented in `development.md`.
 
 3) **In-engine smoke tests (recommended for new probes/listeners/visuals)**
 - Smoke scripts live under `Contents/mods/WorldObserver/42/media/lua/shared/examples/`
@@ -94,7 +91,7 @@ Options we already have in-repo:
 - No new warnings in the log related to WorldObserver `[WO]`
 - New EmmyLua warnings outside `tests/unit`
 - Updated docs for user-facing behavior changes (`docs/`).
-- `busted tests` ran fine before committing (automatic if you use the pre-commit hook).
+- Tests ran fine before committing (automatic if you use the pre-commit hook; see `development.md`).
 
 ## Lean governance
 

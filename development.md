@@ -3,17 +3,29 @@
 WorldObserver is part of the DREAM mod family (Build 42):
 - DREAM-Workspace (multi-repo convenience): https://github.com/christophstrasen/DREAM-Workspace
 
-For the full internal development guide, see: `docs_internal/development.md`.
+Prereqs (for the `dev/` scripts): `rsync`, `inotifywait` (`inotify-tools`), `inkscape`, and a Lua 5.1 interpreter for the smoke test.
 
-## Quickstart (single repo)
-
-Prereqs: `rsync`, `inotifywait` (`inotify-tools`), `inkscape`, and a Lua 5.1 interpreter for the smoke test.
-
-Init submodules:
+## Submodules
 
 ```bash
 git submodule update --init external/LQR external/lua-reactivex
 ```
+
+## Sync
+
+Deploy to your local Workshop wrapper folder (default):
+
+```bash
+./dev/sync-workshop.sh
+```
+
+Optional: deploy to `~/Zomboid/mods` instead:
+
+```bash
+./dev/sync-mods.sh
+```
+
+## Watch
 
 Watch + deploy (default: Workshop wrapper under `~/Zomboid/Workshop`):
 
@@ -32,8 +44,10 @@ TARGET=mods ./dev/watch.sh
 Headless unit tests:
 
 ```bash
-busted tests
+busted --helper=tests/helper.lua tests/unit
 ```
+
+Note: tests assume DREAMBase is available at `../DREAMBase` (DREAM-Workspace layout) or `external/DREAMBase`.
 
 Loader smoke test (after syncing):
 
