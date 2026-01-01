@@ -7,7 +7,7 @@ This guide focuses on how to *use* helpers as a modder. For internal architectur
 ## 1) Using built-in helpers
 
 WorldObserver ships helper families under `WorldObserver.helpers`:
-- `square`, `room`, `sprite`, `zombie`, `item`, `deadBody`
+- `square`, `zombie`, `player`, `room`, `item`, `deadBody`, `sprite`, `vehicle`
 
 Streams can expose helper methods in two ways:
 
@@ -70,6 +70,12 @@ WorldObserver can “wrap” certain record families to expose a small, whitelis
 Supported today:
 - `WorldObserver.helpers.square` (`:getIsoGridSquare()`, `:hasFloorMaterial(pattern)`, `:highlight(durationMs, opts)`)
 - `WorldObserver.helpers.zombie` (`:getIsoZombie()`, `:hasOutfit(nameOrList)`, `:highlight(durationMs, opts)`)
+- `WorldObserver.helpers.player` (`:getIsoPlayer()`, `:getIsoGridSquare()`, `:highlight(durationMs, opts)`)
+- `WorldObserver.helpers.room` (`:nameIs(name)`)
+- `WorldObserver.helpers.item` (`:typeIs(typeName)`, `:fullTypeIs(fullType)`, `:getIsoGridSquare()`, `:highlight(durationMs, opts)`)
+- `WorldObserver.helpers.deadBody` (`:getIsoDeadBody()`, `:getIsoGridSquare()`, `:highlight(durationMs, opts)`)
+- `WorldObserver.helpers.sprite` (`:nameIs(name)`, `:idIs(id)`, `:getIsoGridSquare()`, `:highlight(durationMs, opts)`, `:removeSpriteObject()`)
+- `WorldObserver.helpers.vehicle` (`:getIsoGridSquare()`, `:highlight(durationMs, opts)`)
 
 ```lua
 local Square = WorldObserver.helpers.square

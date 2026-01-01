@@ -2,6 +2,7 @@
 local Log = require("DREAMBase/log").withTag("WO.HELPER.square")
 local Highlight = require("WorldObserver/helpers/highlight")
 local PatternHelpers = require("WorldObserver/helpers/pattern")
+local RecordWrap = require("WorldObserver/helpers/record_wrap")
 local moduleName = ...
 local SquareHelpers = {}
 if type(moduleName) == "string" then
@@ -411,12 +412,9 @@ end
 		end
 		end
 
-		SquareHelpers._internal = SquareHelpers._internal or {}
-		SquareHelpers._internal.recordWrap = SquareHelpers._internal.recordWrap or {}
-		local recordWrap = SquareHelpers._internal.recordWrap
-
-		recordWrap.methods = recordWrap.methods or {}
-		recordWrap.metatable = recordWrap.metatable or { __index = recordWrap.methods }
+			SquareHelpers._internal = SquareHelpers._internal or {}
+			SquareHelpers._internal.recordWrap = SquareHelpers._internal.recordWrap or RecordWrap.ensureState()
+			local recordWrap = SquareHelpers._internal.recordWrap
 
 		-- Record wrapper methods (whitelist) for ergonomic use in record contexts (PromiseKeeper actions, callbacks).
 		if recordWrap.methods.getIsoGridSquare == nil then
@@ -449,29 +447,20 @@ end
 			end
 		end
 
-		if SquareHelpers.wrap == nil then
-			--- Decorate a square record in-place to expose a small method surface via metatable.
-			--- Returns the same table on success; refuses if the record already has a different metatable.
-			--- @param record table
-			--- @return table|nil wrappedRecord
-			--- @return string|nil err
-			function SquareHelpers:wrap(record, opts)
-				if type(record) ~= "table" then
-					return nil, "badRecord"
+			if SquareHelpers.wrap == nil then
+				--- Decorate a square record in-place to expose a small method surface via metatable.
+				--- Returns the same table on success; refuses if the record already has a different metatable.
+				--- @param record table
+				--- @return table|nil wrappedRecord
+				--- @return string|nil err
+				function SquareHelpers:wrap(record, opts)
+					return RecordWrap.wrap(record, recordWrap, {
+						family = "square",
+						log = Log,
+						headless = type(opts) == "table" and opts.headless or nil,
+						methodNames = { "getIsoGridSquare", "hasFloorMaterial", "highlight" },
+					})
 				end
-				local existing = getmetatable(record)
-				if existing == recordWrap.metatable then
-					return record
-				end
-				if existing ~= nil then
-					if _G.WORLDOBSERVER_HEADLESS ~= true then
-						Log:warn("square.wrap refused: record already has a metatable")
-					end
-					return nil, "hasMetatable"
-				end
-				setmetatable(record, recordWrap.metatable)
-				return record
 			end
-		end
 
 		return SquareHelpers

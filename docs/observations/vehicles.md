@@ -82,6 +82,9 @@ local stream = WorldObserver.observations:vehicles()
 Available today:
 - `:vehicleFilter(fn)` (keep only observations where `fn(observation.vehicle, observation) == true`)
 
+Record wrapping (optional):
+- `WorldObserver.helpers.vehicle:wrap(vehicleRecord)` adds `:getIsoGridSquare()`, `:highlight(durationMs, opts)`; see [Helpers: record wrapping](../guides/helpers.md#record-wrapping-optional).
+
 ## Supported interest configuration (today)
 
 Supported combinations for `type = "vehicles"`:

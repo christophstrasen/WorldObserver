@@ -1,5 +1,7 @@
 -- helpers/item.lua -- item helper set providing small value-add filters for item observations.
 local Log = require("DREAMBase/log").withTag("WO.HELPER.item")
+local RecordWrap = require("WorldObserver/helpers/record_wrap")
+local SquareHelpers = require("WorldObserver/helpers/square")
 local moduleName = ...
 local ItemHelpers = {}
 if type(moduleName) == "string" then
@@ -15,6 +17,67 @@ end
 
 ItemHelpers.record = ItemHelpers.record or {}
 ItemHelpers.stream = ItemHelpers.stream or {}
+
+ItemHelpers._internal = ItemHelpers._internal or {}
+ItemHelpers._internal.recordWrap = ItemHelpers._internal.recordWrap or RecordWrap.ensureState()
+local recordWrap = ItemHelpers._internal.recordWrap
+
+-- Record wrapper methods (whitelist) for ergonomic use in record contexts (PromiseKeeper actions, callbacks).
+if recordWrap.methods.typeIs == nil then
+	function recordWrap.methods:typeIs(...)
+		local fn = ItemHelpers.record and ItemHelpers.record.itemTypeIs
+		if type(fn) == "function" then
+			return fn(self, ...)
+		end
+		return false
+	end
+end
+
+if recordWrap.methods.fullTypeIs == nil then
+	function recordWrap.methods:fullTypeIs(...)
+		local fn = ItemHelpers.record and ItemHelpers.record.itemFullTypeIs
+		if type(fn) == "function" then
+			return fn(self, ...)
+		end
+		return false
+	end
+end
+
+if recordWrap.methods.getIsoGridSquare == nil then
+	function recordWrap.methods:getIsoGridSquare(...)
+		local fn = SquareHelpers.record and SquareHelpers.record.getIsoGridSquare
+		if type(fn) == "function" then
+			return fn(self, ...)
+		end
+		return self.IsoGridSquare
+	end
+end
+
+if recordWrap.methods.highlight == nil then
+	function recordWrap.methods:highlight(...)
+		local fn = SquareHelpers.highlight
+		if type(fn) == "function" then
+			return fn(self, ...)
+		end
+		return nil, "noHighlight"
+	end
+end
+
+if ItemHelpers.wrap == nil then
+	--- Decorate an item record in-place to expose a small method surface via metatable.
+	--- Returns the same table on success; refuses if the record already has a different metatable.
+	--- @param record table
+	--- @return table|nil wrappedRecord
+	--- @return string|nil err
+	function ItemHelpers:wrap(record, opts)
+		return RecordWrap.wrap(record, recordWrap, {
+			family = "item",
+			log = Log,
+			headless = type(opts) == "table" and opts.headless or nil,
+			methodNames = { "typeIs", "fullTypeIs", "getIsoGridSquare", "highlight" },
+		})
+	end
+end
 
 local function itemField(observation, fieldName)
 	local record = observation[fieldName]

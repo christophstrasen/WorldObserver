@@ -115,6 +115,9 @@ Available today:
 Record helpers (use inside `:roomFilter(...)` or inside Rx `:filter(...)` after `:asRx()`):
 - `WorldObserver.helpers.room.record.roomTypeIs(roomRecord, "kitchen")`
 
+Record wrapping (optional):
+- `WorldObserver.helpers.room:wrap(roomRecord)` adds `:nameIs(name)`; see [Helpers: record wrapping](../guides/helpers.md#record-wrapping-optional).
+
 ## Supported interest configuration (today)
 
 Supported combinations for `type = "rooms"`:

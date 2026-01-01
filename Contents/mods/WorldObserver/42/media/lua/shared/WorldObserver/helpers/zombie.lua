@@ -1,5 +1,6 @@
 -- helpers/zombie.lua -- zombie helper set providing small value-add filters and rehydration helpers.
 local Log = require("DREAMBase/log").withTag("WO.HELPER.zombie")
+local RecordWrap = require("WorldObserver/helpers/record_wrap")
 local Highlight = require("WorldObserver/helpers/highlight")
 local PatternHelpers = require("WorldObserver/helpers/pattern")
 local moduleName = ...
@@ -96,11 +97,8 @@ end
 	end
 
 	ZombieHelpers._internal = ZombieHelpers._internal or {}
-	ZombieHelpers._internal.recordWrap = ZombieHelpers._internal.recordWrap or {}
+	ZombieHelpers._internal.recordWrap = ZombieHelpers._internal.recordWrap or RecordWrap.ensureState()
 	local recordWrap = ZombieHelpers._internal.recordWrap
-
-	recordWrap.methods = recordWrap.methods or {}
-	recordWrap.metatable = recordWrap.metatable or { __index = recordWrap.methods }
 
 	-- Record wrapper methods (whitelist) for ergonomic use in record contexts (PromiseKeeper actions, callbacks).
 	-- Note: we intentionally do NOT expose methods that merely mirror boolean record fields (e.g. hasTarget).
@@ -141,21 +139,12 @@ end
 		--- @return table|nil wrappedRecord
 		--- @return string|nil err
 		function ZombieHelpers:wrap(record, opts)
-			if type(record) ~= "table" then
-				return nil, "badRecord"
-			end
-			local existing = getmetatable(record)
-			if existing == recordWrap.metatable then
-				return record
-			end
-			if existing ~= nil then
-				if _G.WORLDOBSERVER_HEADLESS ~= true then
-					Log:warn("zombie.wrap refused: record already has a metatable")
-				end
-				return nil, "hasMetatable"
-			end
-			setmetatable(record, recordWrap.metatable)
-			return record
+			return RecordWrap.wrap(record, recordWrap, {
+				family = "zombie",
+				log = Log,
+				headless = type(opts) == "table" and opts.headless or nil,
+				methodNames = { "getIsoZombie", "hasOutfit", "highlight" },
+			})
 		end
 	end
 

@@ -112,6 +112,9 @@ local stream = WorldObserver.observations:deadBodies()
 Available today:
 - `:deadBodyFilter(predicate)`
 
+Record wrapping (optional):
+- `WorldObserver.helpers.deadBody:wrap(deadBodyRecord)` adds `:getIsoDeadBody()`, `:getIsoGridSquare()`, `:highlight(durationMs, opts)`; see [Helpers: record wrapping](../guides/helpers.md#record-wrapping-optional).
+
 ## Supported interest configuration (today)
 
 Supported combinations for `type = "deadBodies"`:

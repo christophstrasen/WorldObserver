@@ -584,3 +584,12 @@
 
 ### Highlights
 - Added an RFC draft for record wrappers to make record-level helper usage consistent outside stream contexts (especially in PromiseKeeper actions): `docs_internal/drafts/record_wrappers.md`.
+- Implemented record wrapping across helper families via `:<family>Helpers:wrap(record)` (metatable decoration with a small, explicit whitelist).
+  - Added shared utility `WorldObserver/helpers/record_wrap.lua` to keep wrapping behavior consistent and DRY.
+  - Policy: refuse if the record already has a different metatable; warn (but do not refuse) if record fields shadow wrapped method names; keep `.record.*` helpers as escape hatch.
+  - Wrapper method naming: per-family, so wrapper methods can be unprefixed (e.g. `record:hasOutfit(...)`, `record:hasFloorMaterial(...)`).
+- Pinned the supported wrapped surface in docs and tests (so changes are explicit and reviewable).
+
+### Notes / limitations
+- Wrapping is intended for “close to use” record contexts; shallow copies (notably some join flows) may drop metatables.
+- Wrapped methods do not appear in `pairs(record)` (only record fields do).

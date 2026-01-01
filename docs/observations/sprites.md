@@ -113,6 +113,10 @@ Available today:
 Record helpers (use inside `:spriteFilter(...)` or inside Rx `:filter(...)` after `:asRx()`):
 - `WorldObserver.helpers.sprite.record.spriteNameIs(spriteRecord, wanted)`
 - `WorldObserver.helpers.sprite.record.spriteIdIs(spriteRecord, wanted)`
+- `WorldObserver.helpers.sprite.record.removeSpriteObject(spriteRecord)` (best-effort; uses `IsoGridSquare:RemoveTileObject`)
+
+Record wrapping (optional):
+- `WorldObserver.helpers.sprite:wrap(spriteRecord)` adds `:nameIs(name)`, `:idIs(id)`, `:getIsoGridSquare()`, `:highlight(durationMs, opts)`, `:removeSpriteObject()`; see [Helpers: record wrapping](../guides/helpers.md#record-wrapping-optional).
 
 ## Supported interest configuration (today)
 

@@ -2,6 +2,7 @@
 local Log = require("DREAMBase/log").withTag("WO.HELPER.room")
 local JavaList = require("DREAMBase/pz/java_list")
 local SafeCall = require("DREAMBase/pz/safe_call")
+local RecordWrap = require("WorldObserver/helpers/record_wrap")
 local SquareHelpers = require("WorldObserver/helpers/square")
 local moduleName = ...
 local RoomHelpers = {}
@@ -18,6 +19,36 @@ end
 
 RoomHelpers.record = RoomHelpers.record or {}
 RoomHelpers.stream = RoomHelpers.stream or {}
+
+RoomHelpers._internal = RoomHelpers._internal or {}
+RoomHelpers._internal.recordWrap = RoomHelpers._internal.recordWrap or RecordWrap.ensureState()
+local recordWrap = RoomHelpers._internal.recordWrap
+
+if recordWrap.methods.nameIs == nil then
+	function recordWrap.methods:nameIs(...)
+		local fn = RoomHelpers.record and RoomHelpers.record.roomTypeIs
+		if type(fn) == "function" then
+			return fn(self, ...)
+		end
+		return false
+	end
+end
+
+if RoomHelpers.wrap == nil then
+	--- Decorate a room record in-place to expose a small method surface via metatable.
+	--- Returns the same table on success; refuses if the record already has a different metatable.
+	--- @param record table
+	--- @return table|nil wrappedRecord
+	--- @return string|nil err
+	function RoomHelpers:wrap(record, opts)
+		return RecordWrap.wrap(record, recordWrap, {
+			family = "room",
+			log = Log,
+			headless = type(opts) == "table" and opts.headless or nil,
+			methodNames = { "nameIs" },
+		})
+	end
+end
 
 local function roomField(observation, fieldName)
 	local record = observation[fieldName]

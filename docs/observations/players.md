@@ -99,6 +99,9 @@ Available today:
 Record helpers:
 - none required (use `record.playerKey` directly)
 
+Record wrapping (optional):
+- `WorldObserver.helpers.player:wrap(playerRecord)` adds `:getIsoPlayer()`, `:getIsoGridSquare()`, `:highlight(durationMs, opts)`; see [Helpers: record wrapping](../guides/helpers.md#record-wrapping-optional).
+
 ## Supported interest configuration (today)
 
 Supported combinations for `type = "players"`:

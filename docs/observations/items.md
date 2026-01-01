@@ -138,6 +138,9 @@ Record helpers (use inside `:itemFilter(...)` or inside Rx `:filter(...)` after 
 - `WorldObserver.helpers.item.record.itemTypeIs(itemRecord, wanted)`
 - `WorldObserver.helpers.item.record.itemFullTypeIs(itemRecord, wanted)`
 
+Record wrapping (optional):
+- `WorldObserver.helpers.item:wrap(itemRecord)` adds `:typeIs(typeName)`, `:fullTypeIs(fullType)`, `:getIsoGridSquare()`, `:highlight(durationMs, opts)`; see [Helpers: record wrapping](../guides/helpers.md#record-wrapping-optional).
+
 ## Supported interest configuration (today)
 
 Supported combinations for `type = "items"`:
