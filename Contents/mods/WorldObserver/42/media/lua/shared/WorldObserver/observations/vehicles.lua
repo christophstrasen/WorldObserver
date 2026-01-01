@@ -1,4 +1,5 @@
--- observations/vehicles.lua -- wraps vehicle facts into a VehicleObservation stream and exposes it as observation.vehicle.
+-- observations/vehicles.lua -- wraps vehicle facts into a VehicleObservation stream
+-- and exposes it as observation.vehicle.
 local LQR = require("LQR")
 local Log = require("DREAMBase/log").withTag("WO.OBS.vehicles")
 local Query = LQR.Query

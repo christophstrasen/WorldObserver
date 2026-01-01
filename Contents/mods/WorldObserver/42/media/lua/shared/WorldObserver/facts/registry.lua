@@ -1,4 +1,5 @@
--- facts/registry.lua -- manages fact sources: creates a stream per fact type and only starts its producer on first access.
+-- facts/registry.lua -- manages fact sources: creates a stream per fact type
+-- and only starts its producer on first access.
 local rx = require("reactivex")
 local Ingest = require("LQR/ingest")
 local Log = require("DREAMBase/log").withTag("WO.FACTS")
@@ -124,11 +125,12 @@ function FactRegistry.new(config, runtime, hooks)
 	return self
 end
 
---- Register a callback to run on every WorldObserver OnTick (inside the registry OnTick hook's timing window).
---- Why: lets upstream producers (e.g. probes) time-slice their work while still contributing to the same runtime budgets.
---- @param id string
---- @param fn function
-function FactRegistry:attachTickHook(id, fn)
+	--- Register a callback to run on every WorldObserver OnTick (inside the registry OnTick hook's timing window).
+	--- Why: lets upstream producers (e.g. probes) time-slice their work while
+	--- still contributing to the same runtime budgets.
+	--- @param id string
+	--- @param fn function
+	function FactRegistry:attachTickHook(id, fn)
 	assert(type(id) == "string" and id ~= "", "tick hook id must be a non-empty string")
 	assert(type(fn) == "function", "tick hook fn must be a function")
 	self._tickHooks = self._tickHooks or {}
@@ -219,18 +221,22 @@ end
 		if not cfg or cfg.enabled ~= true then
 			return nil
 		end
-		local ingestOpts = entry.ingestOpts
-		if type(ingestOpts) ~= "table" then
-			if not isHeadless() then
-				Log:warn("Ingest enabled for fact type '%s' but no ingest opts provided; falling back to direct emit", tostring(name))
+			local ingestOpts = entry.ingestOpts
+			if type(ingestOpts) ~= "table" then
+				if not isHeadless() then
+					Log:warn(
+						"Ingest enabled for fact type '%s' but no ingest opts provided; falling back to direct emit",
+						tostring(name)
+					)
+				end
+				return nil
 			end
-			return nil
-		end
-		if type(ingestOpts.key) ~= "function" then
-			local msg = ("Ingest enabled for fact type '%s' but ingest.key is missing/invalid; falling back to direct emit"):format(tostring(name))
-			if isHeadless() then
-				error(msg)
-			end
+			if type(ingestOpts.key) ~= "function" then
+				local msg = ("Ingest enabled for fact type '%s' but ingest.key is missing/invalid; "
+					.. "falling back to direct emit"):format(tostring(name))
+				if isHeadless() then
+					error(msg)
+				end
 			Log:warn("%s", msg)
 			return nil
 		end
@@ -420,16 +426,15 @@ end
 
 		-- Producers may register per-tick work (e.g. time-sliced probes). Ensure we have an OnTick hook
 		-- even when ingest is disabled (no scheduler/buffer), otherwise tick hooks would never run.
-		local hasTickHooks = false
-		local hooksTable = self._tickHooks
-		if hooksTable then
-			for _ in pairs(hooksTable) do
-				hasTickHooks = true
-				break
+			local hasTickHooks = false
+			local hooksTable = self._tickHooks
+			if hooksTable then
+				for _ in pairs(hooksTable) do
+					hasTickHooks = true
+				end
 			end
-		end
-		if hasTickHooks then
-			attachOnTickHookOnce(self)
+			if hasTickHooks then
+				attachOnTickHookOnce(self)
 		end
 	end
 
@@ -557,15 +562,20 @@ function FactRegistry:drainSchedulerOnce()
 
 	local function handle(item)
 		if item then
-			local t0 = emitTimed and nowFn() or nil
-			local emitFn = item.__emit
-			local record = item.payload or item
-			if type(record) == "table" and (record.hasCorpse == true or record.hasBloodSplat == true or record.hasTrashItems == true) then
-				local qualifiedSource = SourceHelpers.record and SourceHelpers.record.qualifiedSource and SourceHelpers.record.qualifiedSource(record) or nil
-				IngestLog:debug(
-					"Draining record squareId=%s source=%s corpse=%s blood=%s trash=%s sourceTime=%s",
-					tostring(record.squareId),
-					tostring(qualifiedSource or record.source),
+				local t0 = emitTimed and nowFn() or nil
+				local emitFn = item.__emit
+				local record = item.payload or item
+				local isSquareRecord = type(record) == "table"
+					and (record.hasCorpse == true or record.hasBloodSplat == true or record.hasTrashItems == true)
+				if isSquareRecord then
+					local qualifiedSource = SourceHelpers.record
+						and SourceHelpers.record.qualifiedSource
+						and SourceHelpers.record.qualifiedSource(record)
+						or nil
+					IngestLog:debug(
+						"Draining record squareId=%s source=%s corpse=%s blood=%s trash=%s sourceTime=%s",
+						tostring(record.squareId),
+						tostring(qualifiedSource or record.source),
 					tostring(record.hasCorpse),
 					tostring(record.hasBloodSplat),
 					tostring(record.hasTrashItems),

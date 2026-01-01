@@ -5,7 +5,8 @@
 -- - We need a deterministic way to merge those requests into "one plan" the runtime can try to satisfy fairly.
 --
 -- The important design choice (intent):
--- - Some interest types are "bucketed" by a target identity (example: squares scope=near for *player 0* vs scope=near for *a static square*).
+-- - Some interest types are "bucketed" by a target identity (example: squares scope=near for *player 0*
+--   vs scope=near for *a static square*).
 -- - We only merge declarations within the same bucket (same target identity).
 --   This is the simplest correctness/fairness model: it avoids "partial overlap" merging (which quickly explodes
 --   into geometry + prioritization problems) and keeps behavior predictable for modders.
@@ -657,14 +658,13 @@ function Registry:declare(modId, key, spec, opts)
 		assert(type(ttlMs) == "number" and ttlMs > 0, "interest lease ttl must be a number > 0")
 	end
 
-	local lease
-	if ttlMs ~= nil then
-		lease = addLeaseWithTtl(self, modId, key, spec or {}, opts.nowMs, ttlMs)
-	else
-		lease = addLease(self, modId, key, spec or {}, opts.nowMs)
-	end
+		if ttlMs ~= nil then
+			addLeaseWithTtl(self, modId, key, spec or {}, opts.nowMs, ttlMs)
+		else
+			addLease(self, modId, key, spec or {}, opts.nowMs)
+		end
 
-	local leaseHandle = {}
+		local leaseHandle = {}
 
 	local function stop()
 		self:revoke(modId, key)
@@ -723,16 +723,15 @@ end
 function Registry:revoke(modId, key)
 	local mods = self._leases[modId]
 	if mods then
-		mods[key] = nil
-		-- PZ's Kahlua runtime does not reliably expose Lua's `next()`, so use pairs() to test emptiness.
-		local hasAny = false
-		for _ in pairs(mods) do
-			hasAny = true
-			break
-		end
-		if not hasAny then
-			self._leases[modId] = nil
-		end
+			mods[key] = nil
+			-- PZ's Kahlua runtime does not reliably expose Lua's `next()`, so use pairs() to test emptiness.
+			local hasAny = false
+			for _ in pairs(mods) do
+				hasAny = true
+			end
+			if not hasAny then
+				self._leases[modId] = nil
+			end
 	end
 end
 

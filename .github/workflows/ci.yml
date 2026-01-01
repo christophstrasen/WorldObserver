@@ -23,12 +23,18 @@ jobs:
       - name: Set up LuaRocks
         uses: leafo/gh-actions-luarocks@v4
 
-      - name: Install busted
-        run: luarocks install busted
+      - name: Install tools
+        run: |
+          luarocks install luacheck
+          luarocks install busted
 
       - name: Checkout DREAMBase (for shared helpers)
         run: |
           git clone --depth 1 https://github.com/christophstrasen/DREAMBase external/DREAMBase
+
+      - name: Lint (luacheck)
+        run: |
+          luacheck Contents/mods/WorldObserver/42/media/lua/shared/WorldObserver Contents/mods/WorldObserver/42/media/lua/shared/WorldObserver.lua
 
       - name: Run WorldObserver unit tests
         run: |

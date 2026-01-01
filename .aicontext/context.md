@@ -40,8 +40,11 @@ NixOS + `zsh`; ignore noisy `gpg-agent` warnings at shell start. No git history 
 
 ## Tests
 We embrace testing via the lua `busted` test utility:
-- For WorldObserver changes, run `busted tests` from the repo root.
+- For WorldObserver changes, run:
+  - `luacheck Contents/mods/WorldObserver/42/media/lua/shared/WorldObserver Contents/mods/WorldObserver/42/media/lua/shared/WorldObserver.lua`
+  - `busted --helper=tests/helper.lua tests/unit`
 - For LQR changes (files under `external/LQR`), you may run `busted tests/unit` from `external/LQR` as needed.
+- Prefer using `pre-commit run --all-files` where available (mirrors CI).
 - The workshop sync smoke test (`pz_smoke.lua` via `watch-workshop-sync.sh`) should stay green; it simulates the PZ Kahlua runtime and catches missing `require`s / vanilla Lua package mismatches.
 
 ## Gaps/conflicts

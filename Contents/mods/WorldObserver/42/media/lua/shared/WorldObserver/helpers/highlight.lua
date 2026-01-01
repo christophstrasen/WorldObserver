@@ -270,9 +270,10 @@ if Highlight.highlightTarget == nil then
 		local color = opts.color
 		if type(color) ~= "table" then
 			color = DEFAULT_COLOR
-		end
-		local blink = opts.blink == true
-		local useOutline = opts.useOutline == true or (type(target.setOutlineHighlight) == "function" and type(target.setHighlightColor) ~= "function")
+			end
+			local blink = opts.blink == true
+			local useOutline = opts.useOutline == true
+				or (type(target.setOutlineHighlight) == "function" and type(target.setHighlightColor) ~= "function")
 
 		local startedMs = nowMillis() or 0
 		local entry = {

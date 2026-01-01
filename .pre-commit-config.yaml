@@ -1,8 +1,18 @@
 repos:
   - repo: local
     hooks:
+      - id: luacheck
+        name: Run luacheck
+        entry: luacheck Contents/mods/WorldObserver/42/media/lua/shared/WorldObserver Contents/mods/WorldObserver/42/media/lua/shared/WorldObserver.lua
+        language: system
+        pass_filenames: false
+      - id: lqr-tests
+        name: Run LQR unit tests
+        entry: bash -lc 'cd external/LQR && busted tests/unit'
+        language: system
+        pass_filenames: false
       - id: busted-tests
         name: Run busted tests
-        entry: busted tests
+        entry: busted --helper=tests/helper.lua tests/unit
         language: system
         pass_filenames: false

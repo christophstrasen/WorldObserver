@@ -256,12 +256,13 @@ if DeadBodies.register == nil then
 								end
 							end
 						end
-					end
-					Log:info(
-						"DeadBodies facts started (tickHook=%s sweep=%s cfgProbe=%s cfgListener=%s interestPlayerSquare=%s interestNear=%s interestVision=%s)",
-						tostring(tickHookAttached),
-						tostring(sweepRegistered),
-						tostring(probeEnabled),
+						end
+						Log:info(
+							"DeadBodies facts started (tickHook=%s sweep=%s cfgProbe=%s cfgListener=%s "
+								.. "interestPlayerSquare=%s interestNear=%s interestVision=%s)",
+							tostring(tickHookAttached),
+							tostring(sweepRegistered),
+							tostring(probeEnabled),
 						tostring(listenerEnabled),
 						tostring(hasPlayerSquareInterest),
 						tostring(hasNearInterest),

@@ -1,4 +1,5 @@
--- facts/vehicles/probe.lua -- interest-driven vehicle probe (scope=allLoaded) using a time-sliced cursor over IsoCell:getVehicles().
+-- facts/vehicles/probe.lua -- interest-driven vehicle probe (scope=allLoaded)
+-- using a time-sliced cursor over IsoCell:getVehicles().
 local Log = require("DREAMBase/log").withTag("WO.FACTS.vehicles")
 local Cooldown = require("WorldObserver/facts/cooldown")
 local InterestEffective = require("WorldObserver/facts/interest_effective")
@@ -107,13 +108,12 @@ if Probe.tick == nil then
 			return
 		end
 
-		local effective = nil
-		local signals = state.lastLagSignals
-		effective = InterestEffective.ensure(state, ctx.interestRegistry, ctx.runtime, INTEREST_TYPE_VEHICLES, {
-			label = "vehicles.allLoaded",
-			allowDefault = false,
-			signals = signals,
-			bucketKey = INTEREST_SCOPE_ALL,
+			local signals = state.lastLagSignals
+			local effective = InterestEffective.ensure(state, ctx.interestRegistry, ctx.runtime, INTEREST_TYPE_VEHICLES, {
+				label = "vehicles.allLoaded",
+				allowDefault = false,
+				signals = signals,
+				bucketKey = INTEREST_SCOPE_ALL,
 		})
 		if not effective then
 			return

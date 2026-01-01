@@ -355,10 +355,10 @@ local function onLoadHandler(state, emitFn)
 			Cooldown.markEmitted(state.onLoadLastEmittedMs, record.spriteKey, nowMs)
 		end
 
-		if not (state.headless == true) then
-			local highlightPref = effective and effective.highlight or nil
-			if shouldHighlight(highlightPref) and square ~= nil then
-				local color, alpha = Highlight.resolveColorAlpha(highlightPref, nil, 0.9)
+			if state.headless ~= true then
+				local highlightPref = effective and effective.highlight or nil
+				if shouldHighlight(highlightPref) and square ~= nil then
+					local color, alpha = Highlight.resolveColorAlpha(highlightPref, nil, 0.9)
 				Highlight.highlightFloor(
 					square,
 					Highlight.durationMsFromEffectiveCadence(effective),

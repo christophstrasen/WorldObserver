@@ -338,7 +338,7 @@ end
 				return nil, "noMarkers"
 			end
 
-			local isoGridSquare = nil
+				local isoGridSquare
 			if
 				(squareLikeType == "userdata" or squareLikeType == "table")
 				and type(squareLike.getFloor) == "function"

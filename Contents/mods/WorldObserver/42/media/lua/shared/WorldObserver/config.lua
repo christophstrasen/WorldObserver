@@ -475,24 +475,24 @@ local function validateOverrides(overrides)
 					if value ~= nil and type(value) ~= "boolean" then
 						warnOverride("Config override %s ignored (expected boolean, got %s)", pathToString(path), type(value))
 					end
-				elseif isAllowedTablePath(path) then
-					if value ~= nil and type(value) ~= "table" then
-						warnOverride("Config override %s ignored (expected table, got %s)", pathToString(path), type(value))
+					elseif isAllowedTablePath(path) then
+						if value ~= nil and type(value) ~= "table" then
+							warnOverride("Config override %s ignored (expected table, got %s)", pathToString(path), type(value))
+						end
+					elseif not isWithinAllowedTablePath(path) then
+						if isPrefixOfAllowed(path) then
+							if type(value) == "table" then
+								walk(value, path)
+							elseif value ~= nil then
+								warnOverride("Config override %s ignored (expected table)", pathToString(path))
+							end
+						else
+							warnOverride("Config override %s ignored (unknown key)", pathToString(path))
+						end
 					end
-				elseif isWithinAllowedTablePath(path) then
-					-- Descendants of table patches are allowed (shallow merge); do not warn here.
-				elseif isPrefixOfAllowed(path) then
-					if type(value) == "table" then
-						walk(value, path)
-					elseif value ~= nil then
-						warnOverride("Config override %s ignored (expected table)", pathToString(path))
-					end
-				else
-					warnOverride("Config override %s ignored (unknown key)", pathToString(path))
+					path[#path] = nil
 				end
-				path[#path] = nil
 			end
-		end
 	end
 
 	walk(overrides, {})

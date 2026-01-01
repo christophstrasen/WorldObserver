@@ -320,12 +320,13 @@ if Items.register == nil then
 								end
 							end
 						end
-					end
-					Log:info(
-						"Items facts started (tickHook=%s sweep=%s cfgProbe=%s cfgListener=%s interestPlayerSquare=%s interestNear=%s interestVision=%s)",
-						tostring(tickHookAttached),
-						tostring(sweepRegistered),
-						tostring(probeEnabled),
+						end
+						Log:info(
+							"Items facts started (tickHook=%s sweep=%s cfgProbe=%s cfgListener=%s "
+								.. "interestPlayerSquare=%s interestNear=%s interestVision=%s)",
+							tostring(tickHookAttached),
+							tostring(sweepRegistered),
+							tostring(probeEnabled),
 						tostring(listenerEnabled),
 						tostring(hasPlayerSquareInterest),
 						tostring(hasNearInterest),

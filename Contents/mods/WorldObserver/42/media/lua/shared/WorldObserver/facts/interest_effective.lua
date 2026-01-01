@@ -127,8 +127,8 @@ if InterestEffective.ensure == nil then
 			policyOpts.label = (opts.label or tostring(interestType)) .. ":" .. tostring(opts.bucketKey)
 		end
 
-		local effective, meta
-		policyState, effective, _, meta = InterestPolicy.update(policyState, merged, runtimeStatus, policyOpts)
+			local effective, meta, _
+			policyState, effective, _, meta = InterestPolicy.update(policyState, merged, runtimeStatus, policyOpts)
 		if opts.bucketKey then
 			state._interestPolicyState[interestType][opts.bucketKey] = policyState
 		else

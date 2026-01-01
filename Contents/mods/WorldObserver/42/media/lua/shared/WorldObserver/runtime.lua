@@ -94,7 +94,7 @@ function Runtime.new(opts)
 	end
 
 	local nowMs = wallClockFn and wallClockFn() or 0
-	local self = {
+	local runtime = {
 		_status = {
 			mode = "normal",
 			sinceMs = nowMs,
@@ -130,21 +130,21 @@ function Runtime.new(opts)
 				backlogFillThreshold = opts.backlogFillThreshold,
 				backlogMinIngestRate15 = opts.backlogMinIngestRate15,
 				backlogRateRatio = opts.backlogRateRatio,
-				},
-				window = newControllerWindow(),
-				-- Stateful drain budget chosen by the controller (items/tick).
-				drainMaxItems = nil,
-				seq = 0,
-				reportSeq = 0,
+			},
+			window = newControllerWindow(),
+			-- Stateful drain budget chosen by the controller (items/tick).
+			drainMaxItems = nil,
+			seq = 0,
+			reportSeq = 0,
 			windowCount = 0,
 		},
 	}
 
-	function self:status_get()
+	function runtime:status_get()
 		return deepCopy(self._status)
 	end
 
-	function self:_status_snapshot(windowStats)
+	function runtime:_status_snapshot(windowStats)
 		local snap = self:status_get()
 		if windowStats then
 			snap.window = deepCopy(windowStats)
@@ -152,7 +152,7 @@ function Runtime.new(opts)
 		return snap
 	end
 
-	function self:status_transition(mode, reason)
+	function runtime:status_transition(mode, reason)
 		if type(mode) ~= "string" or mode == "" then
 			return
 		end
@@ -163,21 +163,21 @@ function Runtime.new(opts)
 		self._status.lastTransitionReason = reason or Reasons.manualOverride
 	end
 
-	function self:nowWall()
+	function runtime:nowWall()
 		if not self._wallClock then
 			return nil
 		end
 		return self._wallClock()
 	end
 
-	function self:nowCpu()
+	function runtime:nowCpu()
 		if not self._cpuClock then
 			return nil
 		end
 		return self._cpuClock()
 	end
 
-	function self:recordTick(ms)
+	function runtime:recordTick(ms)
 		if type(ms) ~= "number" or ms < 0 then
 			return
 		end
@@ -193,7 +193,7 @@ function Runtime.new(opts)
 		self._status.tick.woTotalMaxTickMs = self._tick.maxMs
 	end
 
-	function self:clocks()
+	function runtime:clocks()
 		return {
 			wall = self._wallClock,
 			wallSource = self._wallClockSource,
@@ -202,12 +202,12 @@ function Runtime.new(opts)
 		}
 	end
 
-	function self:controller_get()
+	function runtime:controller_get()
 		return deepCopy(self._controller)
 	end
 
 	-- Emit a periodic status report without changing mode.
-	function self:status_report(windowStats)
+	function runtime:status_report(windowStats)
 		self._controller.reportSeq = (self._controller.reportSeq or 0) + 1
 		local payload = {
 			event = Runtime.Events.StatusReport,
@@ -222,20 +222,20 @@ function Runtime.new(opts)
 	end
 
 	-- Emergency reset hook: lets the host clear ingest buffers and advertise the state change.
-	function self:emergency_reset(opts)
-		opts = opts or {}
-		local onReset = opts.onReset
+	function runtime:emergency_reset(resetOpts)
+		resetOpts = resetOpts or {}
+		local onReset = resetOpts.onReset
 		local prevStatus = self:status_get()
-			if type(onReset) == "function" then
-				pcall(onReset)
-			end
+		if type(onReset) == "function" then
+			pcall(onReset)
+		end
 
-			-- In emergency mode we keep the scheduler on a conservative item budget if available.
-			local cfg = self._controller.cfg
-			local fallback = cfg.degradedMaxItemsPerTick
-			if type(fallback) ~= "number" or fallback <= 0 then
-				local auto = cfg.drainAuto
-				fallback = auto and auto.minItems
+		-- In emergency mode we keep the scheduler on a conservative item budget if available.
+		local cfg = self._controller.cfg
+		local fallback = cfg.degradedMaxItemsPerTick
+		if type(fallback) ~= "number" or fallback <= 0 then
+			local auto = cfg.drainAuto
+			fallback = auto and auto.minItems
 		end
 		if type(fallback) == "number" and fallback > 0 then
 			self._status.budgets.schedulerMaxItemsPerTick = math.floor(fallback)
@@ -264,17 +264,17 @@ function Runtime.new(opts)
 	end
 
 	-- Controller tick: update window aggregates and possibly change mode.
-	function self:controller_tick(opts)
-		opts = opts or {}
-		local tickMs = opts.tickMs
+	function runtime:controller_tick(tickOpts)
+		tickOpts = tickOpts or {}
+		local tickMs = tickOpts.tickMs
 		if type(tickMs) ~= "number" or tickMs < 0 then
 			return
 		end
-		local producerMs = tonumber(opts.producerMs or opts.probeMs) or 0
+		local producerMs = tonumber(tickOpts.producerMs or tickOpts.probeMs) or 0
 		if producerMs < 0 then
 			producerMs = 0
 		end
-		local drainMs = tonumber(opts.drainMs) or 0
+		local drainMs = tonumber(tickOpts.drainMs) or 0
 		if drainMs < 0 then
 			drainMs = 0
 		end
@@ -284,8 +284,8 @@ function Runtime.new(opts)
 		end
 
 		-- Ingest signals are optional; normalize to numbers for math below.
-		local ingestPending = tonumber(opts.ingestPending) or 0
-			local ingestDropped = tonumber(opts.ingestDropped) or 0
+		local ingestPending = tonumber(tickOpts.ingestPending) or 0
+			local ingestDropped = tonumber(tickOpts.ingestDropped) or 0
 
 			local c = self._controller
 			local cfg = c.cfg
@@ -303,11 +303,11 @@ function Runtime.new(opts)
 		win.otherSum = (win.otherSum or 0) + otherMs
 		win.pendingSum = (win.pendingSum or 0) + ingestPending
 		win.droppedSum = (win.droppedSum or 0) + ingestDropped
-		win.throughput15Sum = (win.throughput15Sum or 0) + (opts.ingestThroughput15 or 0)
-		win.ingestRate15Sum = (win.ingestRate15Sum or 0) + (opts.ingestIngestRate15 or 0)
-		win.fillSum = (win.fillSum or 0) + (opts.ingestFill or 0)
-		win.trendRising = win.trendRising or (opts.ingestTrend == "rising")
-		win.trendFalling = win.trendFalling or (opts.ingestTrend == "falling")
+		win.throughput15Sum = (win.throughput15Sum or 0) + (tickOpts.ingestThroughput15 or 0)
+		win.ingestRate15Sum = (win.ingestRate15Sum or 0) + (tickOpts.ingestIngestRate15 or 0)
+		win.fillSum = (win.fillSum or 0) + (tickOpts.ingestFill or 0)
+		win.trendRising = win.trendRising or (tickOpts.ingestTrend == "rising")
+		win.trendFalling = win.trendFalling or (tickOpts.ingestTrend == "falling")
 		if not win.maxMs or tickMs > win.maxMs then
 			win.maxMs = tickMs
 		end
@@ -329,14 +329,13 @@ function Runtime.new(opts)
 				return
 			end
 
-		local avgMs = win.sumMs / win.ticks
-		local avgProducerMs = (win.producerSum or 0) / win.ticks
-		local avgDrainMs = (win.drainSum or 0) / win.ticks
-		local avgOtherMs = (win.otherSum or 0) / win.ticks
-		local mode = self._status.mode or "normal"
-		local reason = nil
-		local budget = cfg.tickBudgetMs
-		local avgPending = (win.pendingSum or 0) / (win.ticks or 1)
+			local avgMs = win.sumMs / win.ticks
+			local avgProducerMs = (win.producerSum or 0) / win.ticks
+			local avgDrainMs = (win.drainSum or 0) / win.ticks
+			local avgOtherMs = (win.otherSum or 0) / win.ticks
+			local reason = nil
+			local budget = cfg.tickBudgetMs
+			local avgPending = (win.pendingSum or 0) / (win.ticks or 1)
 		local dropDelta = win.droppedSum or 0
 		local avgFill = (win.fillSum or 0) / (win.ticks or 1)
 		local avgThroughput15 = (win.throughput15Sum or 0) / (win.ticks or 1)
@@ -469,12 +468,12 @@ function Runtime.new(opts)
 			self._status.budgets.schedulerMaxItemsPerTick = math.floor(baseDrainMaxItems)
 		end
 
-		-- Mode transitions: only enter degraded on sustained spikes/avg over budget, or on drops rising.
-		local wantedMode = prevStatus.mode
-		if prevStatus.mode == "emergency" then
-			wantedMode = "emergency"
-		elseif budget and budget > 0 and avgMs > budget then
-			wantedMode = "degraded"
+			-- Mode transitions: only enter degraded on sustained spikes/avg over budget, or on drops rising.
+			local wantedMode
+			if prevStatus.mode == "emergency" then
+				wantedMode = "emergency"
+			elseif budget and budget > 0 and avgMs > budget then
+				wantedMode = "degraded"
 			reason = Reasons.woTickAvgOverBudget
 		elseif spikeBudget and spikeStreakMax >= spikeMinCount and (win.maxMs or 0) > spikeBudget then
 			wantedMode = "degraded"
@@ -485,12 +484,12 @@ function Runtime.new(opts)
 		else
 			wantedMode = "normal"
 			if prevStatus.mode ~= "normal" then
-				reason = Reasons.recovered
+					reason = Reasons.recovered
+				end
 			end
-		end
-		mode = wantedMode
+			local mode = wantedMode
 
-		local modeChanged = mode ~= prevStatus.mode
+			local modeChanged = mode ~= prevStatus.mode
 		if modeChanged and reason then
 			self:status_transition(mode, reason)
 			c.seq = (c.seq or 0) + 1
@@ -548,8 +547,8 @@ function Runtime.new(opts)
 			c.window = newControllerWindow()
 		end
 
-		return self
-	end
+			return runtime
+		end
 
 Runtime.Reasons = Reasons
 

@@ -142,7 +142,15 @@ local resolveEnabledHelpers = HelperSupport.resolveEnabledHelpers
 local buildHelperMethods = HelperSupport.buildHelperMethods
 local buildHelperNamespaces = HelperSupport.buildHelperNamespaces
 
-local function newObservationStream(builder, helperMethods, dimensions, factRegistry, factDeps, helperSets, enabledHelpers)
+local function newObservationStream(
+	builder,
+	helperMethods,
+	dimensions,
+	factRegistry,
+	factDeps,
+	helperSets,
+	enabledHelpers
+)
 	local enabled = cloneTable(enabledHelpers)
 	local stream = {
 		_builder = builder,
@@ -517,7 +525,15 @@ function ObservationRegistry:_buildStream(name, streamOpts)
 	local builder = entry.build(streamOpts or {})
 	local dimensions = entry.dimensions or {}
 	local helperMethods = buildHelperMethods(self._helperSets, entry.enabled_helpers)
-	return newObservationStream(builder, helperMethods, dimensions, self._factRegistry, entry.fact_deps, self._helperSets, entry.enabled_helpers)
+	return newObservationStream(
+		builder,
+		helperMethods,
+		dimensions,
+		self._factRegistry,
+		entry.fact_deps,
+		self._helperSets,
+		entry.enabled_helpers
+	)
 end
 
 local function listStreamNames(streamsByName)
@@ -555,13 +571,13 @@ if ObservationRegistry.derive == nil then
 		assert(type(buildFn) == "function", "derive expects buildFn function")
 		opts = opts or {}
 
-		local factDeps = {}
-		local factDepsSeen = {}
-		local enabledHelpers = {}
-		local helperMethods = {}
-		local helperSets = cloneTable(self._helperSets)
-		local dimensions = {}
-		local lqrByName = {}
+			local factDeps = {}
+			local factDepsSeen = {}
+			local enabledHelpers = {}
+			local helperMethods
+			local helperSets = cloneTable(self._helperSets)
+			local dimensions = {}
+			local lqrByName = {}
 
 		local names = listStreamNames(streamsByName)
 		assert(#names >= 1, "derive expects at least one input stream")
@@ -612,11 +628,22 @@ if ObservationRegistry.derive == nil then
 			end
 		end
 
-		local builder = buildFn(lqrByName, opts)
-		assert(type(builder) == "table" and type(builder.subscribe) == "function", "derive buildFn must return LQR query with :subscribe()")
-		return newObservationStream(builder, helperMethods, dimensions, self._factRegistry, factDeps, helperSets, enabledHelpers)
+			local builder = buildFn(lqrByName, opts)
+			assert(
+				type(builder) == "table" and type(builder.subscribe) == "function",
+				"derive buildFn must return LQR query with :subscribe()"
+			)
+			return newObservationStream(
+				builder,
+				helperMethods,
+				dimensions,
+				self._factRegistry,
+				factDeps,
+				helperSets,
+				enabledHelpers
+			)
+		end
 	end
-end
 
 function ObservationRegistry:api()
 	return self._api

@@ -24,15 +24,20 @@ end
 SquareSweep._internal = SquareSweep._internal or {}
 SquareSweep._collectors = SquareSweep._collectors or { order = {}, orderCount = 0, byId = {}, typeById = {} }
 SquareSweep._consumers = SquareSweep._consumers or {}
-SquareSweep._runner = SquareSweep._runner or { state = {}, tickHookAttached = false, tickHookId = nil, factRegistry = nil }
+SquareSweep._runner = SquareSweep._runner or {
+	state = {},
+	tickHookAttached = false,
+	tickHookId = nil,
+	factRegistry = nil,
+}
 
 if SquareSweep.registerCollector == nil then
 	--- Register a square sweep collector.
-	--- Collectors are called for each scanned square and can emit any fact records they own.
-	--- @param id string
-	--- @param fn fun(ctx: table, cursor: table, square: any, playerIndex: number|nil, nowMs: number, effective: table): boolean|nil
-	--- @param opts table|nil
-	function SquareSweep.registerCollector(id, fn, opts)
+		--- Collectors are called for each scanned square and can emit any fact records they own.
+		--- @param id string
+		--- @param fn fun(table, table, any, number|nil, number, table): boolean|nil
+		--- @param opts table|nil
+		function SquareSweep.registerCollector(id, fn, opts)
 		if type(id) ~= "string" or id == "" then
 			return false, "badId"
 		end
@@ -201,7 +206,6 @@ local function sharedTick()
 	local hasCollector = false
 	for _ in pairs(collectorContexts or {}) do
 		hasCollector = true
-		break
 	end
 	if not hasCollector then
 		return
@@ -378,8 +382,10 @@ local function resolveProbeBudgetMs(baseBudgetMs, runtimeStatus, demandRatio, pr
 		return baseBudgetMs * 0.25, "emergency"
 	end
 
-	-- Auto budget: when probes lag AND the overall WO tick has headroom, spend more of the 4ms budget on scanning.
-	-- Why: interest degradation is a last resort; if we have CPU headroom, we should use it to satisfy requested staleness.
+		-- Auto budget: when probes lag AND the overall WO tick has headroom,
+		-- spend more of the 4ms budget on scanning.
+		-- Why: interest degradation is a last resort; if we have CPU headroom,
+		-- we should use it to satisfy requested staleness.
 	if probeCfg.autoBudget == false then
 		return baseBudgetMs, "fixed"
 	end
@@ -432,10 +438,16 @@ local function resolveProbeBudgetMs(baseBudgetMs, runtimeStatus, demandRatio, pr
 		headroomFactor = 1
 	end
 
-	-- Prefer the controller's breakdown if available: it ties probe budget to drain/other costs, not just
-	-- the total WO tick. This keeps probes from greedily eating budget when drain is already expensive.
-	local observedDrainMs = tonumber(tick.woWindowAvgDrainMs) or tonumber(window.avgDrainMs) or tonumber(tick.drainLastMs) or 0
-	local observedOtherMs = tonumber(tick.woWindowAvgOtherMs) or tonumber(window.avgOtherMs) or tonumber(tick.otherLastMs) or 0
+		-- Prefer the controller's breakdown if available: it ties probe budget to drain/other costs, not just
+		-- the total WO tick. This keeps probes from greedily eating budget when drain is already expensive.
+		local observedDrainMs = tonumber(tick.woWindowAvgDrainMs)
+			or tonumber(window.avgDrainMs)
+			or tonumber(tick.drainLastMs)
+			or 0
+		local observedOtherMs = tonumber(tick.woWindowAvgOtherMs)
+			or tonumber(window.avgOtherMs)
+			or tonumber(tick.otherLastMs)
+			or 0
 	if observedDrainMs < 0 then
 		observedDrainMs = 0
 	end
@@ -509,10 +521,11 @@ local function scaleMaxSquaresPerTick(baseMaxSquaresPerTick, baseBudgetMs, budge
 	return math.min(hardCap, math.max(baseMaxSquaresPerTick, scaled))
 end
 
-local function resolveCell()
-	-- Resolve the engine cell best-effort.
-	-- We do this on-demand instead of caching to avoid holding stale engine objects and to stay compatible with headless tests.
-	local getWorld = _G.getWorld
+	local function resolveCell()
+		-- Resolve the engine cell best-effort.
+		-- We do this on-demand instead of caching to avoid holding stale engine objects
+		-- and to stay compatible with headless tests.
+		local getWorld = _G.getWorld
 	if type(getWorld) == "function" then
 		local okWorld, world = pcall(getWorld)
 		if okWorld and world and type(world.getCell) == "function" then
@@ -978,16 +991,13 @@ local function runCollectors(ctx, cursor, square, playerIndex, nowMs, effective,
 		if fn then
 			local collectorCtx, shouldRun = resolveCollectorContext(ctx, id)
 			if shouldRun then
-				local interestType = (registry.typeById and registry.typeById[id]) or id
-				local collectorEffective = resolveCollectorEffective(registry, id, effective, collectorEffectives)
-				if collectorEffectives ~= nil and collectorEffective == nil then
-					-- Shared mode: this collector's interest type is not active for this bucket.
-					-- Skip it so we don't emit cross-type records without an explicit interest declaration.
-				else
-					if type(diag) == "table" and type(diag.collectorCallsByType) == "table" then
-						bumpCounter(diag.collectorCallsByType, interestType, 1)
-					end
-					local ok, emitted = pcall(fn, collectorCtx, cursor, square, playerIndex, nowMs, collectorEffective)
+					local interestType = (registry.typeById and registry.typeById[id]) or id
+					local collectorEffective = resolveCollectorEffective(registry, id, effective, collectorEffectives)
+					if collectorEffectives == nil or collectorEffective ~= nil then
+						if type(diag) == "table" and type(diag.collectorCallsByType) == "table" then
+							bumpCounter(diag.collectorCallsByType, interestType, 1)
+						end
+						local ok, emitted = pcall(fn, collectorCtx, cursor, square, playerIndex, nowMs, collectorEffective)
 					if not ok then
 						Log:warn("square sweep collector failed id=%s err=%s", tostring(id), tostring(emitted))
 						if type(diag) == "table" and type(diag.collectorErrorsByType) == "table" then
@@ -996,12 +1006,12 @@ local function runCollectors(ctx, cursor, square, playerIndex, nowMs, effective,
 					elseif emitted == true then
 						emittedAny = true
 						if type(diag) == "table" and type(diag.collectorEmitsByType) == "table" then
-							bumpCounter(diag.collectorEmitsByType, interestType, 1)
+								bumpCounter(diag.collectorEmitsByType, interestType, 1)
+							end
 						end
 					end
 				end
 			end
-		end
 	end
 	return emittedAny
 end
@@ -1289,85 +1299,82 @@ if SquareSweep.tick == nil then
 				local bucketKey = bucket.bucketKey or "default"
 				local mergedByType = bucket.mergedByType or {}
 				local combined = mergeSpecsAcrossTypes(mergedByType)
-				local skip = combined == nil
 				local target = bucket.target
-				local cursor = nil
-				if not skip then
-				local cursorKey = tostring(bucketKey or label)
-				if bucketKey == "default" then
-					cursorKey = label
-				end
-				local displayLabel = cursorKey
-				if type(displayLabel) == "string" then
-					displayLabel = displayLabel:gsub(":", "-")
-				end
-				cursor = ensureProbeCursor(state, cursorKey, {
-					label = displayLabel,
-					source = cursorCfg.source,
-					color = cursorCfg.color,
-					alpha = cursorCfg.alpha,
-					isVision = cursorCfg.isVision,
-				})
+				local targetIsPlayer = type(target) == "table" and target.kind == "player"
 
-					local signals = computeProbeLagSignals(cursor, nowMs, previousEffectiveFor(SENSOR_INTEREST_TYPE, bucketKey))
+				if combined ~= nil then
+					local cursorKey = tostring(bucketKey or label)
+					if bucketKey == "default" then
+						cursorKey = label
+					end
+					local displayLabel = cursorKey
+					if type(displayLabel) == "string" then
+						displayLabel = displayLabel:gsub(":", "-")
+					end
+
+					local cursor = ensureProbeCursor(state, cursorKey, {
+						label = displayLabel,
+						source = cursorCfg.source,
+						color = cursorCfg.color,
+						alpha = cursorCfg.alpha,
+						isVision = cursorCfg.isVision,
+					})
+
+					local signals =
+						computeProbeLagSignals(cursor, nowMs, previousEffectiveFor(SENSOR_INTEREST_TYPE, bucketKey))
 					cursor.lastLagSignals = signals
 
-					local sensorEffective, meta = InterestEffective.ensure(state, ctx.interestRegistry, ctx.runtime, SENSOR_INTEREST_TYPE, {
-						label = label,
-						allowDefault = false,
-						signals = signals,
-						bucketKey = bucketKey,
-						merged = combined,
-					})
+					local sensorEffective, meta =
+						InterestEffective.ensure(state, ctx.interestRegistry, ctx.runtime, SENSOR_INTEREST_TYPE, {
+							label = label,
+							allowDefault = false,
+							signals = signals,
+							bucketKey = bucketKey,
+							merged = combined,
+						})
 					if type(meta) == "table" then
 						bucketMetas[#bucketMetas + 1] = meta
 					end
-					if not sensorEffective then
-						skip = true
-					else
-						if requirePlayer and (type(target) ~= "table" or target.kind ~= "player") then
-							skip = true
-						else
-							local centers = resolveCentersForTarget(target)
-							if #centers <= 0 then
-								skip = true
-							else
-								sensorEffective.target = target
-								sensorEffective.scope = scope
-								sensorEffective.bucketKey = bucketKey
 
-								ensureProbeOffsets(cursor, sensorEffective.radius)
-								updateCursorSweepTargets(cursor, sensorEffective, #centers)
+					if sensorEffective and (not requirePlayer or targetIsPlayer) then
+						local centers = resolveCentersForTarget(target)
+						if #centers > 0 then
+							sensorEffective.target = target
+							sensorEffective.scope = scope
+							sensorEffective.bucketKey = bucketKey
 
-								local collectorEffectives = {}
-								for interestType, merged in pairs(mergedByType) do
-									local perSignals =
-										computeProbeLagSignals(cursor, nowMs, previousEffectiveFor(interestType, bucketKey))
-									local effective = InterestEffective.ensure(state, ctx.interestRegistry, ctx.runtime, interestType, {
+							ensureProbeOffsets(cursor, sensorEffective.radius)
+							updateCursorSweepTargets(cursor, sensorEffective, #centers)
+
+							local collectorEffectives = {}
+							for interestType, merged in pairs(mergedByType) do
+								local perSignals =
+									computeProbeLagSignals(cursor, nowMs, previousEffectiveFor(interestType, bucketKey))
+								local effective =
+									InterestEffective.ensure(state, ctx.interestRegistry, ctx.runtime, interestType, {
 										label = label,
 										allowDefault = false,
 										signals = perSignals,
 										bucketKey = bucketKey,
 										merged = merged,
 									})
-									if effective then
-										effective.highlight = merged.highlight
-										effective.target = merged.target
-										effective.scope = merged.scope or scope
-										effective.bucketKey = bucketKey
-										effective.spriteNames = merged.spriteNames
-										collectorEffectives[interestType] = effective
-									end
+								if effective then
+									effective.highlight = merged.highlight
+									effective.target = merged.target
+									effective.scope = merged.scope or scope
+									effective.bucketKey = bucketKey
+									effective.spriteNames = merged.spriteNames
+									collectorEffectives[interestType] = effective
 								end
-
-								active[#active + 1] = {
-									cursor = cursor,
-									effective = sensorEffective,
-									stalenessMs = stalenessMsFromSeconds(sensorEffective.staleness),
-									centers = centers,
-									collectorEffectives = collectorEffectives,
-								}
 							end
+
+							active[#active + 1] = {
+								cursor = cursor,
+								effective = sensorEffective,
+								stalenessMs = stalenessMsFromSeconds(sensorEffective.staleness),
+								centers = centers,
+								collectorEffectives = collectorEffectives,
+							}
 						end
 					end
 				end
@@ -1541,14 +1548,15 @@ if SquareSweep.tick == nil then
 				if type(budgetMs) == "number" then
 					budgetLabel = string.format("%.2f", budgetMs)
 				end
-				if budgetMode == "auto" then
-					budgetLabel = budgetLabel .. " (auto)"
-				end
-				Log:info(
-					"[probe %s] staleness=%ss radius=%s cooldown=%ss budgetMs=%s maxSquaresPerTick=%s tickScan=%s tickVisit=%s tickVisible=%s tickEmit=%s stop=%s sweep=%s lag=%.2f rate=%.1f/s",
-					tostring(cursor.label),
-					tostring(effective.staleness),
-					tostring(effective.radius),
+					if budgetMode == "auto" then
+						budgetLabel = budgetLabel .. " (auto)"
+					end
+					Log:info(
+						"[probe %s] staleness=%ss radius=%s cooldown=%ss budgetMs=%s maxSquaresPerTick=%s "
+							.. "tickScan=%s tickVisit=%s tickVisible=%s tickEmit=%s stop=%s sweep=%s lag=%.2f rate=%.1f/s",
+						tostring(cursor.label),
+						tostring(effective.staleness),
+						tostring(effective.radius),
 					tostring(effective.cooldown),
 					budgetLabel,
 					tostring(maxSquaresPerTick),

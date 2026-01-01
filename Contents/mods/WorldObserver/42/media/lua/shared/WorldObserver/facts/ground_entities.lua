@@ -64,13 +64,19 @@ end
 ---   - opts.collectorStateKey: string (stored under ctx.state[collectorStateKey])
 ---   - opts.getRecordOpts: fun(ctx:table):table
 ---   - opts.collectOnSquare: fun(square:any, recordOpts:table, visitor:fun(entity:any, extra:table|nil))
----   - opts.makeRecord: fun(ctx:table, entity:any, square:any, source:string, nowMs:number, recordOpts:table, extra:table|nil):table|nil
+---   - opts.makeRecord: fun(table, any, any, string, number, table, table|nil):table|nil
 --- @return function collector
 function GroundEntities.buildSquareCollector(opts)
 	assert(type(opts) == "table", "buildSquareCollector opts required")
-	assert(type(opts.interestType) == "string" and opts.interestType ~= "", "buildSquareCollector opts.interestType required")
+	assert(
+		type(opts.interestType) == "string" and opts.interestType ~= "",
+		"buildSquareCollector opts.interestType required"
+	)
 	assert(type(opts.idField) == "string" and opts.idField ~= "", "buildSquareCollector opts.idField required")
-	assert(type(opts.collectorStateKey) == "string" and opts.collectorStateKey ~= "", "buildSquareCollector opts.collectorStateKey required")
+	assert(
+		type(opts.collectorStateKey) == "string" and opts.collectorStateKey ~= "",
+		"buildSquareCollector opts.collectorStateKey required"
+	)
 	assert(type(opts.getRecordOpts) == "function", "buildSquareCollector opts.getRecordOpts required")
 	assert(type(opts.collectOnSquare) == "function", "buildSquareCollector opts.collectOnSquare required")
 	assert(type(opts.makeRecord) == "function", "buildSquareCollector opts.makeRecord required")
@@ -137,7 +143,7 @@ end
 ---   - opts.playerHighlightColor: table fallback color
 ---   - opts.getRecordOpts: fun(ctx:table):table
 ---   - opts.collectOnSquare: fun(square:any, recordOpts:table, visitor:fun(entity:any, extra:table|nil))
----   - opts.makeRecord: fun(ctx:table, entity:any, square:any, source:string, nowMs:number, recordOpts:table, extra:table|nil):table|nil
+---   - opts.makeRecord: fun(table, any, any, string, number, table, table|nil):table|nil
 function GroundEntities.tickPlayerSquare(ctx, opts)
 	ctx = ctx or {}
 	opts = opts or {}

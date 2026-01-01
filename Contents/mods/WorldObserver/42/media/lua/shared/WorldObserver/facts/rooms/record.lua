@@ -176,7 +176,8 @@ local function listSizeSafe(list, label, roomMeta)
 	end
 	local meta = roomMeta or {}
 	Log:warn(
-		"Room list size failed; defaulting to 0 field=%s roomId=%s roomDefId=%s buildingId=%s name=%s listType=%s listValue=%s",
+		"Room list size failed; defaulting to 0 field=%s roomId=%s roomDefId=%s buildingId=%s "
+			.. "name=%s listType=%s listValue=%s",
 		tostring(label),
 		tostring(meta.roomId),
 		tostring(meta.roomDefId),
@@ -216,7 +217,10 @@ if Record.makeRoomRecord == nil then
 			return nil
 		end
 
-		local name = SafeCall.safeCall(room, "getName") or (type(roomDef) == "table" and (roomDef.name or roomDef.type)) or nil
+		local name = SafeCall.safeCall(room, "getName")
+		if name == nil and type(roomDef) == "table" then
+			name = roomDef.name or roomDef.type
+		end
 		if type(roomDef) == "userdata" and name == nil then
 			name = SafeCall.safeCall(roomDef, "getName") or SafeCall.safeCall(roomDef, "getType")
 		end

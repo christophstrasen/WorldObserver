@@ -1,4 +1,5 @@
--- facts/zombies/probe.lua -- interest-driven zombie probe (scope=allLoaded) using a time-sliced cursor over IsoCell:getZombieList().
+-- facts/zombies/probe.lua -- interest-driven zombie probe (scope=allLoaded)
+-- using a time-sliced cursor over IsoCell:getZombieList().
 local Log = require("DREAMBase/log").withTag("WO.FACTS.zombies")
 local Cooldown = require("WorldObserver/facts/cooldown")
 local InterestEffective = require("WorldObserver/facts/interest_effective")
@@ -155,10 +156,8 @@ if Probe.tick == nil then
 			return
 		end
 
-		local effective = nil
-		local meta = nil
-		local signals = state.lastLagSignals
-			effective, meta = InterestEffective.ensure(state, ctx.interestRegistry, ctx.runtime, INTEREST_TYPE_ZOMBIES, {
+			local signals = state.lastLagSignals
+			local effective = InterestEffective.ensure(state, ctx.interestRegistry, ctx.runtime, INTEREST_TYPE_ZOMBIES, {
 				label = "zombies.allLoaded",
 				allowDefault = false,
 				signals = signals,

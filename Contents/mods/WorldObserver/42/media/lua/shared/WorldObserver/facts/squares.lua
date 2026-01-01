@@ -259,14 +259,15 @@ Squares._internal.attachTickHookOnce = attachTickHookOnce
 				end
 
 					if not headless then
-						local hasOnLoadInterest = hasSquaresScopeInterest(interestRegistry, "onLoad")
-						local hasNearInterest = hasSquaresScopeInterest(interestRegistry, "near")
-						local hasVisionInterest = hasSquaresScopeInterest(interestRegistry, "vision")
-						Log:info(
-							"Squares facts started (tickHook=%s sweep=%s cfgProbe=%s cfgListener=%s interestOnLoad=%s interestNear=%s interestVision=%s)",
-							tostring(tickHookAttached),
-							tostring(sweepRegistered),
-							tostring(probeEnabled),
+							local hasOnLoadInterest = hasSquaresScopeInterest(interestRegistry, "onLoad")
+							local hasNearInterest = hasSquaresScopeInterest(interestRegistry, "near")
+							local hasVisionInterest = hasSquaresScopeInterest(interestRegistry, "vision")
+							Log:info(
+								"Squares facts started (tickHook=%s sweep=%s cfgProbe=%s cfgListener=%s "
+									.. "interestOnLoad=%s interestNear=%s interestVision=%s)",
+								tostring(tickHookAttached),
+								tostring(sweepRegistered),
+								tostring(probeEnabled),
 							tostring(listenerEnabled),
 							tostring(hasOnLoadInterest),
 							tostring(hasNearInterest),

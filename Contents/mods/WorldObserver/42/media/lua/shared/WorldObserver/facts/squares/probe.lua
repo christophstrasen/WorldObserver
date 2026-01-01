@@ -22,14 +22,21 @@ if Probe.tick == nil then
 end
 
 -- Expose sensor internals for tests and patching seams.
-Probe._internal.nearbyPlayers = Probe._internal.nearbyPlayers or SquareSweep._internal.nearbyPlayers
-Probe._internal.resolveProbeBudgetMs = Probe._internal.resolveProbeBudgetMs or SquareSweep._internal.resolveProbeBudgetMs
-Probe._internal.scaleMaxSquaresPerTick = Probe._internal.scaleMaxSquaresPerTick or SquareSweep._internal.scaleMaxSquaresPerTick
-Probe._internal.ensureProbeCursor = Probe._internal.ensureProbeCursor or SquareSweep._internal.ensureProbeCursor
-Probe._internal.ensureProbeOffsets = Probe._internal.ensureProbeOffsets or SquareSweep._internal.ensureProbeOffsets
-Probe._internal.cursorNextSquare = Probe._internal.cursorNextSquare or SquareSweep._internal.cursorNextSquare
-Probe._internal.cursorCanScanThisTick = Probe._internal.cursorCanScanThisTick or SquareSweep._internal.cursorCanScanThisTick
-Probe._internal.computeProbeLagSignals = Probe._internal.computeProbeLagSignals or SquareSweep._internal.computeProbeLagSignals
+Probe._internal.nearbyPlayers = Probe._internal.nearbyPlayers
+	or SquareSweep._internal.nearbyPlayers
+Probe._internal.resolveProbeBudgetMs = Probe._internal.resolveProbeBudgetMs
+	or SquareSweep._internal.resolveProbeBudgetMs
+Probe._internal.scaleMaxSquaresPerTick = Probe._internal.scaleMaxSquaresPerTick
+	or SquareSweep._internal.scaleMaxSquaresPerTick
+Probe._internal.ensureProbeCursor = Probe._internal.ensureProbeCursor
+	or SquareSweep._internal.ensureProbeCursor
+Probe._internal.ensureProbeOffsets = Probe._internal.ensureProbeOffsets
+	or SquareSweep._internal.ensureProbeOffsets
+Probe._internal.cursorNextSquare = Probe._internal.cursorNextSquare
+	or SquareSweep._internal.cursorNextSquare
+Probe._internal.cursorCanScanThisTick = Probe._internal.cursorCanScanThisTick
+	or SquareSweep._internal.cursorCanScanThisTick
+Probe._internal.computeProbeLagSignals = Probe._internal.computeProbeLagSignals
+	or SquareSweep._internal.computeProbeLagSignals
 
 return Probe
-

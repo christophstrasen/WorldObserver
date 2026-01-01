@@ -150,13 +150,14 @@ local function resolveRoomLocation(playerKey, room)
 	if playerKey ~= nil then
 		local cache = Record._internal.playerRoomCache
 		local entry = cache[playerKey]
-		if entry and entry.roomRef == room then
-			return entry.roomLocation
+			if entry and entry.roomRef == room then
+				return entry.roomLocation
+			end
+			local roomLocationFromIsoRoom = RoomHelpers.record and RoomHelpers.record.roomLocationFromIsoRoom
+			local location = roomLocationFromIsoRoom and roomLocationFromIsoRoom(room) or nil
+			cache[playerKey] = { roomRef = room, roomLocation = location }
+			return location
 		end
-		local location = RoomHelpers.record.roomLocationFromIsoRoom and RoomHelpers.record.roomLocationFromIsoRoom(room) or nil
-		cache[playerKey] = { roomRef = room, roomLocation = location }
-		return location
-	end
 	if RoomHelpers.record.roomLocationFromIsoRoom then
 		return RoomHelpers.record.roomLocationFromIsoRoom(room)
 	end

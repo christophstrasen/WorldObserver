@@ -122,14 +122,12 @@ local function collectFamilyNames(observation)
 	local count = 0
 	for key, value in pairs(observation) do
 		if key ~= "RxMeta" and key ~= "WoMeta" and type(key) == "string" and type(value) == "table" then
-			if key:match("^_groupBy:") then
-				-- Skip synthetic grouping schemas in family listings.
-			else
-			local hasSchema = type(value.RxMeta) == "table" and type(value.RxMeta.schema) == "string"
-			if type(value.woKey) == "string" or hasSchema then
-				count = count + 1
-				names[count] = key
-			end
+			if not key:match("^_groupBy:") then
+				local hasSchema = type(value.RxMeta) == "table" and type(value.RxMeta.schema) == "string"
+				if type(value.woKey) == "string" or hasSchema then
+					count = count + 1
+					names[count] = key
+				end
 			end
 		end
 	end
@@ -221,13 +219,16 @@ local function formatRecordCompact(record, opts)
 			parts[#parts + 1] = "…"
 			break
 		end
-		local value = record[k]
-		if k == "source" then
-			local qualified = SourceHelpers.record and SourceHelpers.record.qualifiedSource and SourceHelpers.record.qualifiedSource(record) or nil
-			if qualified ~= nil then
-				value = qualified
+			local value = record[k]
+			if k == "source" then
+				local qualified = SourceHelpers.record
+					and SourceHelpers.record.qualifiedSource
+					and SourceHelpers.record.qualifiedSource(record)
+					or nil
+				if qualified ~= nil then
+					value = qualified
+				end
 			end
-		end
 		parts[#parts + 1] = ("%s=%s"):format(k, formatValue(value))
 		fieldCount = fieldCount + 1
 	end
@@ -280,11 +281,13 @@ local function describeRuntimeStatus(payload, factRegistry)
 		currentPending = nil
 	end
 
-	Log:info(
-		"[runtime] mode=%s pressure=%s reason=%s msAvg(p/d/o/t)=%.2f/%.2f/%.2f/%.2f msLast(p/d/o/t)=%.2f/%.2f/%.2f/%.2f tickSpike=%.2f budget=%s/%s drainMaxItems=%s pending=%s fill=%.3f dropDelta=%s rate15=%.2f/%.2f",
-		tostring(status.mode),
-		pressure,
-		tostring(windowReason),
+		Log:info(
+			"[runtime] mode=%s pressure=%s reason=%s msAvg(p/d/o/t)=%.2f/%.2f/%.2f/%.2f "
+				.. "msLast(p/d/o/t)=%.2f/%.2f/%.2f/%.2f tickSpike=%.2f budget=%s/%s "
+				.. "drainMaxItems=%s pending=%s fill=%.3f dropDelta=%s rate15=%.2f/%.2f",
+			tostring(status.mode),
+			pressure,
+			tostring(windowReason),
 		avgProducerMs,
 		avgDrainMs,
 		avgOtherMs,
@@ -313,12 +316,13 @@ local function describeFactsMetricsCompact(factRegistry, typeName)
 	local fill = nil
 	if snap.capacity and snap.capacity > 0 then
 		fill = (snap.pending or 0) / snap.capacity
-	end
-	Log:info(
-		"[%s] pending=%s peak=%s fill=%s dropped=%s rate15(in/out per sec)=%.2f/%.2f load15=%.2f totals(in/drain/drop)=%s/%s/%s",
-		tostring(typeName),
-		tostring(snap.pending),
-		tostring(snap.peakPending),
+		end
+		Log:info(
+			"[%s] pending=%s peak=%s fill=%s dropped=%s rate15(in/out per sec)=%.2f/%.2f load15=%.2f "
+				.. "totals(in/drain/drop)=%s/%s/%s",
+			tostring(typeName),
+			tostring(snap.pending),
+			tostring(snap.peakPending),
 		fill and string.format("%.3f", fill) or "n/a",
 		tostring(snap.totals and snap.totals.droppedTotal),
 		tonumber(snap.ingestRate15) or 0,
@@ -370,12 +374,14 @@ if Debug.new == nil then
 				if not snap then
 					Log:warn("No ingest metrics for fact type '%s' (ingest disabled or not started)", tostring(typeName))
 					return
-				end
-				Log:info(
-					"[%s] pending=%s peak=%s dropped=%s load(1/5/15)=%.2f/%.2f/%.2f rate(1/5/15 in/out /s)=%.2f/%.2f/%.2f / %.2f/%.2f/%.2f totals(in/drain/drop)=%s/%s/%s",
-					tostring(typeName),
-					tostring(snap.pending),
-					tostring(snap.peakPending),
+					end
+					Log:info(
+						"[%s] pending=%s peak=%s dropped=%s load(1/5/15)=%.2f/%.2f/%.2f "
+							.. "rate(1/5/15 in/out /s)=%.2f/%.2f/%.2f / %.2f/%.2f/%.2f "
+							.. "totals(in/drain/drop)=%s/%s/%s",
+						tostring(typeName),
+						tostring(snap.pending),
+						tostring(snap.peakPending),
 					tostring(snap.totals and snap.totals.droppedTotal),
 					tonumber(snap.load1) or 0,
 					tonumber(snap.load5) or 0,
@@ -489,11 +495,13 @@ if Debug.new == nil then
 					return { stop = function() end }
 				end
 
-				local reportEvent = events.WorldObserverRuntimeStatusReport
-				local changedEvent = events.WorldObserverRuntimeStatusChanged
-				if (not reportEvent or type(reportEvent.Add) ~= "function") and (not changedEvent or type(changedEvent.Add) ~= "function") then
-					return { stop = function() end }
-				end
+					local reportEvent = events.WorldObserverRuntimeStatusReport
+					local changedEvent = events.WorldObserverRuntimeStatusChanged
+					local hasReport = reportEvent and type(reportEvent.Add) == "function"
+					local hasChanged = changedEvent and type(changedEvent.Add) == "function"
+					if not hasReport and not hasChanged then
+						return { stop = function() end }
+					end
 
 				local factTypes = opts.factTypes
 				if type(factTypes) ~= "table" then

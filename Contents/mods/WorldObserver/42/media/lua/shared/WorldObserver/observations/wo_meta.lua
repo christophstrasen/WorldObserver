@@ -55,21 +55,21 @@ local function computeKeyFromJoinResult(observation)
 	for i = 1, familyCount do
 		local familyName = familyNames[i]
 		local record = observation[familyName]
-		if record == nil then
-			-- Left joins can omit families; we skip nils on purpose.
-		elseif type(record) == "table" then
-			local recordKey = record.woKey
-			if type(recordKey) ~= "string" or recordKey == "" then
-				return nil, "missing_record_woKey"
+		if record ~= nil then
+			if type(record) == "table" then
+				local recordKey = record.woKey
+				if type(recordKey) ~= "string" or recordKey == "" then
+					return nil, "missing_record_woKey"
+				end
+				local segment = buildSegment(familyName, recordKey)
+				if not segment then
+					return nil, "bad_segment"
+				end
+				segmentCount = segmentCount + 1
+				segments[segmentCount] = segment
+			else
+				return nil, "bad_record"
 			end
-			local segment = buildSegment(familyName, recordKey)
-			if not segment then
-				return nil, "bad_segment"
-			end
-			segmentCount = segmentCount + 1
-			segments[segmentCount] = segment
-		else
-			return nil, "bad_record"
 		end
 	end
 	if segmentCount == 0 then
@@ -151,14 +151,12 @@ local function listFamiliesFromObservation(observation)
 	local count = 0
 	for key, value in pairs(observation or {}) do
 		if key ~= "RxMeta" and key ~= "WoMeta" and type(key) == "string" and type(value) == "table" then
-			if key:match("^_groupBy:") then
-				-- Skip synthetic group-by rows for group_enriched keying.
-			else
-			local hasSchema = type(value.RxMeta) == "table" and type(value.RxMeta.schema) == "string"
-			if type(value.woKey) == "string" or hasSchema then
-				count = count + 1
-				names[count] = key
-			end
+			if not key:match("^_groupBy:") then
+				local hasSchema = type(value.RxMeta) == "table" and type(value.RxMeta.schema) == "string"
+				if type(value.woKey) == "string" or hasSchema then
+					count = count + 1
+					names[count] = key
+				end
 			end
 		end
 	end
@@ -180,21 +178,21 @@ local function computeKeyFromGroupEnriched(observation)
 	for i = 1, familyCount do
 		local familyName = familyNames[i]
 		local record = observation[familyName]
-		if record == nil then
-			-- Allow missing families (left join), same as join_result.
-		elseif type(record) == "table" then
-			local recordKey = record.woKey
-			if type(recordKey) ~= "string" or recordKey == "" then
-				return nil, "missing_record_woKey"
+		if record ~= nil then
+			if type(record) == "table" then
+				local recordKey = record.woKey
+				if type(recordKey) ~= "string" or recordKey == "" then
+					return nil, "missing_record_woKey"
+				end
+				local segment = buildSegment(familyName, recordKey)
+				if not segment then
+					return nil, "bad_segment"
+				end
+				segmentCount = segmentCount + 1
+				segments[segmentCount] = segment
+			else
+				return nil, "bad_record"
 			end
-			local segment = buildSegment(familyName, recordKey)
-			if not segment then
-				return nil, "bad_segment"
-			end
-			segmentCount = segmentCount + 1
-			segments[segmentCount] = segment
-		else
-			return nil, "bad_record"
 		end
 	end
 	if segmentCount == 0 then
@@ -236,15 +234,17 @@ local function attachWoMeta(observation)
 end
 
 -- Patch seam: define only when nil so mods can override and reloads don't clobber patches.
-WoMeta.buildSegment = WoMeta.buildSegment or buildSegment
-WoMeta.computeKeyFromJoinResult = WoMeta.computeKeyFromJoinResult or computeKeyFromJoinResult
-WoMeta.computeKeyFromRecord = WoMeta.computeKeyFromRecord or computeKeyFromRecord
-WoMeta.computeKeyFromGroupAggregate = WoMeta.computeKeyFromGroupAggregate or computeKeyFromGroupAggregate
-WoMeta.computeKeyFromGroupEnriched = WoMeta.computeKeyFromGroupEnriched or computeKeyFromGroupEnriched
-WoMeta.attachWoMeta = WoMeta.attachWoMeta or attachWoMeta
+	WoMeta.buildSegment = WoMeta.buildSegment or buildSegment
+	WoMeta.computeKeyFromJoinResult = WoMeta.computeKeyFromJoinResult or computeKeyFromJoinResult
+	WoMeta.computeKeyFromRecord = WoMeta.computeKeyFromRecord or computeKeyFromRecord
+	WoMeta.computeKeyFromGroupAggregate = WoMeta.computeKeyFromGroupAggregate or computeKeyFromGroupAggregate
+	WoMeta.computeKeyFromGroupEnriched = WoMeta.computeKeyFromGroupEnriched or computeKeyFromGroupEnriched
+	WoMeta.attachWoMeta = WoMeta.attachWoMeta or attachWoMeta
 
-WoMeta._internal.listSortedKeys = WoMeta._internal.listSortedKeys or listSortedKeys
-WoMeta._internal.listFamiliesFromObservation = WoMeta._internal.listFamiliesFromObservation or listFamiliesFromObservation
-WoMeta._internal.normalizeGroupKey = WoMeta._internal.normalizeGroupKey or normalizeGroupKey
+	WoMeta._internal.listSortedKeys = WoMeta._internal.listSortedKeys or listSortedKeys
+	WoMeta._internal.listFamiliesFromObservation = WoMeta._internal.listFamiliesFromObservation
+		or listFamiliesFromObservation
+	WoMeta._internal.normalizeGroupKey = WoMeta._internal.normalizeGroupKey
+		or normalizeGroupKey
 
-return WoMeta
+	return WoMeta

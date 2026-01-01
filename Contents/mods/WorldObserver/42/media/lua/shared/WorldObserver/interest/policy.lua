@@ -62,7 +62,7 @@ local defaultConfig = {
 	dropRatioThreshold = 0.10, -- dropped vs ingest/drain rates (rough heuristic to avoid single stray drops)
 	-- Probe-lag trigger: degrade if a sweep can't keep up with the staleness target.
 	lagRatioThreshold = 1.0, -- >1 means "we exceeded the target staleness while still working"
-	lagRatioRecoverThreshold = 0.9, -- <1 provides hysteresis (avoid immediate recover when we're barely meeting the target)
+		lagRatioRecoverThreshold = 0.9, -- <1 hysteresis (avoid immediate recover when barely meeting target)
 	lagOverdueMinMs = 0, -- allow callers to require a minimum overdue before reacting
 	lagHoldTicks = 10, -- require sustained lag to avoid reacting to a single slow tick
 	degradeHoldWindows = 1,
