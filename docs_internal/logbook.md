@@ -579,3 +579,8 @@
 ### Next steps
 - Decide whether to expand the facade to include more registry-like surfaces (if any are introduced later).
 - Keep an eye on docs/examples for consistency (use facade where it reduces repetition, but avoid heavy rewrites).
+
+## day20 – Helper ergonomics and record wrappers (RFC)
+
+### Highlights
+- Added an RFC draft for record wrappers to make record-level helper usage consistent outside stream contexts (especially in PromiseKeeper actions): `docs_internal/drafts/record_wrappers.md`.
