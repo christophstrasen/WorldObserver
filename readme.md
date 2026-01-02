@@ -6,7 +6,7 @@
 
 ---
 
-[Steam Workshop → [42SP] WorldObserver](LinkTBD)
+[Steam Workshop → [42SP] WorldObserver](https://steamcommunity.com/sharedfiles/filedetails/?id=3637573373)
 
 ---
 

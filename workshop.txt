@@ -1,29 +1,30 @@
 version=1
+id=3637573373
 title=[42SP] WorldObserver
 description=WorldObserver - Shared world observation for Project Zomboid (Build 42, Single Player)
-
-NOT TESTED IN MULTIPLAYER. DON'T USE THERE. thx.
-
-WorldObserver is a cooperative world-sensing engine for mid-level Lua mod developers.
-Instead of hand-rolling OnTick scan batches and custom caches, you declare interest
-in facts (scope, radius, staleness) and subscribe to ready-made observation streams.
-
-Good for mods that need rich, asynchronous information like:
-- corpse squares near the player
-- kitchens with specific zombie types
-- vehicles under attack
-
-This is a developer library, not gameplay content. It does nothing on its own.
-
-GitHub (docs, source, examples):
-https://github.com/christophstrasen/WorldObserver
-
-Dependencies (required by mod.info):
-- StarlitLibrary
-- DoggyLibrary
-- reactivex
-- LQR
-- DREAMBase
-
-tags=Library;Utility;Build 42;Development
+description=
+description=NOT TESTED IN MULTIPLAYER. DON'T USE THERE. thx.
+description=
+description=WorldObserver is a cooperative world-sensing engine for mid-level Lua mod developers.
+description=Instead of hand-rolling OnTick scan batches and custom caches, you declare interest
+description=in facts (scope, radius, staleness) and subscribe to ready-made observation streams.
+description=
+description=Good for mods that need rich, asynchronous information like:
+description=- corpse squares near the player
+description=- kitchens with specific zombie types
+description=- vehicles under attack
+description=
+description=This is a developer library, not gameplay content. It does nothing on its own.
+description=
+description=GitHub (docs, source, examples):
+description=https://github.com/christophstrasen/WorldObserver
+description=
+description=Dependencies (required by mod.info):
+description=- StarlitLibrary
+description=- DoggyLibrary
+description=- reactivex
+description=- LQR
+description=- DREAMBase
+description=
+tags=Framework;Build 42;
 visibility=Public
