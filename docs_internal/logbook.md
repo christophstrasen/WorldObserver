@@ -612,3 +612,13 @@
 
 ### Tests
 - Added/updated unit tests to cover the shared sensor wiring and multi-family declare behavior.
+
+## day22 – Multi-type interest smoke and lifecycle coverage
+
+### Highlights
+- Added a console-friendly smoke example for multi-type interests (`examples/smoke_multitype_interest.lua`).
+- Documented the smoke entrypoint in the interest guide so users can try the fan-out pattern quickly.
+- Added unit coverage to verify `factInterest:revoke` tears down derived keys for multi-type leases.
+
+### Notes / observations
+- No existing WorldObserver examples had natural multi-type overlap; most use distinct scopes/knobs per type.

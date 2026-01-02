@@ -47,4 +47,21 @@ describe("factInterest multi-type declarations", function()
 
 		lease:stop()
 	end)
+
+	it("revokes derived keys via factInterest revoke", function()
+		local wo = reload("WorldObserver")
+		local registry = wo._internal.factInterest
+		local modId = "tests.multitype.revoke"
+
+		wo.factInterest:declare(modId, "multi", {
+			type = { "rooms", "players" },
+			scope = "onPlayerChangeRoom",
+			cooldown = { desired = 0 },
+		})
+
+		wo.factInterest:revoke(modId, "multi")
+		local leases = registry._leases[modId] or {}
+		assert.is_nil(leases["multi/rooms"])
+		assert.is_nil(leases["multi/players"])
+	end)
 end)

@@ -1,10 +1,14 @@
 # WorldObserver
 
-[![CI](https://github.com/christophstrasen/WorldObserver/actions/workflows/ci.yml/badge.svg)](https://github.com/christophstrasen/WorldObserver/actions/workflows/ci.yml)
- 
-*A shared observation layer for **Project Zomboid (Build 42)** mods.*
+*A shared observation layer for **Project Zomboid (Build 42)** mods.* - part of the [DREAM](https://github.com/christophstrasen/DREAM) family.
 
---- 
+[![CI](https://github.com/christophstrasen/WorldObserver/actions/workflows/ci.yml/badge.svg)](https://github.com/christophstrasen/WorldObserver/actions/workflows/ci.yml)
+
+---
+
+[Steam Workshop → [42SP] WorldObserver](LinkTBD)
+
+---
 
 **WorldObserver** is a cooperative *world-sensing engine* for Project Zomboid mods. Instead of hand-rolling `OnTick` scan batches, stitching together event listeners, and managing your own cache invalidation, you **declare interest**—*what should we observe, what guarantees for scope and freshness do we need?*—and subscribe to ready-made **observation streams**.
 
@@ -30,7 +34,7 @@ When multiple mods would otherwise perform heavy scanning in parallel, WorldObse
 
 ## Quickstart
 
-This examples shows how you
+This example shows how you
 
 1) declare an interest (so WorldObserver knows what facts to gather)  
 2) subscribe to a base observation stream  
@@ -45,14 +49,14 @@ local WorldObserver = require("WorldObserver")
 
 local MOD_ID = "YourModId"
 
--- note: duration in ingame seconds
+-- note: duration in in-game seconds
 local lease = WorldObserver.factInterest:declare(MOD_ID, "quickstart.squares", {
   type = "squares",
   scope = "near",
   target = { player = { id = 0 } }, 
   radius = { desired = 8 },     --tiles
   staleness = { desired = 4 },  -- typical duration between refresh
-  cooldown = { desired = 10 },   -- time window in which emmissions are suppressed
+  cooldown = { desired = 10 },   -- time window in which emissions are suppressed
 })
 
 local corpseSquares = WorldObserver.observations:squares()
@@ -90,7 +94,7 @@ _G.WOHello = {
 
 ## What you get (that’s painful to hand-roll)
 
-- **Shared work and fairness:** when multiple mods declare overlapping interest, WorldObserver merges leases and runs shared probing/listening work.
+- **Shared work and fairness:** when multiple mods declare overlapping interests, WorldObserver merges leases and runs shared probing/listening work.
 - **Safety settings:** `radius`, `staleness`, `cooldown` let you express quality expectations while WorldObserver stays within budgets.
 - **Signal over noise:** helpers + `distinct` let you compact raw updates into “interesting observations” your mod can act on.
 - **Composability:** build derived streams by combining base streams (joins, windows, distinct). Start here: [Derived streams](docs/guides/derived_streams.md).

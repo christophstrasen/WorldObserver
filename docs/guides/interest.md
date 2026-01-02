@@ -85,6 +85,7 @@ Notes:
 - The same spec is applied to each type; choose fields that make sense for all of them.
 - Unsupported fields for a given type are ignored (with warnings).
 - `factInterest:revoke("YourModId", "roomAndPlayer")` revokes the fan-out as a unit.
+- See `Contents/mods/WorldObserver/42/media/lua/shared/examples/smoke_multitype_interest.lua` for a console-ready demo.
 
 ## 3. Interest types available today
 

@@ -1,6 +1,6 @@
 version=1
 title=[42SP] WorldObserver
-description=WorldObserver - Shared world observation for Project Zomboid (Build 42)
+description=WorldObserver - Shared world observation for Project Zomboid (Build 42, Single Player)
 
 NOT TESTED IN MULTIPLAYER. DON'T USE THERE. thx.
 
