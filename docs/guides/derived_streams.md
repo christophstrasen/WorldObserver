@@ -237,7 +237,7 @@ Notes:
 - The distinct zombie count is available at `row._count.zombie` (per-schema total) and at `row.zombie._count.zombieId` (per-field); in this example they are the same.
 - In an inner join on the same key, `row.zombie.tileLocation` and `row.sprite.tileLocation` are the same; either works as the group key.
 
-Full runnable example (with interests and safe unsubscribe): `Contents/mods/WorldObserver/42/media/lua/shared/examples/hedge_trample.lua`
+Full runnable example (with interests and safe unsubscribe): `Contents/mods/WorldObserver/42/media/lua/shared/examples/hedge_trample_worldobserver.lua`
 
 ---
 

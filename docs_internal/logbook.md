@@ -483,7 +483,7 @@
 ## day16 – Derived streams “in anger”: hedge_trample, helper semantics, and sprite name wildcards
 
 ### Highlights
-- Added a practical derived-stream example (`examples/hedge_trample.lua`) joining zombies + sprites on `tileLocation` and using LQR grouping + `having` to express a real gameplay rule.
+- Added a practical derived-stream example (`examples/hedge_trample_worldobserver.lua`) joining zombies + sprites on `tileLocation` and using LQR grouping + `having` to express a real gameplay rule.
 - Standardized `tileLocation` (`"x123y456z7"`) across square-related records so joins/grouping can key off a stable value without engine objects.
 - Tightened derived-stream helper semantics:
   - `filter(...)` applies at the end of the stream (what subscribers see),

@@ -1,7 +1,7 @@
--- hedge_trample.lua — teaching example: join zombies + sprites on tileLocation and remove hedge tiles.
+-- hedge_trample_worldobserver.lua — teaching example: join zombies + sprites on tileLocation and remove hedge tiles.
 --[[ Usage in PZ console:
 --require("DREAMBase/log").setLevel("info")
-ht = require("examples/hedge_trample")
+ht = require("examples/hedge_trample_worldobserver")
 ht.start()
 -- stop:
 ht.stop()
@@ -9,7 +9,7 @@ ht.stop()
 
 local HedgeTrample = {}
 
-local MOD_ID = "examples/hedge_trample"
+local MOD_ID = "examples/hedge_trample_worldobserver"
 
 local leases = nil
 local subscription = nil
