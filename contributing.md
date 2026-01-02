@@ -22,7 +22,7 @@ Potentially interesting future observations and other research notes are tracked
 
 WorldObserver is one module in the DREAM family (WorldObserver, PromiseKeeper, SceneBuilder, LQR, reactivex, DREAM).
 
-Maintainer convenience repo (multi-repo sync/watch): https://github.com/christophstrasen/DREAM-Workspace
+Maintainer convenience repo (multi-repo sync/watch): https://github.com/christophstrasen/DREAM
 
 ## Project values (what we optimize for)
 

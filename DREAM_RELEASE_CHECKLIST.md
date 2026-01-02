@@ -32,8 +32,8 @@ It’s written to satisfy these constraints:
   - `https://github.com/christophstrasen/pz-lqr`
   - `https://github.com/christophstrasen/pz-dream`
 - [ ] Publish all 5 Workshop items + fill in Workshop IDs
-- [x] (Optional) Local `DREAM-Workspace` created at `/home/cornholio/projects/DREAM-Workspace` (submodules + one-terminal `dev/watch-all.sh`)
-- [x] (Optional) `DREAM-Workspace` pushed: `https://github.com/christophstrasen/DREAM-Workspace`
+- [x] (Optional) Local `DREAM` created at `/home/cornholio/projects/DREAM` (submodules + one-terminal `dev/watch-all.sh`)
+- [x] (Optional) `DREAM` pushed: `https://github.com/christophstrasen/DREAM`
 
 Next (human steps):
 - Create 3 GitHub repos (repo names can be e.g. `pz-lqr`, `pz-reactivex`, `pz-dream`) and add them as remotes.
@@ -92,7 +92,7 @@ If you decide you *do* want versioned internal IDs to avoid collisions, use some
 HUMAN:
 - You will have **one git repo per published mod**:
   - `WorldObserver` (already exists)
-  - `PromiseKeeper` (separate repo; pulled in via DREAM-Workspace)
+  - `PromiseKeeper` (separate repo; pulled in via DREAM)
   - `LQR` mod repo (new “adapter mod” repo; not the upstream `christophstrasen/LQR`)
   - `reactivex` mod repo (new “adapter mod” repo; not the upstream `christophstrasen/lua-reactivex`)
   - `DREAM` (new meta-mod repo)
@@ -190,7 +190,7 @@ You have two good options; both satisfy “always exists” without forcing cont
 ### Option A (recommended): a maintainer “workspace repo”
 
 HUMAN:
-- Create a separate repo (not published as a mod), e.g. `DREAM-Workspace`, containing:
+- Create a separate repo (not published as a mod), e.g. `DREAM`, containing:
   - submodules for all 5 mod repos (and upstream submodules inside the adapter repos)
   - a `.code-workspace` file opening all repos
 
