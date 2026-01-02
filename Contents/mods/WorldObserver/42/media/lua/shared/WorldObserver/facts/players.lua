@@ -4,6 +4,7 @@ local Log = require("DREAMBase/log").withTag("WO.FACTS.players")
 local Record = require("WorldObserver/facts/players/record")
 local OnPlayerMove = require("WorldObserver/facts/players/on_player_move")
 local OnPlayerUpdate = require("WorldObserver/facts/players/on_player_update")
+local OnPlayerChange = require("WorldObserver/facts/players/on_player_change_room")
 
 local INTEREST_TYPE_PLAYERS = "players"
 
@@ -133,6 +134,16 @@ if Players.register == nil then
 					listenerCfg = listenerCfg,
 				})
 
+				OnPlayerChange.register({
+					players = Players,
+					emitFn = originalEmit,
+					headless = headless,
+					runtime = ctx.runtime,
+					interestRegistry = interestRegistry,
+					listenerCfg = listenerCfg,
+					factRegistry = registry,
+				})
+
 				if not headless then
 					local hasInterest = hasActiveLease(interestRegistry, INTEREST_TYPE_PLAYERS)
 					Log:info(
@@ -184,6 +195,8 @@ if Players.register == nil then
 						fullyStopped = false
 					end
 				end
+
+				OnPlayerChange.unregister()
 
 				if not fullyStopped and not headless then
 					Log:warn("Players fact stop requested but could not remove all handlers; keeping started=true")

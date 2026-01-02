@@ -42,6 +42,7 @@ Defaults:
 |-------|------------|--------------|-------|
 | onPlayerMove | n/a | n/a | Emits when players move (engine event). |
 | onPlayerUpdate | n/a | n/a | Emits on player updates (engine event). |
+| onPlayerChangeRoom | n/a | n/a | Emits when player 0 changes rooms (tick-driven). |
 
 Settings: `cooldown`, `highlight`.
 
@@ -70,11 +71,11 @@ Defaults:
 |--------------|------------|--------------|-------|
 | allLoaded    | n/a        | n/a          | Scans the room list in the active cell (singleplayer). |
 | onSeeNewRoom | n/a        | n/a          | Event-driven: emits when a room is seen. |
-| onPlayerChangeRoom | player | `target = { player = { id = 0 } }` | Event-driven: emits when the player changes rooms (no emission when room is nil). |
+| onPlayerChangeRoom | player | `target = { player = { id = 0 } }` | Tick-driven: emits when the player changes rooms (no emission when room is nil). |
 
 Settings:
 - Probe scope (`allLoaded`): `staleness`, `cooldown`, `highlight`.
-- Event scopes (`onSeeNewRoom`, `onPlayerChangeRoom`): `cooldown`, `highlight`.
+- Non-probe scopes (`onSeeNewRoom`, `onPlayerChangeRoom`): `cooldown`, `highlight`.
 
 Defaults:
 - If `scope` is missing, it defaults to `"allLoaded"`.

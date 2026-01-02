@@ -26,9 +26,13 @@ describe("zombies interest and records", function()
 	end)
 
 	it("builds a minimal zombie record", function()
+		local room = nil
 		local square = {
 			getID = function()
 				return 321
+			end,
+			getRoom = function()
+				return room
 			end,
 			getX = function()
 				return 10
@@ -38,6 +42,20 @@ describe("zombies interest and records", function()
 			end,
 			getZ = function()
 				return 0
+			end,
+		}
+		local roomSquares = {
+			size = function()
+				return 1
+			end,
+			get = function(_, idx)
+				assert.equals(0, idx)
+				return square
+			end,
+		}
+		room = {
+			getSquares = function()
+				return roomSquares
 			end,
 		}
 		local targetSquare = {
@@ -127,6 +145,7 @@ describe("zombies interest and records", function()
 		assert.equals(6, record.tileY)
 		assert.equals(0, record.tileZ)
 		assert.equals("x5y6z0", record.tileLocation)
+		assert.equals("x10y11z0", record.roomLocation)
 		assert.equals("walker", record.locomotion)
 		assert.is_true(record.hasTarget)
 		assert.equals(99, record.targetId)

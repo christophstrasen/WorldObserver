@@ -136,6 +136,7 @@ Primary wiring entrypoint:
 ### Interest (why work happens at all)
 WorldObserver is *opt-in*: most probes/listeners are gated by interest leases.
 - Mods declare interest using `WorldObserver.factInterest:declare(modId, key, spec)`.
+- `spec.type` can be a list to fan out a single declaration into multiple per-type leases.
 - Interest shape is `type/scope/target` + setting bands (e.g. `radius`, `staleness`, `cooldown`) + optional `highlight`.
 - Interests are merged across mods into an **effective plan** (per bucket/target where applicable).
 
@@ -231,6 +232,8 @@ Shared “internal sensors” and helpers:
 - `Contents/mods/WorldObserver/42/media/lua/shared/WorldObserver/facts/sensors/square_sweep.lua`
   - Shared near/vision square scanning driver (the “eyes”).
   - Calls registered collectors; tracks per-tick counters; optional collector fan-out logging.
+- `Contents/mods/WorldObserver/42/media/lua/shared/WorldObserver/facts/sensors/player_room_change.lua`
+  - Shared player room-change detector feeding both rooms + players fact families.
 - `Contents/mods/WorldObserver/42/media/lua/shared/WorldObserver/facts/ground_entities.lua`
   - Shared scaffolding for “entities on squares” fact types (items + dead bodies).
 - `Contents/mods/WorldObserver/42/media/lua/shared/WorldObserver/facts/targets.lua`

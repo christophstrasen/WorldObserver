@@ -51,6 +51,7 @@ Common fields on the zombie record:
 - `x`, `y`, `z` (world coords, may be fractional)
 - `tileX`, `tileY`, `tileZ` (tile coords, integers)
 - `squareId` (best-effort “current square id”)
+- `roomLocation` (join-ready room key if the zombie is inside a room)
 - `outfitName` (outfit name string, may be nil/empty when unknown)
 - movement: `isMoving`, `isRunning`, `isCrawling`, `locomotion`
 - targeting: `hasTarget`, `targetId`, `targetKind`, `targetVisible`, `targetSeenSeconds`

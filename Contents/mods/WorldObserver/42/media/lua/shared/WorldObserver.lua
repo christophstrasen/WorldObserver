@@ -89,6 +89,146 @@ assert(type(config.runtime.controller) == "table", "WorldObserver config must in
 	---@type WOInterestRegistry
 	local interestRegistry = InterestRegistry.new({})
 	local headless = config.facts.squares.headless == true
+	local multiTypeInterestKeys = {}
+
+	local function cloneSpecWithType(spec, typeName)
+		local out = {}
+		for k, v in pairs(spec or {}) do
+			out[k] = v
+		end
+		out.type = typeName
+		return out
+	end
+
+	local function normalizeTypeList(spec)
+		if type(spec) ~= "table" then
+			return nil
+		end
+		local list = spec.type
+		if type(list) ~= "table" then
+			return nil
+		end
+		if list[1] == nil then
+			error("interest type list must be an array of strings")
+		end
+		local out = {}
+		local seen = {}
+		for i = 1, #list do
+			local entry = list[i]
+			if type(entry) == "string" and entry ~= "" and not seen[entry] then
+				out[#out + 1] = entry
+				seen[entry] = true
+			end
+		end
+		assert(out[1] ~= nil, "interest type list must include at least one type")
+		return out
+	end
+
+	local function clearMultiTypeEntry(modId, key)
+		local modKeys = multiTypeInterestKeys[modId]
+		if not modKeys then
+			return
+		end
+		modKeys[key] = nil
+		local hasAny = false
+		for _ in pairs(modKeys) do
+			hasAny = true
+		end
+		if not hasAny then
+			multiTypeInterestKeys[modId] = nil
+		end
+	end
+
+	local function revokeMultiTypeEntries(modId, key)
+		local modKeys = multiTypeInterestKeys[modId]
+		local derived = modKeys and modKeys[key] or nil
+		if not derived then
+			return
+		end
+		for _, derivedKey in ipairs(derived) do
+			interestRegistry:revoke(modId, derivedKey)
+		end
+		clearMultiTypeEntry(modId, key)
+	end
+
+	local function buildCompositeLease(modId, key, leases, factInterestDeclare)
+		local handle = {}
+
+		local function stop()
+			for _, lease in ipairs(leases) do
+				if lease and lease.stop then
+					lease:stop()
+				end
+			end
+			revokeMultiTypeEntries(modId, key)
+		end
+
+		local function renew(nowMsOrSelf, maybeNowMs)
+			local nowMs = maybeNowMs
+			if nowMsOrSelf ~= handle and type(nowMsOrSelf) == "number" and nowMs == nil then
+				nowMs = nowMsOrSelf
+			end
+			for _, lease in ipairs(leases) do
+				if lease and lease.renew then
+					if nowMs ~= nil then
+						lease:renew(nowMs)
+					else
+						lease:renew()
+					end
+				end
+			end
+		end
+
+		local function replaceSpec(selfOrNewSpec, maybeNewSpec, maybeReplaceOpts)
+			local newSpec = selfOrNewSpec
+			local replaceOpts = maybeNewSpec
+			if selfOrNewSpec == handle then
+				newSpec = maybeNewSpec
+				replaceOpts = maybeReplaceOpts
+			end
+			return factInterestDeclare(modId, key, newSpec, replaceOpts)
+		end
+
+		handle.stop = stop
+		handle.renew = renew
+		handle.declare = replaceSpec
+		return handle
+	end
+
+	local function factInterestDeclare(modId, key, spec, opts)
+		local typeList = normalizeTypeList(spec)
+		if typeList then
+			if typeList[2] == nil then
+				revokeMultiTypeEntries(modId, key)
+				local singleSpec = cloneSpecWithType(spec, typeList[1])
+				return interestRegistry:declare(modId, key, singleSpec, opts)
+			end
+
+			revokeMultiTypeEntries(modId, key)
+			interestRegistry:revoke(modId, key)
+
+			local derivedKeys = {}
+			local leases = {}
+			for _, typeName in ipairs(typeList) do
+				local derivedKey = key .. "/" .. typeName
+				derivedKeys[#derivedKeys + 1] = derivedKey
+				local derivedSpec = cloneSpecWithType(spec, typeName)
+				leases[#leases + 1] = interestRegistry:declare(modId, derivedKey, derivedSpec, opts)
+			end
+
+			multiTypeInterestKeys[modId] = multiTypeInterestKeys[modId] or {}
+			multiTypeInterestKeys[modId][key] = derivedKeys
+			return buildCompositeLease(modId, key, leases, factInterestDeclare)
+		end
+
+		revokeMultiTypeEntries(modId, key)
+		return interestRegistry:declare(modId, key, spec, opts)
+	end
+
+	local function factInterestRevoke(modId, key)
+		revokeMultiTypeEntries(modId, key)
+		return interestRegistry:revoke(modId, key)
+	end
 
 	-- Diagnostics overlays can be quite noisy and can keep printing even after a smoke handle stops
 	-- if we forget to detach them. We only want them while something is actively subscribed.
@@ -186,10 +326,10 @@ WorldObserver = {
 	situations = situationsRegistry:api(),
 	factInterest = {
 		declare = function(_, modId, key, spec, opts)
-			return interestRegistry:declare(modId, key, spec, opts)
+			return factInterestDeclare(modId, key, spec, opts)
 		end,
 		revoke = function(_, modId, key)
-			return interestRegistry:revoke(modId, key)
+			return factInterestRevoke(modId, key)
 		end,
 		effective = function(_, factType, opts)
 			-- Returns the merged interest bands for a type. For bucketed interest types (like `squares`),

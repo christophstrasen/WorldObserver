@@ -64,16 +64,6 @@ local function tickRooms(ctx)
 		listenerCfg = ctx.listenerCfg,
 		recordOpts = ctx.recordOpts,
 	})
-	OnPlayerChange.ensure({
-		state = state,
-		rooms = Rooms,
-		emitFn = ctx.emitFn,
-		headless = ctx.headless,
-		runtime = ctx.runtime,
-		interestRegistry = ctx.interestRegistry,
-		listenerCfg = ctx.listenerCfg,
-		recordOpts = ctx.recordOpts,
-	})
 
 	local probeCfg = ctx.probeCfg or {}
 	if probeCfg.enabled ~= false then
@@ -134,13 +124,6 @@ if Rooms.register == nil then
 		local headless = roomsCfg.headless == true
 		local probeCfg = roomsCfg.probe or {}
 		local listenerCfg = roomsCfg.listener or {}
-		local recordCfg = roomsCfg.record or {}
-
-		local recordOpts = {
-			includeIsoRoom = recordCfg.includeIsoRoom == true,
-			includeRoomDef = recordCfg.includeRoomDef == true,
-			includeBuilding = recordCfg.includeBuilding == true,
-		}
 
 		registry:register("rooms", {
 			ingest = {
@@ -172,7 +155,17 @@ if Rooms.register == nil then
 					interestRegistry = interestRegistry,
 					probeCfg = probeCfg,
 					listenerCfg = listenerCfg,
-					recordOpts = recordOpts,
+				})
+
+				OnPlayerChange.register({
+					rooms = Rooms,
+					emitFn = originalEmit,
+					headless = headless,
+					runtime = ctx.runtime,
+					interestRegistry = interestRegistry,
+					listenerCfg = listenerCfg,
+					recordOpts = ctx.recordOpts,
+					factRegistry = registry,
 				})
 
 				if not headless then
@@ -217,6 +210,8 @@ if Rooms.register == nil then
 						fullyStopped = false
 					end
 				end
+
+				OnPlayerChange.unregister()
 
 				if not fullyStopped and not headless then
 					Log:warn("Rooms fact stop requested but could not remove all handlers; keeping started=true")

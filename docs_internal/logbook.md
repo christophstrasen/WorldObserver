@@ -593,3 +593,22 @@
 ### Notes / limitations
 - Wrapping is intended for “close to use” record contexts; shallow copies (notably some join flows) may drop metatables.
 - Wrapped methods do not appear in `pairs(record)` (only record fields do).
+
+## day21 – Shared player room change sensor, multi-family subscriptions, and RoomDef hydration
+
+### Highlights
+- Added a shared “player room changed” sensor that fans out to multiple fact families:
+  - Centralizes the “detect room changed” logic (tick-driven), and lets rooms and players each build their own facts from the same upstream event.
+- Made `onPlayerChangeRoom` available for `players` interests (previously only `rooms`), enabling stream joins keyed by `roomLocation` without manual low-level source filtering.
+- Added multi-family interest declarations (`type = { "rooms", "players", ... }`) so one declare call can subscribe to multiple independent family pipelines while keeping their records separate.
+- Improved RoomDef hydration to avoid Lua number precision issues with Java `long` IDs:
+  - Prefer `metaGrid:getRoomAt(x, y, z)` by parsing `roomLocation` (`x..y..z`) before attempting `getRoomDefByID`.
+
+### Notes / observations
+- Multi-family interests are intentionally “fan-out only” (no combined payload). Downstream code can join observations explicitly in a derived stream when needed.
+- In-engine validation via the DREAM “marriage story” example showed the approach is practical:
+  - Room availability can be modeled as a rooms situation.
+  - “Player joins marriage” can be modeled as a derived stream join between player room changes and zombie presence in the same room.
+
+### Tests
+- Added/updated unit tests to cover the shared sensor wiring and multi-family declare behavior.

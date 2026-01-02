@@ -38,5 +38,20 @@ describe("WorldObserver room record wrapping", function()
 		assert.equals(record, seen.nameIs.r)
 		assert.equals("kitchen", seen.nameIs.wanted)
 	end)
-end)
 
+	it("wrapper exposes getRoomDef", function()
+		local Room = WorldObserver.helpers.room
+		local record = { roomLocation = "x1y2z0" }
+
+		local seen = {}
+		Room.record.getRoomDef = function(r, opts)
+			seen.getRoomDef = { r = r, opts = opts }
+			return "RoomDefSentinel"
+		end
+
+		Room:wrap(record)
+
+		assert.equals("RoomDefSentinel", record:getRoomDef({}))
+		assert.equals(record, seen.getRoomDef.r)
+	end)
+end)

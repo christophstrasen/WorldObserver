@@ -38,9 +38,9 @@ local lease = WorldObserver.factInterest:declare("YourModId", "featureKey", {
 })
 ```
 
-### Option C: event-driven (player changes room)
+### Option C: change-driven (player changes room)
 
-Uses `Events.OnPlayerChangeRoom` when available.
+Tick-driven: emits when the player changes rooms.
 
 ```lua
 local WorldObserver = require("WorldObserver")
@@ -85,7 +85,7 @@ Common fields on the room record:
 - `bounds` (best-effort `{ x, y, width, height }` when available)
 - counts: `rectsCount`, `bedsCount`, `windowsCount`, `waterSourcesCount`
 - flags: `visited`, `exists`, `hasWater`
-- `source` (which producer saw it, `"event"` or `"probe"`)
+- `source` (which producer saw it, `"event"`, `"player"`, or `"probe"`)
 - `sourceTime` (ms, in-game clock)
 
 Notes:
@@ -93,7 +93,7 @@ Notes:
 - `roomLocation` is the same value as `roomId`, provided as a clearer foreign-key name for joins.
 
 Engine objects:
-- Off by default; can be enabled in config via `facts.rooms.record.includeIsoRoom`, `.includeRoomDef`, `.includeBuilding`.
+- `IsoRoom`, `RoomDef`, and `IsoBuilding` are included on each record when available.
 
 ## Extending the record (advanced)
 
@@ -116,7 +116,7 @@ Record helpers (use inside `:roomFilter(...)` or inside Rx `:filter(...)` after 
 - `WorldObserver.helpers.room.record.roomTypeIs(roomRecord, "kitchen")`
 
 Record wrapping (optional):
-- `WorldObserver.helpers.room:wrap(roomRecord)` adds `:nameIs(name)`; see [Helpers: record wrapping](../guides/helpers.md#record-wrapping-optional).
+- `WorldObserver.helpers.room:wrap(roomRecord)` adds `:nameIs(name)` and `:getRoomDef()`; see [Helpers: record wrapping](../guides/helpers.md#record-wrapping-optional).
 
 ## Supported interest configuration (today)
 
@@ -125,7 +125,7 @@ Supported combinations for `type = "rooms"`:
 | scope        | target key | target shape                    | Notes |
 |-------------|------------|----------------------------------|-------|
 | onSeeNewRoom | n/a        | n/a                              | Emits when a room is seen (engine event). |
-| onPlayerChangeRoom | player | `target = { player = { id = 0 } }` | Emits when the player changes rooms (engine event). |
+| onPlayerChangeRoom | player | `target = { player = { id = 0 } }` | Emits when the player changes rooms (tick-driven). |
 | allLoaded    | n/a        | n/a                              | Scans the room list in the active cell (singleplayer). |
 
 Meaningful settings for `allLoaded`: `staleness`, `cooldown`, `highlight`.

@@ -71,7 +71,7 @@ Supported today:
 - `WorldObserver.helpers.square` (`:getIsoGridSquare()`, `:hasFloorMaterial(pattern)`, `:highlight(durationMs, opts)`)
 - `WorldObserver.helpers.zombie` (`:getIsoZombie()`, `:hasOutfit(nameOrList)`, `:highlight(durationMs, opts)`)
 - `WorldObserver.helpers.player` (`:getIsoPlayer()`, `:getIsoGridSquare()`, `:highlight(durationMs, opts)`)
-- `WorldObserver.helpers.room` (`:nameIs(name)`)
+- `WorldObserver.helpers.room` (`:nameIs(name)`, `:getRoomDef()`)
 - `WorldObserver.helpers.item` (`:typeIs(typeName)`, `:fullTypeIs(fullType)`, `:getIsoGridSquare()`, `:highlight(durationMs, opts)`)
 - `WorldObserver.helpers.deadBody` (`:getIsoDeadBody()`, `:getIsoGridSquare()`, `:highlight(durationMs, opts)`)
 - `WorldObserver.helpers.sprite` (`:nameIs(name)`, `:idIs(id)`, `:getIsoGridSquare()`, `:highlight(durationMs, opts)`, `:removeSpriteObject()`)

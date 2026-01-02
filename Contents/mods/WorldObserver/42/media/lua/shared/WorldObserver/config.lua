@@ -148,11 +148,7 @@ local function defaultBuildDefaults()
 					ordering = "fifo",
 					priority = 1,
 				},
-				record = {
-					includeIsoRoom = false,
-					includeRoomDef = false,
-					includeBuilding = false,
-				},
+				record = {},
 				probe = {
 					enabled = true,
 					maxPerRun = 40,

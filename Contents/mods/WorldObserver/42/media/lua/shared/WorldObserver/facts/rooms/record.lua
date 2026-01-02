@@ -273,13 +273,13 @@ if Record.makeRoomRecord == nil then
 			source = source,
 		}
 
-		if opts.includeIsoRoom == true then
+		if room ~= nil then
 			record.IsoRoom = room
 		end
-		if opts.includeRoomDef == true then
+		if roomDef ~= nil then
 			record.RoomDef = roomDef
 		end
-		if opts.includeBuilding == true then
+		if building ~= nil then
 			record.IsoBuilding = building
 		end
 

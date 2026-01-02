@@ -1,6 +1,7 @@
 -- facts/zombies/record.lua -- builds stable zombie fact records from IsoZombie objects.
 local Log = require("DREAMBase/log").withTag("WO.FACTS.zombies")
 local SafeCall = require("DREAMBase/pz/safe_call")
+local RoomHelpers = require("WorldObserver/helpers/room")
 local SquareHelpers = require("WorldObserver/helpers/square")
 
 local moduleName = ...
@@ -170,6 +171,13 @@ if Record.makeZombieRecord == nil then
 
 		local square = SafeCall.safeCall(zombie, "getCurrentSquare")
 		local squareId = deriveSquareId(square, tileX, tileY, tileZ)
+		local roomLocation = nil
+		if square and RoomHelpers and RoomHelpers.record then
+			local room = SafeCall.safeCall(square, "getRoom")
+			if room ~= nil and type(RoomHelpers.record.roomLocationFromIsoRoom) == "function" then
+				roomLocation = RoomHelpers.record.roomLocationFromIsoRoom(room)
+			end
+		end
 
 		local zombieId = SafeCall.safeCall(zombie, "getID")
 		local zombieOnlineId = SafeCall.safeCall(zombie, "getOnlineID") or 0
@@ -208,6 +216,7 @@ if Record.makeZombieRecord == nil then
 			tileY = tileY,
 			tileZ = tileZ,
 			tileLocation = SquareHelpers.record.tileLocationFromCoords(tileX, tileY, tileZ),
+			roomLocation = roomLocation,
 			squareId = squareId,
 			isMoving = isMoving,
 			isRunning = isRunning,

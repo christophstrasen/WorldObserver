@@ -191,6 +191,25 @@ describe("interest registry", function()
 		assert.equals(1, merged.cooldown.desired)
 	end)
 
+	it("supports players onPlayerChangeRoom as an event scope bucket", function()
+		local reg = Registry.new({ ttlSeconds = 100 })
+		reg:declare("modA", "change", {
+			type = "players",
+			scope = "onPlayerChangeRoom",
+			cooldown = { desired = 1, tolerable = 2 },
+		})
+
+		local merged = reg:effective("players", nil, { bucketKey = "onPlayerChangeRoom" })
+		assert.is_table(merged)
+		assert.equals("players", merged.type)
+		assert.equals("onPlayerChangeRoom", merged.scope)
+		assert.is_nil(merged.target)
+		assert.equals(0, merged.staleness.desired)
+		assert.equals(0, merged.radius.desired)
+		assert.equals(0, merged.zRange.desired)
+		assert.equals(1, merged.cooldown.desired)
+	end)
+
 	it("supports rooms onPlayerChangeRoom as a per-player bucket", function()
 		local reg = Registry.new({ ttlSeconds = 100 })
 		reg:declare("modA", "change", {

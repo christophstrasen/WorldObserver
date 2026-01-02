@@ -51,7 +51,7 @@ Notes:
   - Example: `type = "squares"` or `type = "zombies"`.
 - `scope`: a sub-mode within an interest type (used for grouping and merging).
   - For `type = "squares"`, the supported scopes today are `near`, `vision`, and `onLoad`.
-  - For `type = "players"`, the supported scopes today are `onPlayerMove` and `onPlayerUpdate`.
+  - For `type = "players"`, the supported scopes today are `onPlayerMove`, `onPlayerUpdate`, and `onPlayerChangeRoom`.
   - For `type = "zombies"`, the supported scope today is `allLoaded`.
   - For `type = "vehicles"`, the supported scope today is `allLoaded`.
   - For `type = "rooms"`, the supported scopes today are `allLoaded`, `onSeeNewRoom`, and `onPlayerChangeRoom`.
@@ -63,8 +63,28 @@ Notes:
   - `scope = "onLoad"` ignores `target`.
   - `items` and `deadBodies` use the same target rules as `squares` for probe scopes.
   - `scope = "playerSquare"` for `items`/`deadBodies` requires a player target (defaults to `id = 0`).
-  - `scope = "onPlayerChangeRoom"` uses a player target (defaults to `id = 0`).
+  - For `rooms` with `scope = "onPlayerChangeRoom"`, the target is a player (defaults to `id = 0`).
   - v0 note: singleplayer assumes the local player is `id = 0`.
+
+## 2b. Multi-type interest (advanced)
+
+You can declare a single interest that fans out to multiple fact types:
+
+```lua
+local WorldObserver = require("WorldObserver")
+
+local lease = WorldObserver.factInterest:declare("YourModId", "roomAndPlayer", {
+  type = { "rooms", "players" },
+  scope = "onPlayerChangeRoom",
+  cooldown = { desired = 0 },
+})
+```
+
+Notes:
+- One lease per type is created under the hood; the returned lease stops/renews all of them.
+- The same spec is applied to each type; choose fields that make sense for all of them.
+- Unsupported fields for a given type are ignored (with warnings).
+- `factInterest:revoke("YourModId", "roomAndPlayer")` revokes the fan-out as a unit.
 
 ## 3. Interest types available today
 
@@ -75,7 +95,7 @@ Interest `type` selects the “fact plan” behind the scenes (listener vs probe
 | type | scopes | acquisition | target |
 |------|--------|-------------|--------|
 | `squares` | `near`, `vision`, `onLoad` | probe + event | player/square (probe scopes) |
-| `players` | `onPlayerMove`, `onPlayerUpdate` | event | n/a |
+| `players` | `onPlayerMove`, `onPlayerUpdate`, `onPlayerChangeRoom` | event | n/a |
 | `zombies` | `allLoaded` | probe | n/a |
 | `vehicles` | `allLoaded` | probe + event | n/a |
 | `rooms` | `allLoaded`, `onSeeNewRoom`, `onPlayerChangeRoom` | probe + event | player (onPlayerChangeRoom only) |
@@ -107,6 +127,9 @@ Interest `type` selects the “fact plan” behind the scenes (listener vs probe
 - `type = "players"` with `scope = "onPlayerUpdate"`
   - Event-driven: emits on player updates (engine event).
   - Settings: `cooldown`, `highlight`.
+- `type = "players"` with `scope = "onPlayerChangeRoom"`
+  - Tick-driven: emits when player 0 changes rooms.
+  - Settings: `cooldown`, `highlight`.
 
 ### Zombies
 
@@ -131,7 +154,7 @@ Interest `type` selects the “fact plan” behind the scenes (listener vs probe
   - Event-driven: emits when the player sees a new room.
   - Settings: `cooldown`, `highlight`.
 - `type = "rooms"` with `scope = "onPlayerChangeRoom"`
-  - Event-driven: emits when the player changes rooms (only when a room is detected).
+  - Tick-driven: emits when the player changes rooms (only when a room is detected).
   - Settings: `cooldown`, `highlight`.
 
 ### Items

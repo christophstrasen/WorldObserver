@@ -2,10 +2,10 @@ _G.WORLDOBSERVER_HEADLESS = true
 _G.LQR_HEADLESS = true
 
 local Registry = require("WorldObserver/interest/registry")
-local OnPlayerChange = require("WorldObserver/facts/rooms/on_player_change_room")
+local OnPlayerChange = require("WorldObserver/facts/players/on_player_change_room")
 local PlayerRoomChange = require("WorldObserver/facts/sensors/player_room_change")
 
-describe("rooms onPlayerChangeRoom", function()
+describe("players onPlayerChangeRoom", function()
 	it("emits only when the player changes rooms", function()
 		local savedGetSpecificPlayer = _G.getSpecificPlayer
 		local playerRoom = nil
@@ -25,23 +25,28 @@ describe("rooms onPlayerChangeRoom", function()
 			return player
 		end
 
-		local roomA = { id = "A" }
-		local roomB = { id = "B" }
+		local roomA = { roomLocation = "rA" }
+		local roomB = { roomLocation = "rB" }
 		local emitted = {}
 		local registry = Registry.new({ ttlSeconds = 100 })
 		registry:declare("modA", "roomChange", {
-			type = "rooms",
+			type = "players",
 			scope = "onPlayerChangeRoom",
-			target = { player = { id = 0 } },
 			cooldown = { desired = 0, tolerable = 0 },
 		})
 
 		local state = {}
 		local ctx = {
 			interestRegistry = registry,
-			rooms = {
-				makeRoomRecord = function(room, source)
-					return { roomId = room.id, source = source }
+			players = {
+				makePlayerRecord = function(_player, source, opts)
+					return {
+						playerKey = "player0",
+						roomLocation = playerRoom and playerRoom.roomLocation or nil,
+						source = source,
+						scope = opts and opts.scope or nil,
+						IsoGridSquare = square,
+					}
 				end,
 			},
 			emitFn = function(record)
@@ -64,7 +69,7 @@ describe("rooms onPlayerChangeRoom", function()
 		playerRoom = roomA
 		PlayerRoomChange.tick(tickCtx)
 		assert.equals(1, #emitted)
-		assert.equals("A", emitted[1].roomId)
+		assert.equals("rA", emitted[1].roomLocation)
 
 		PlayerRoomChange.tick(tickCtx)
 		assert.equals(1, #emitted)
@@ -72,7 +77,7 @@ describe("rooms onPlayerChangeRoom", function()
 		playerRoom = roomB
 		PlayerRoomChange.tick(tickCtx)
 		assert.equals(2, #emitted)
-		assert.equals("B", emitted[2].roomId)
+		assert.equals("rB", emitted[2].roomLocation)
 
 		playerRoom = nil
 		PlayerRoomChange.tick(tickCtx)

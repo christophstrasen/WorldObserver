@@ -672,21 +672,34 @@ function FactRegistry:drainSchedulerOnce()
 			local processedTotal = diag.windowProcessed or 0
 			local drainTotalMs = diag.windowDrainMs or 0
 			local emitTotalMs = diag.windowEmitMs or 0
+			local tickCount = diag.windowTicks or 0
+			local drainPerTick = tickCount > 0 and (drainTotalMs / tickCount) or nil
+			local emitPerTick = tickCount > 0 and (emitTotalMs / tickCount) or nil
 			local overheadMs = drainTotalMs - emitTotalMs
 			if overheadMs < 0 then
 				overheadMs = 0
 			end
+			local overheadPerTick = tickCount > 0 and (overheadMs / tickCount) or nil
 			local avgMsPerItem = processedTotal > 0 and (drainTotalMs / processedTotal) or nil
+			local processedPerTick = tickCount > 0 and (processedTotal / tickCount) or nil
+			local maxDrainMs = diag.windowMaxDrainMs or 0
 
 			IngestLog:info(
-				"tick window ticks=%s drainCalls=%s processed=%s drainMs=%.1f emitMs=%.1f overheadMs=%.1f avgMsPerItem=%s gcKb=%s",
-				tostring(diag.windowTicks),
+				"tick window ticks=%s drainCalls=%s processed=%s drainMs=%.1f emitMs=%.1f "
+					.. "overheadMs=%.1f avgMsPerItem=%s maxDrainMs=%.1f drainMsPerTick=%s "
+					.. "emitMsPerTick=%s overheadMsPerTick=%s processedPerTick=%s gcKb=%s",
+				tostring(tickCount),
 				tostring(diag.windowDrainCalls),
 				tostring(processedTotal),
 				tonumber(drainTotalMs) or 0,
 				tonumber(emitTotalMs) or 0,
 				tonumber(overheadMs) or 0,
 				avgMsPerItem and string.format("%.3f", avgMsPerItem) or "n/a",
+				tonumber(maxDrainMs) or 0,
+				drainPerTick and string.format("%.3f", drainPerTick) or "n/a",
+				emitPerTick and string.format("%.3f", emitPerTick) or "n/a",
+				overheadPerTick and string.format("%.3f", overheadPerTick) or "n/a",
+				processedPerTick and string.format("%.3f", processedPerTick) or "n/a",
 				gcKb and string.format("%.0f", gcKb) or "n/a"
 			)
 

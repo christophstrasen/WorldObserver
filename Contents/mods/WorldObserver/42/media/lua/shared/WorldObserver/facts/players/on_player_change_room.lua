@@ -1,7 +1,6 @@
--- facts/rooms/on_player_change_room.lua -- emits room records when a player changes rooms.
+-- facts/players/on_player_change_room.lua -- emits player records when the player changes rooms.
 local Highlight = require("WorldObserver/helpers/highlight")
-local JavaList = require("DREAMBase/pz/java_list")
-local SafeCall = require("DREAMBase/pz/safe_call")
+local SquareHelpers = require("WorldObserver/helpers/square")
 local PlayerRoomChange = require("WorldObserver/facts/sensors/player_room_change")
 
 local moduleName = ...
@@ -18,53 +17,37 @@ if type(moduleName) == "string" then
 end
 OnPlayerChange._internal = OnPlayerChange._internal or {}
 
-local INTEREST_TYPE = "rooms"
+local INTEREST_TYPE = "players"
 local INTEREST_SCOPE = "onPlayerChangeRoom"
-local CONSUMER_ID = "rooms.onPlayerChangeRoom"
-local HIGHLIGHT_COLOR = { 0.9, 0.7, 0.2 }
+local CONSUMER_ID = "players.onPlayerChangeRoom"
 
-local function highlightRoomSquares(room, effective, highlightPref)
-	if room == nil then
+local function highlightPlayerSquare(record, effective, highlightPref)
+	if record == nil then
 		return
 	end
-	local squares = SafeCall.safeCall(room, "getSquares")
-	if squares == nil then
+	local square = record.IsoGridSquare
+	if square == nil then
 		return
-	end
-
-	local color = HIGHLIGHT_COLOR
-	local alpha = 0.9
-	if type(highlightPref) == "table" then
-		color = highlightPref
-		if type(color[4]) == "number" then
-			alpha = color[4]
-		end
 	end
 	local durationMs = Highlight.durationMsFromEffectiveCadence(effective)
-
-	local count = JavaList.size(squares)
-	if count <= 0 then
+	if durationMs <= 0 then
 		return
 	end
-	for i = 1, count do
-		local square = JavaList.get(squares, i)
-		if square ~= nil then
-			Highlight.highlightFloor(square, durationMs, { color = color, alpha = alpha })
-		end
-	end
+	local color, alpha = Highlight.resolveColorAlpha(highlightPref, nil, 0.7)
+	SquareHelpers.highlight(square, durationMs, { color = color, alpha = alpha })
 end
 
-local function makeRoomRecord(ctx, room)
-	local rooms = ctx and ctx.rooms
-	if not (rooms and type(rooms.makeRoomRecord) == "function") then
+local function makePlayerRecord(ctx, player)
+	local players = ctx and ctx.players
+	if not (players and type(players.makePlayerRecord) == "function") then
 		return nil
 	end
-	return rooms.makeRoomRecord(room, "player", ctx.recordOpts)
+	return players.makePlayerRecord(player, "event", { scope = INTEREST_SCOPE })
 end
 
 -- Patch seam: define only when nil so mods can override by reassigning `OnPlayerChange.register`.
 if OnPlayerChange.register == nil then
-	--- Register the shared player-room-change sensor for rooms.
+	--- Register the shared player-room-change sensor for players.
 	--- @param ctx table
 	function OnPlayerChange.register(ctx)
 		ctx = ctx or {}
@@ -75,22 +58,22 @@ if OnPlayerChange.register == nil then
 			interestType = INTEREST_TYPE,
 			scope = INTEREST_SCOPE,
 			emitFn = ctx.emitFn,
-			makeRecord = function(_player, room)
-				return makeRoomRecord(ctx, room)
+			makeRecord = function(player, _room)
+				return makePlayerRecord(ctx, player)
 			end,
 			cooldownKey = function(record)
-				return record and record.roomId or nil
+				return record and record.roomLocation or nil
 			end,
 			roomKey = function(record)
-				return record and record.roomId or nil
+				return record and record.roomLocation or nil
 			end,
-			onEmit = function(record, effective, context)
+			onEmit = function(record, effective)
 				if ctx.headless then
 					return
 				end
 				local highlightPref = effective and effective.highlight or nil
 				if highlightPref == true or type(highlightPref) == "table" then
-					highlightRoomSquares(context and context.room or nil, effective, highlightPref)
+					highlightPlayerSquare(record, effective, highlightPref)
 				end
 			end,
 			runtime = ctx.runtime,
@@ -104,12 +87,12 @@ end
 
 -- Patch seam: define only when nil so mods can override by reassigning `OnPlayerChange.unregister`.
 if OnPlayerChange.unregister == nil then
-	--- Unregister the shared player-room-change sensor for rooms.
+	--- Unregister the shared player-room-change sensor for players.
 	function OnPlayerChange.unregister()
 		return PlayerRoomChange.unregisterConsumer(CONSUMER_ID)
 	end
 end
 
-OnPlayerChange._internal.highlightRoomSquares = highlightRoomSquares
+OnPlayerChange._internal.highlightPlayerSquare = highlightPlayerSquare
 
 return OnPlayerChange

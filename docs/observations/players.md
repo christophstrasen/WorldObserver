@@ -39,6 +39,21 @@ local lease = WorldObserver.factInterest:declare("YourModId", "featureKey", {
 })
 ```
 
+### Option C: `onPlayerChangeRoom`
+
+Emits when the local player changes rooms (tick-driven; player 0 only for now).
+
+```lua
+local WorldObserver = require("WorldObserver")
+
+local lease = WorldObserver.factInterest:declare("YourModId", "featureKey", {
+  type = "players",
+  scope = "onPlayerChangeRoom",
+  cooldown = { desired = 0 },
+  highlight = true,
+})
+```
+
 ## Subscribe
 
 ```lua
@@ -68,13 +83,14 @@ Common fields on the player record:
 - spatial: `tileX`, `tileY`, `tileZ`, `x`, `y`, `z`, `tileLocation`
 - relations: `roomLocation`, `roomName`, `buildingId`
 - cheap state: `username`, `displayName`, `accessLevel`, `hoursSurvived`, `isLocalPlayer`, `isAiming`
-- provenance: `source` (`"event"`), `scope` (`"onPlayerMove"` or `"onPlayerUpdate"`), `sourceTime`
+- provenance: `source` (`"event"`), `scope` (`"onPlayerMove"`, `"onPlayerUpdate"`, or `"onPlayerChangeRoom"`), `sourceTime`
 
 Notes:
 - `roomLocation` is derived from the first room square and is join-ready with `rooms.roomLocation`.
 - `playerKey` prefers `steamId`, then `onlineId`, then `playerId`, then `playerNum`.
 - In singleplayer, engine ids may be `0` (example: `steamId=0`), so you may see `playerKey=steamId0`.
 - `sourceTime` is auto-stamped at ingest when missing.
+- `onPlayerChangeRoom` emits only for player 0 (v1).
 
 Engine objects (best-effort):
 - `IsoPlayer`, `IsoGridSquare`, `IsoRoom`, `IsoBuilding`
@@ -110,5 +126,6 @@ Supported combinations for `type = "players"`:
 |------|------------|--------------|-------|
 | onPlayerMove | n/a | n/a | Emits when players move (engine event). |
 | onPlayerUpdate | n/a | n/a | Emits on player updates (engine event). |
+| onPlayerChangeRoom | n/a | n/a | Emits when player 0 changes rooms (tick-driven). |
 
 Meaningful settings: `cooldown`, `highlight`.

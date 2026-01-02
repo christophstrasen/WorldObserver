@@ -52,20 +52,23 @@ Definitions.types.zombies = Definitions.types.zombies or {
 Definitions.types.players = Definitions.types.players or {
 	defaultScope = "onPlayerMove",
 	strictScopes = true,
-	allowedScopes = { onPlayerMove = true, onPlayerUpdate = true },
-	eventScopes = { onPlayerMove = true, onPlayerUpdate = true },
+	allowedScopes = { onPlayerMove = true, onPlayerUpdate = true, onPlayerChangeRoom = true },
+	eventScopes = { onPlayerMove = true, onPlayerUpdate = true, onPlayerChangeRoom = true },
 	allowTarget = false,
 	ignoreFields = {
 		onPlayerMove = { target = true, radius = true, staleness = true, zRange = true },
 		onPlayerUpdate = { target = true, radius = true, staleness = true, zRange = true },
+		onPlayerChangeRoom = { target = true, radius = true, staleness = true, zRange = true },
 	},
 	zeroKnobs = {
 		onPlayerMove = { staleness = true, radius = true, zRange = true },
 		onPlayerUpdate = { staleness = true, radius = true, zRange = true },
+		onPlayerChangeRoom = { staleness = true, radius = true, zRange = true },
 	},
 	recommendedFields = {
 		onPlayerMove = { "cooldown" },
 		onPlayerUpdate = { "cooldown" },
+		onPlayerChangeRoom = { "cooldown" },
 	},
 	bucketKey = "scope",
 }
