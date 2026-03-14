@@ -1,6 +1,6 @@
 version=1
 id=3637573373
-title=[42SP] WorldObserver - A cooperative world-sensing engine.
+title=[42SP] WorldObserver
 description=[h1]WorldObserver[/h1]
 description=
 description=[i]A shared observation layer for [b]Project Zomboid (Build 42)[/b] mods.[/i] - part of the [url=https://github.com/christophstrasen/DREAM]DREAM[/url] family.

@@ -13,16 +13,10 @@ git submodule update --init external/LQR external/lua-reactivex
 
 ## Sync
 
-Deploy to your local Workshop wrapper folder (default):
+Deploy to your local Workshop wrapper folder:
 
 ```bash
 ./dev/sync-workshop.sh
-```
-
-Optional: deploy to `~/Zomboid/mods` instead:
-
-```bash
-./dev/sync-mods.sh
 ```
 
 ## Watch
@@ -31,12 +25,6 @@ Watch + deploy (default: Workshop wrapper under `~/Zomboid/Workshop`):
 
 ```bash
 ./dev/watch.sh
-```
-
-Optional: deploy to `~/Zomboid/mods` instead:
-
-```bash
-TARGET=mods ./dev/watch.sh
 ```
 
 ## Tests
